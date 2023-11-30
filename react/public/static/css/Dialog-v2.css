@@ -1,0 +1,54 @@
+.dialog {
+  display: block;
+  /* max-width: 60vw; */
+}
+
+.dialog .MuiDialog-paperWidthSm {
+  max-width: 60vw;
+}
+
+.dialog_header {
+  height: 27px;
+  text-align: right;
+  background-color: #5887b7;
+  border: #fff 1px solid;
+}
+
+.dialog_title {
+  float: left;
+  padding: 6px 6px 6px 6px;
+  font: 8pt Arial, Tahoma, Verdana, sans-serif, "宋体", SimSun, "仿宋体", NSimSun;
+  color: white;
+}
+
+.dialog_close {
+  padding: 6px 6px 6px 6px;
+}
+
+.dialog_header.MuiDialogTitle-root {
+  padding: 0;
+}
+
+.dialog_content {
+  display: inline-block;
+  max-width: 60vw;
+  max-height: 70vh;
+  min-width: 20vw;
+  min-height: 15vh;
+  overflow: auto;
+
+  font: 8pt Arial, Tahoma, Verdana, sans-serif, "宋体", SimSun, "仿宋体", NSimSun;
+  border: #fff 1px solid;
+}
+
+.dialog_content.MuiDialogContent-root {
+  padding: 6px 6px 6px 6px;
+}
+
+.dialog_button {
+  margin-top: 1em;
+  border: #fff 1px solid;
+  font-weight: bold;
+  color: white;
+  background-color: #5887b7;
+}

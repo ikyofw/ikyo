@@ -1,0 +1,283 @@
+* {
+  margin: 0;
+  padding: 0;
+  line-height: 140%;
+  font-family: Arial, Tahoma, Verdana, sans-serif, "宋体", SimSun, "仿宋体", NSimSun;
+  font-size: 8pt;
+}
+
+hr {
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+  border: 0;
+  border-top: 1px solid rgba(0, 0, 0, .1);
+}
+
+h3 {
+  font-size: 1.75rem;
+}
+h4 {
+  font-size: 1.5rem;
+  margin-right: auto;
+}
+
+.h1,
+.h2,
+.h3,
+.h4,
+.h5,
+.h6,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.main_screen {
+  position: absolute;
+  z-index: -1;
+  width: 100%;
+  height: auto;
+  text-align: left;
+}
+#sys_topbar {
+  display: block;
+  background-color: #fffed5;
+  width: 100%;
+}
+.screen_title_layout {
+  width: 100%;
+  border-collapse: collapse;
+  border-spacing: 0;
+  background-color: #eff39a;
+}
+.screen_title_left {
+  text-align: left;
+  padding-left: 0.5em;
+  vertical-align: middle;
+  width: 25%;
+}
+.screen_title_center {
+  vertical-align: middle;
+  width: 50%;
+}
+.screen_title_center:not(:empty) {
+  background-color: #ff9595;
+}
+.screen_title_right {
+  text-align: right;
+  vertical-align: middle;
+  width: 25%;
+}
+/* for Login page */
+.div_center {
+  text-align: center;
+  margin-top: 4em;
+}
+#lr fieldset {
+  border: 1px solid #ccc;
+}
+#lr h3 {
+  padding-top: 10px;
+  font-weight: bold;
+  font-size: 1.5em;
+}
+#loginForm label {
+  white-space: nowrap;
+}
+#lr label {
+  font-weight: bold;
+}
+#lr input {
+  padding: 0.2em;
+}
+input[type="checkbox"],
+input[type="radio"] {
+  box-sizing: border-box;
+}
+.fieldgroup_caption {
+  padding-left: 3px;
+  display: block;
+  margin-top: 0.5em;
+  font-size: 1.1em;
+}
+.property_field {
+  border-collapse: separate;
+  padding-left: 1px;
+}
+.property_key {
+  padding: 1px 5px;
+  font-weight: normal;
+  color: #fff;
+  background-color: #5887b7;
+  text-align: right;
+  vertical-align: middle;
+}
+.property_value {
+  padding: 0 5px;
+}
+
+.property_value input {
+  width: 150px;
+}
+
+.bar_layout {
+  text-align: left;
+  padding-left: 5px;
+  margin-top: 1em;
+  border-top: #fff 1px solid;
+  width: 100%;
+  font-weight: bold;
+  color: #666;
+  background-color: #eff39a;
+  /* margin-top: 120px; */
+}
+
+*:focus {
+  outline: none;
+}
+
+form {
+  margin: 2px;
+}
+
+img {
+  vertical-align: middle;
+  border-style: none;
+  cursor: pointer;
+}
+
+table {
+  border-collapse: collapse;
+}
+.table_layout {
+  border-collapse: collapse;
+}
+.table_layout caption {
+  text-align: left;
+  font-size: 1.2em;
+  font-weight: bold;
+}
+.table_layout th {
+  background-color: #5887b7;
+  font-weight: normal;
+  color: #fff;
+  vertical-align: middle;
+}
+.table_layout th,
+.table_layout td {
+  border: #9bb7b7 1px solid;
+  padding: 1px 4px 1px 4px;
+}
+.table_numeric_td {
+  color: blue;
+  text-align: right;
+}
+.table_date_td {
+  width: 90px;
+  text-align: center;
+  background-color: #eee;
+}
+.table_label_td {
+  color: black;
+  background-color: #ededed;
+}
+.table_td_display_none {
+  display: none;
+}
+
+.tip_center {
+  display: flex;
+  /* justify-content: center; checkbox can't use */
+  align-items: center;
+}
+.tip {
+  padding-left: 5px;
+  color: gray;
+  white-space: pre-line;
+}
+
+.tooltip {
+  z-index: 2000
+}
+.tooltip-action {
+    text-decoration: none;
+    color: "yellow";
+    display: "block"
+}
+
+.tooltip-action:hover {
+    text-decoration: underline;
+}
+
+.select {
+  width: 120px;
+	padding-left: 4px;
+	height: 80px;
+}
+
+
+/* AdvancedComboBox */
+.advanced_select {
+  padding-left: 5px;
+}
+
+.advanced_select > div {
+  padding: 0;
+  height: 20px; 
+  line-height: 20px;
+}
+
+/* Set the border color of the comboBox to black and add rounded corners. */
+body .advanced_select .dropdown-container {
+  border: 1px solid black;
+  border-radius: 4px;
+  min-width: 120px;
+  font-size: 16px;
+}
+
+/* Set the border color to black when comboBox is activated. */
+body .advanced_select .dropdown-container:focus-within {
+  box-shadow: none;
+  border-color: black;
+}
+
+body .advanced_select .dropdown-heading {
+  height: 20px;
+  line-height: 20px;
+  padding: 0 4px;
+}
+
+body .advanced_select .search input{
+  height: 20px;
+  line-height: 20px;
+}
+
+.advanced_select .dropdown-heading-value {
+  padding-right: 4px;
+}
+
+body .advanced_select .select-item {
+  height: 20px;
+  line-height: 20px;
+  display: flex;
+  align-items: center;
+}
+
+/* Set the background color to gray when the option is selected. */
+body .advanced_select .select-item.selected {
+  background-color: #dde1e5;
+}
+
+/* Setting the position of the checkBox and display in each option. */
+.advanced_select .select-item .item-renderer {
+  display: flex;
+  align-items: center;
+  padding-top: 3px;
+  padding-right: 10px;
+} 

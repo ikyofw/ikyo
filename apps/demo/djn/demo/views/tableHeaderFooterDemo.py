@@ -1,0 +1,58 @@
+"""Example Table Header/Footer defined in spreadsheets.
+
+Author:
+    Li
+
+Date:
+    2023-02-06
+
+"""
+
+from core.db.model import DummyModel
+from core.core.lang import Boolean2
+from core.view.screenView import ScreenAPIView
+
+
+class TableHeaderFooterDemo(ScreenAPIView):
+    '''
+        http://localhost:8000/IkTableHeaderFooterDemo
+    '''
+
+    def getTableDataRcs(self):
+        # return DummyModel record list
+        rcs = self.getSessionParameter('data', delete=True)
+        if rcs is not None:
+            return rcs
+
+        rcs = []
+        for i in range(1, 5):
+            rc = DummyModel()
+            for j in range(1, 10):
+                rc['f%s' % j] = i * 100 + j  # 101, 102 ... 201, 202 ...
+            rc.ik_set_status_retrieve()
+            rcs.append(rc)
+        return rcs
+
+    def submit(self):
+        '''
+            Save Author, Category and Book tables.
+        '''
+        reqData = self.getRequestData()
+        rcs = reqData.get('tableFg')
+        cNew = 0
+        cUpdate = 0
+        cDelete = 0
+        rcs2 = []
+        for rc in rcs:
+            if rc.ik_is_status_new():
+                cNew += 1
+            elif rc.ik_is_status_modified():
+                cUpdate += 1
+            elif rc.ik_is_status_delete():
+                cDelete += 1
+            if not rc.ik_is_status_delete():
+                rcs2.append(rc)
+        print('Total %s, new %s, update %s, delete %s' % (len(rcs), cNew, cUpdate, cDelete))
+        print(rcs2)
+        self.setSessionParameters({'data': rcs2})
+        return Boolean2(True, 'saved')

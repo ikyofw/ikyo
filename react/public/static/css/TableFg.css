@@ -1,0 +1,294 @@
+.Spreadsheet {
+  --background-color: white;
+  --text-color: black;
+  --readonly-text-color: rgba(255, 255, 255, 1);
+  --outline-color: #4285f4;
+  --outline-background-color: rgba(160, 195, 255, 0.2);
+  --border-color: #9bb7b7;
+  --header-background-color: #5887b7;
+  --footer-background-color: #4776A6;
+  --elevation: 0 2px 5px rgba(0, 0, 0, 0.4);
+
+  position: relative;
+  left: 3px;
+  overflow: visible;
+  background: var(--background-color);
+  color: var(--text-color);
+  white-space: nowrap
+}
+
+.PageSelectDiv {
+  padding: 5px 0 0 3px;
+}
+
+.Spreadsheet--dark-mode {
+  --background-color: black;
+  --text-color: white;
+  --readonly-text-color: rgba(255, 255, 255, 0.4);
+  --header-background-color: #5887b7;
+  --border-color: #9bb7b7;
+}
+
+.Spreadsheet__active-cell {
+  position: absolute;
+  border: 2px solid var(--outline-color);
+  box-sizing: border-box;
+  user-select: none;
+}
+
+.Spreadsheet__active-cell--edit {
+  background: var(--background-color);
+  box-shadow: var(--elevation);
+}
+
+.Spreadsheet__table {
+  border-collapse: collapse;
+  table-layout: fixed;
+  display: inline-block;
+}
+.Spreadsheet__table th, .Spreadsheet__table td {
+	border: #9BB7B7 1px solid;
+	padding: 1px 4px 1px 4px;
+}
+
+.Spreadsheet__table td a {
+  color: #007bff;
+  text-decoration: none;
+  background-color: transparent;
+  cursor: pointer;
+}
+
+.Spreadsheet__cell,
+.Spreadsheet__active-cell {
+  cursor: cell;
+  white-space: pre-line;
+}
+
+.Spreadsheet__cell {
+  outline: none;
+}
+
+.Spreadsheet__cell--readonly {
+  color: var(--readonly-text-color);
+}
+
+.Spreadsheet__cell-filter {
+  position: relative;
+  /* width: 100%; */
+  text-align: left;
+  border: 1px solid var(--border-color);
+  padding: 0 0 0 0; 
+  background-color: antiquewhite;
+}
+
+.Spreadsheet__cell,
+.Spreadsheet__header {
+  min-width: 1em;
+  min-height: 1em;
+  height: 1em;
+  max-height: 1.9em;
+  line-height: 1.5;
+  border: 1px solid var(--border-color);
+  overflow: hidden;
+  word-break: keep-all;
+  text-align: left;
+  box-sizing: border-box;
+  user-select: none;
+  padding: 0 4px 0 4px; /* XH 2022-04-26 */
+}
+
+.Spreadsheet__header {
+  /* background: var(--header-background-color); */
+  /* color: black; */
+  text-align: left;
+  font: inherit;
+  white-space: pre-line;
+}
+
+/* XH, 2022-04-12 add */
+.Spreadsheet__header__column {
+  background: var(--header-background-color);
+  color: var(--readonly-text-color);
+  text-align: left;
+}
+
+.Spreadsheet__footer__column {
+  background: var(--footer-background-color);
+  color: var(--readonly-text-color);
+  text-align: left;
+}
+
+.Spreadsheet__header__row {
+  font: 16px Courier New;
+  color: black;
+  text-align: center;
+  align-items: center;
+}
+
+.Spreadsheet__header__index{   /* Set the first column of the table to be center-aligned and set the opacity to 50%. */
+  text-align: center;
+  align-items: center;
+  color: rgba(0, 0, 0, 0.5);
+}
+/* XH, 2022-04-12 add */
+
+.download-table-xls-button {
+  display: none;
+}
+
+.Spreadsheet__header,
+.Spreadsheet__data-viewer,
+.Spreadsheet__data-editor input {
+  padding-left: 4px;
+  padding-right: 4px;
+  padding-top: 1px;
+  padding-bottom: 1px;
+  box-sizing: border-box;
+}
+
+.Spreadsheet__data-viewer {
+  display: flow-root
+}
+
+.Spreadsheet__data-editor,
+.Spreadsheet__data-editor input {
+  width: 98%;
+  height: 98%;
+}
+
+.Spreadsheet__data-editor textarea,
+.Spreadsheet__data-editor input {
+  /* YL, 2022-04-20 keep font save with system */
+  font: 8pt Arial, Tahoma, Verdana, sans-serif, "宋体", SimSun, "仿宋体",
+    NSimSun;
+  color: inherit;
+  background: none;
+  border: none;
+  outline: none;
+  margin: 0;
+}
+
+.Spreadsheet__data-editor textarea {
+  overflow: hidden;
+  margin-left: 2px;
+  line-height: 1.5;
+  resize: none;
+}
+
+.Spreadsheet__data-viewer--boolean {
+  text-align: left;
+}
+
+.Spreadsheet__floating-rect {
+  position: absolute;
+  pointer-events: none;
+  box-sizing: border-box;
+}
+
+.Spreadsheet__floating-rect--hidden {
+  display: none;
+}
+
+.Spreadsheet__floating-rect--selected {
+  background: var(--outline-background-color);
+  border: 2px var(--outline-color) solid;
+}
+
+.Spreadsheet__floating-rect--dragging {
+  border: none;
+}
+
+.Spreadsheet__floating-rect--copied {
+  border: 2px var(--outline-color) dashed;
+}
+
+.Spreadsheet__imgstyle {
+  font-size: 0;
+}
+
+div.rt-tr {
+  align-items: center;
+}
+/* LHH.ikyo 2022-04-26 start */
+/* *:focus {
+  outline: none;
+} */
+/* LHH.ikyo 2022-04-26 end */
+
+/* XH 2022-04-26 start*/
+/* img {
+  display: block;
+  margin: auto;
+} */
+/* XH 2022-04-26 end*/
+
+/* XH 2022-07-04 start */
+.sort_img{
+  border: 0px;
+  vertical-align: middle;    
+  width: 12px;
+  height: 12px;
+  text-align: right;
+  padding-left: 3px;
+} 
+
+.sort{
+  justify-content: left;
+  padding: 1px 4px 1px 4px;
+}
+/* XH 2022-07-04 end */
+
+.topIcons{
+  display: inline-block;
+  position: absolute;
+}
+
+.bottomIcons{
+  display: inline-block;
+  position: absolute;
+  bottom: 0;
+}
+
+.headerColumn{
+  width: 100px;
+  height: 18px;
+  padding-left: 3px;
+}
+
+.filterRow{
+  width: 50px;
+  height: 18px;
+  padding-left: 3px;
+}
+
+.outOfTableIcon{
+  margin: auto;
+  width: 15px;
+  height: 15px;
+  padding-left: 2px;
+  padding-right: 2px;
+}
+
+.filter_input{
+  width: 1em;
+  background-color: antiquewhite;
+  border: 0;
+  text-align: center;
+}
+
+input:-internal-autofill-previewed,
+input:-internal-autofill-selected {
+  transition: background-color 5000s ease-in-out 0s !important;
+}
+
+.lastRow{
+  width: 25px;
+  height: 18px;
+  padding-left: 3px;
+  padding-bottom: 3px;
+}
+
+.highlight-row:hover td, 
+.highlight-row:hover th {
+  background-color: lightgray;
+}

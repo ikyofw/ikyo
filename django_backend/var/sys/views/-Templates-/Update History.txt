@@ -1,0 +1,16 @@
+v18, 2023-05-05
+v19, 2023-05-09
+     1. Add "Reversion" (rev) field.
+v20, 2023-05-13
+     Add "Html" column in table Field Group
+v21, 2023-05-15
+     Add "Layout Parameters" row in screen, 
+     Add "Outer Layout Parameters", "Inner Layout Type" and "Inner Layout Parameters" column in table Field Group
+v22, 2023-05-18
+      Add "API URL" row in screen, 
+v23, 2023-09-11
+      Add "Highlight Row" row in table Field Group, 
+v24, 2023-10-17
+      Add "Sub Screen" table
+v25, 2023-10-25
+      "Field Groups" table "Selectable" column change to "Selection Mode".

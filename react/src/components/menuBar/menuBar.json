@@ -1,0 +1,31 @@
+{
+    "menus":[{
+                "title": "Home",
+                "subMenu": [],
+                "action":""
+            },
+            {
+                "title": "System",
+                "subMenu": [{"title":"Log","action":"log"}]
+            },
+            {
+                "title": "File",
+                "subMenu": [{"title":"Create info","action":"create_info"}, 
+                            {"title":"Test Info","action":"test_info"}, 
+                            {"title":"Analysis","action":"analysis"},
+                            {"title":"Export","action":"export"},
+                            {"title":"Result","action":"result"},
+                            {"title":"Note","action":"note"},
+                            {"title":"Save with Encoding","action":"save_with_encoding"},
+                            {"title":"Sava As","action":"save as"},
+                            {"title":"Save All","action":"save all"}]
+            },
+            {
+                "title": "Edit",
+                "subMenu": [{"title":"Edit File","action":""}, 
+                            {"title":"Edit","action":""}, 
+                            {"title":"Inset","action":""},
+                            {"title":"Undo","action":""},
+                            {"title":"Cut","action":""}]
+            }]
+}
