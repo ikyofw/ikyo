@@ -33,11 +33,11 @@ class ScreenHelpView(AuthAPIView):
         menuRc = Menu.objects.filter(menu_nm__iexact=screenRc.screen_sn).exclude(menu_nm='Menu', enable=False).first()
         if screenRc is None or menuRc is None:
             logger.error('Screen: %s is no exists at, then raise error.' % viewID)
-            return HttpResponse('Screen[%s] is not exists.' % viewID)
+            return HttpResponse('Screen[%s] does not exist.' % viewID)
         screenFileRc = ScreenFile.objects.filter(screen=screenRc.id).first()
         if screenFileRc is None:
             logger.info('Screen file: %s is no exists, then raise error.' % viewID)
-            return HttpResponse('Screen File[%s] is not exists, please ask administrator to check.' % viewID)
+            return HttpResponse('Screen File[%s] does not exist, please ask administrator to check.' % viewID)
 
         # check menu permission
         acl = MenuManager.getUserMenuAcl(menuRc=menuRc, usrID=userID)
@@ -55,7 +55,7 @@ class ScreenHelpView(AuthAPIView):
         #     fileName = str(viewID) + "." + fileType
         #     filePath = ikfs.getLastRevisionFile(fileFolder, fileName)
         #     if not Path(filePath).exists():
-        #         logger.error("Help document: %s is not exists." % fileName)
+        #         logger.error("Help document: %s does not exist." % fileName)
         #         return HttpResponse('No help document found.')
 
         # 2.get the higher version file
@@ -83,7 +83,7 @@ class ScreenHelpView(AuthAPIView):
                 filePath = htmlFilePath
                 fileType = htmlFilePath.suffix[1:]
             else:
-                logger.error("Help document: %s is not exists." % str(viewID))
+                logger.error("Help document: %s does not exist." % str(viewID))
                 return HttpResponse('No help document found.')
 
         with open(filePath, 'rb') as f:

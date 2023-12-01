@@ -31,7 +31,7 @@ def reactPrebuild():
     print('%s start ...' % command)
     p = getDjangoReactFolder()
     if not p.is_dir():
-        print('Folder [%s] is not exists.' % p.absolute())
+        print('Folder [%s] does not exist.' % p.absolute())
     else:
         for f in os.listdir(p):
             f2 = Path(os.path.join(p.absolute(), f))
@@ -59,14 +59,14 @@ def reactPostbuild():
     p = getDjangoReactFolder()
     build = Path(os.path.join(os.path.dirname(__file__), 'react', 'build'))
     if not build.is_dir():
-        raise Exception('Build folder [%s] is not exists.' % build.absolute())
+        raise Exception('Build folder [%s] does not exist.' % build.absolute())
     if not p.is_dir():
         p.mkdir(parents=True, exist_ok=True)
     print('Moving build [%s] to [%s] ...' % (build.absolute(), p.absolute()))
     for f in os.listdir(build):
         f2 = os.path.join(build.absolute(), f)
         if f == 'static':
-            # create static folder is not exists
+            # create static folder does not exist
             staticPath = Path(os.path.join(p.absolute(), f))
             staticPath.mkdir(parents=True, exist_ok=True)
             buildStaticPath = Path(f2)

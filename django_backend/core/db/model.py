@@ -317,7 +317,7 @@ class IkViewModel(models.Model):
 
 class IkTempModel(models.Model):
     '''
-        the model is not exists in the database
+        the model does not exist in the database
     '''
     class Meta:
         abstract = True

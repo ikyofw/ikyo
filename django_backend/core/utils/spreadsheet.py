@@ -81,7 +81,7 @@ class SpreadsheetParser:
             self.__inputs = {}
             self.__file = excelFile
         else:
-            raise Exception('[' + excelFile + '] file is not exists.')
+            raise Exception('[' + excelFile + '] file does not exist.')
         # f = pd.ExcelFile(excelFile)
         with pd.ExcelFile(excelFile) as f:
             sheetData = []
@@ -279,14 +279,14 @@ class SpreadsheetWriter:
                 if sheetName is not None:
                     st = wb[sheetName]
                     if st is None:
-                        raise IkValidateException('Sheet [%s] is not exists. Plesae check.' % sheetName)
+                        raise IkValidateException('Sheet [%s] does not exist. Plesae check.' % sheetName)
                 data = value.get('data', None)
                 columnIndex = value.get('columnIndex', DATA_START_COLUMN_INDEX)
                 if columnIndex is not None and type(columnIndex) == str:
                     columnIndex = columnName2Index(columnIndex)
                 rowIndex = value.get('rowIndex', None)
             if st is None:
-                raise IkValidateException('Parameter name [%s] is not exists. Plesae check.' % name)
+                raise IkValidateException('Parameter name [%s] does not exist. Plesae check.' % name)
 
             if self.__isSingleValue(st, name, data):
                 self.__writeSingleValue(st, name, data, columnIndex=columnIndex, rowIndex=rowIndex)

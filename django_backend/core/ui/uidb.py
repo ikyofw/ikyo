@@ -23,7 +23,7 @@ def syncScreenDefinitions(userID=None):
     # excel to database
     screenFileFolder = Path(os.path.join(ikfs.getVarFolder(), 'sys', 'views'))
     if not screenFileFolder.is_dir():
-        return Boolean2(False, 'Folder %s is not exists' % screenFileFolder)
+        return Boolean2(False, 'Folder %s does not exist' % screenFileFolder)
     else:
         screenFiles = {}
         for f in os.listdir(screenFileFolder):
@@ -222,7 +222,7 @@ def _updateDatabaseWithExcelFiles(screenDefinition, userID):
             templateFileFolder = Path(os.path.join(ikfs.getVarFolder(), 'sys', 'views', '-Templates-'))
             templateFile = ikfs.getLastRevisionFile(templateFileFolder, 'template.xlsx')
             if isNullBlank(templateFile):
-                logger.error("Template file is not exists in folder [%s]." % templateFileFolder.absolute())
+                logger.error("Template file does not exist in folder [%s]." % templateFileFolder.absolute())
                 return Boolean2(False, 'Screen template file is not found. Please check.')
             if os.path.isfile(sysPath):
                 os.remove(sysPath)
@@ -263,7 +263,7 @@ def __createExcelWithDatabase(screenSN, userID):
         templateFileFolder = Path(os.path.join(ikfs.getVarFolder(), 'sys', 'views', '-Templates-'))
         templateFile = ikfs.getLastRevisionFile(templateFileFolder, 'template.xlsx')
         if isNullBlank(templateFile):
-            logger.error("Template file is not exists in folder [%s]." % templateFileFolder.absolute())
+            logger.error("Template file does not exist in folder [%s]." % templateFileFolder.absolute())
             return Boolean2(False, 'Screen template file is not found. Please check.')
         c = screenDbWriteToExcel(latestScreen, templateFile, outputFile)
         if not c.value:
@@ -307,7 +307,7 @@ def __createExcelWithDatabase(screenSN, userID):
         templateFileFolder = Path(os.path.join(ikfs.getVarFolder(), 'sys', 'views', '-Templates-'))
         templateFile = ikfs.getLastRevisionFile(templateFileFolder, 'template.xlsx')
         if isNullBlank(templateFile):
-            logger.error("Template file is not exists in folder [%s]." % templateFileFolder.absolute())
+            logger.error("Template file does not exist in folder [%s]." % templateFileFolder.absolute())
             return Boolean2(False, 'Screen template file is not found. Please check.')
         if os.path.isfile(outputFile):
             os.remove(outputFile)

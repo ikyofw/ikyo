@@ -333,7 +333,7 @@ class ScreenFieldGroup:
         for field in self.fields:
             if field.name == name:
                 return field
-        raise IkValidateException('Field is not exists. Screen=[%s], fieldGroup=[%s], field=[%s].' % (self.parent.parent.id, self.parent.name, name))
+        raise IkValidateException('Field does not exist. Screen=[%s], fieldGroup=[%s], field=[%s].' % (self.parent.parent.id, self.parent.name, name))
 
     def getFields(self, fieldNames) -> list:
         return [self.getField(name) for name in fieldNames]
@@ -562,7 +562,7 @@ class Screen:
     def getField(self, fieldGroupName, fieldName) -> ScreenField:
         fg = self.getFieldGroup(name=fieldGroupName)
         if fg is None:
-            raise IkValidateException('Field group is not exists. Screen=[%s], FieldGroup=[%s]' % (self.id, fieldGroupName))
+            raise IkValidateException('Field group does not exist. Screen=[%s], FieldGroup=[%s]' % (self.id, fieldGroupName))
         return fg.getField(fieldName)
 
     def getRecordSet(self, recordName) -> ScreenRecordSet:
@@ -574,7 +574,7 @@ class Screen:
     def getFieldGroupRecordSet(self, fieldGroupName) -> ScreenRecordSet:
         fg = self.getFieldGroup(fieldGroupName)
         if fg is None:
-            raise IkValidateException('Field group is not exists. Screen=[%s], FieldGroup=[%s]' % (self.id, fieldGroupName))
+            raise IkValidateException('Field group does not exist. Screen=[%s], FieldGroup=[%s]' % (self.id, fieldGroupName))
         if isNullBlank(fg.recordSetName):
             return None
         return self.getRecordSet(fg.recordSetName)

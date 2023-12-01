@@ -58,7 +58,7 @@ class __MenuManager():
                     return ACL_READ
             return ACL_DENY
         else:
-            logger.error("Menu ID[%s] is not exists." % menuID)
+            logger.error("Menu ID[%s] does not exist." % menuID)
             return ACL_DENY
 
     def getUserMenuByMenuName(self, menuName) -> dict:

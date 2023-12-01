@@ -594,7 +594,7 @@ def __GetRequestData_oneRecord(screen, parameterModelMap, name, values, initData
             try:
                 modelField = modelClass._meta.get_field(field.dataField)
                 if modelField is None:
-                    raise IkValidateException('%s [%s] is not exists in model [%s].'
+                    raise IkValidateException('%s [%s] does not exist in model [%s].'
                                               % ('Column' if isTable else 'Field', field.dataField, modelClassName))
                 # TODO: validate, e.g. data type, require, mandatory
                 isDBNullable = modelField.blank or modelField.null
@@ -685,10 +685,10 @@ def __GetRequestData_oneRecord(screen, parameterModelMap, name, values, initData
                             newValue = False
                         elif newValue == '':
                             newValue = None
-                    logger.debug('model [%s] field [%s] is not exist, then try class property...' % (modelClassName, field.dataField))
+                    logger.debug('model [%s] field [%s] does not exist, then try class property...' % (modelClassName, field.dataField))
                     setattr(modelInstance, field.dataField, newValue)
                 else:
-                    raise IkValidateException('%s [%s] is not exists in model [%s].'
+                    raise IkValidateException('%s [%s] does not exist in model [%s].'
                                               % ('Column' if isTable else 'Field', field.dataField, modelClassName))
     if isNewModelRecord and not hasIDField and primaryKeyName in values.keys():
         id = values.get(primaryKeyName, None)

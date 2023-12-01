@@ -33,5 +33,5 @@ class PDFViewerDemo(ScreenAPIView):
     def getPDFViewer(self):
         filePath = Path(ikfs.getRootFolder(), 'var/demo-files/PDFViewerDemo.pdf')
         if not Path(filePath).exists():
-            return IkErrJsonResponse(message="File is not exists.")
+            return IkErrJsonResponse(message="File does not exist.")
         return responseFile(filePath)

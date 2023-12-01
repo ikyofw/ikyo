@@ -102,7 +102,7 @@ class UsrMnt(ScreenAPIView):
         if isNotNullBlank(currentUsrID):
             usrRc = User.objects.filter(id=currentUsrID).first()
             if isNullBlank(usrRc):
-                return IkErrJsonResponse(message='User is not exists!')
+                return IkErrJsonResponse(message='User does not exist!')
             data = model_to_dict(usrRc)
             self.setSessionParameters({'oldPsw': data['psw']})
         elif createNew:

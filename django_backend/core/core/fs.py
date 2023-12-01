@@ -147,7 +147,7 @@ def getFileWithTimestamp(file) -> str:
 
 def getLastRevisionFile(folder, filename) -> str:
     '''
-        return None if file is not exists.
+        return None if file does not exist.
     '''
     p = Path(folder)
     if not p.is_dir():

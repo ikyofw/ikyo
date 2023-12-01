@@ -53,7 +53,7 @@ def isEnable(userID) -> bool:
         if not dbUtils.isEmpty(rs):
             return "Y" == rs[0]['enable']
         else:
-            raise IkException("User is not exists: id=" + str(userID))
+            raise IkException("User does not exist: id=" + str(userID))
 
 
 def getUserDisplayName(userID) -> str:

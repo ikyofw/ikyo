@@ -202,7 +202,7 @@ class ScreenAPIView(AuthAPIView):
         if not isNullBlank(self.__menuName) and (isNullBlank(self.__functionCategory) or isNullBlank(self.__functionCode)):
             menuInfoDict = MenuManager.getMenuInfoByMenuName(self.__menuName)
             if menuInfoDict is None:
-                raise IkMessageException('System error: menu [%s] is not exists.' % self.__menuName)
+                raise IkMessageException('System error: menu [%s] does not exist.' % self.__menuName)
             if isNullBlank(self.__functionCategory):
                 ctg = menuInfoDict.get('ctg', None)
                 self.__functionCategory = None if ctg == '' else ctg
@@ -429,8 +429,8 @@ class ScreenAPIView(AuthAPIView):
             logger.error(msg)
             return ikhttp.IkErrJsonResponse(message=msg)
         elif not Path(file).is_file():
-            logger.error('File is not exists: %s' % Path(file).absolute())
-            return ikhttp.IkErrJsonResponse(message="File is not exists.")
+            logger.error('File does not exist: %s' % Path(file).absolute())
+            return ikhttp.IkErrJsonResponse(message="File does not exist.")
         else:
             try:
                 return ikhttp.responseFile(file)
@@ -457,7 +457,7 @@ class ScreenAPIView(AuthAPIView):
         try:
             templateFile = self.getLastTemplateRevisionFile(filename)
             if not pathlib.Path(templateFile).is_file():
-                return ikhttp.IkSysErrJsonResponse(message='Example file [%s] is not exists. Please ask administrator to check.' % filename)
+                return ikhttp.IkSysErrJsonResponse(message='Example file [%s] does not exist. Please ask administrator to check.' % filename)
             return self.downloadFile(file=templateFile)
         except IkException as pe:
             traceback.print_exc()
@@ -840,7 +840,7 @@ class ScreenAPIView(AuthAPIView):
         templateFilename = filename
         f = self.__getLastTemplateRevisionFile2(templateFilename, rootFolder)
         if f is None or not pathlib.Path(f).is_file():
-            raise IkException('Web template file [%s] is not exist. Please ask administrator to check.' % filename)
+            raise IkException('Web template file [%s] does not exist. Please ask administrator to check.' % filename)
         content = None
         with open(f, newline='', encoding='utf-8') as f:
             content = f.read()
@@ -946,7 +946,7 @@ class ScreenAPIView(AuthAPIView):
 
     def saveUploadFile(self, uploadFile, saveFilePath):
         '''
-            if the parent folder is not exists, then create it
+            if the parent folder does not exist, then create it
         '''
         ikfs.mkdirs(Path(saveFilePath).parent)
         f = open(saveFilePath, 'wb')
@@ -1272,19 +1272,19 @@ class ScreenAPIView(AuthAPIView):
     def _getPaginatorPageSize(self, tableName: str) -> int:
         screen = self.__screen
         if screen.getFieldGroup(tableName) is None:
-            logger.error('Field group: %s is not exists.' % tableName)
-            raise IkValidateException('Field group: %s is not exists.' % tableName)
+            logger.error('Field group: %s does not exist.' % tableName)
+            raise IkValidateException('Field group: %s does not exist.' % tableName)
         if isNullBlank(screen.getFieldGroup(tableName).pageSize):
-            logger.error('Page size is not exists. tableName=%s' % tableName)
-            raise IkValidateException('Page size is not exists. tableName=%s' % tableName)
+            logger.error('Page size does not exist. tableName=%s' % tableName)
+            raise IkValidateException('Page size does not exist. tableName=%s' % tableName)
         return int(screen.getFieldGroup(tableName).pageSize)
 
     def _getPaginatorPageNumber(self, tableName: str) -> int:
         prmName = "PAGEABLE_%s_pageNum" % tableName
         pageNumStr = self.getRequestData().get(prmName)
         if isNullBlank(pageNumStr):
-            logger.error('Page number is not exists. tableName=%s' % tableName)
-            raise IkValidateException('Page number is not exists. tableName=%s' % tableName)
+            logger.error('Page number does not exist. tableName=%s' % tableName)
+            raise IkValidateException('Page number does not exist. tableName=%s' % tableName)
         return int(pageNumStr)
 
     def _getPaginatorTableDataAmount(self, sql: str) -> int:

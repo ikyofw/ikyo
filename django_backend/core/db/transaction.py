@@ -438,7 +438,7 @@ class IkTransaction():
                                         modelField = mf
                                         break
                             if modelField is None:
-                                raise IkException('Field [%s] is not exists in [%s]. Plesae check the unique keys: %s' %
+                                raise IkException('Field [%s] does not exist in [%s]. Plesae check the unique keys: %s' %
                                                   (uniqueFiledNames[j], nextRc._meta.label, str(uniqueFiledNames)))
                             sql += modelField.column
                         sql += ' FROM ' + dbTable + ' WHERE id=' + dbUtils.toSqlField(nextRc.id)
