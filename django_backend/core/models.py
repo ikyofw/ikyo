@@ -287,7 +287,7 @@ class ScreenFile(IDModel):
 class ScreenDfn(IDModel):
     screen = models.ForeignKey(Screen, on_delete=models.CASCADE, verbose_name="Screen")
     sub_screen_nm = models.CharField(max_length=50, verbose_name="Sub Screen Name")
-    field_group_nms = models.CharField(max_length=255, blank=True, null=True, verbose_name="Field Groups Name")
+    field_group_nms = models.TextField(blank=True, null=True, verbose_name="Field Groups Name")
     rmk = models.CharField(max_length=255, blank=True, null=True, verbose_name="Remark")
 
     class Meta:

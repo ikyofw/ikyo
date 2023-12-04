@@ -1,67 +1,64 @@
 # ikyo
-Python ikyo.  
+Python ikyo.
 
-Notes:  
-   1. Python 3.10 or above.
-   2. Django 4.x.
-   3. React
-   4. django-rest-framework (https://www.django-rest-framework.org)
-   5. Database: sqlite3
+## Features
+1. Based on React and Django Rest Framework. Ikyo inherits various advantages of React and Django.
+2. Ikyo provides a variety of built-in controls that can be used directly. Developers don't need to start from scratch to write React components. Adding new controls is also straightforward.
+3. Django Rest Framework API is closely integrated with the frontend, enabling control of the frontend display through the backend.
+4. Menu management, user management, and permission management are already integrated.
+5. Developers can define new pages or modify existing ones online through the web and see the changes take effect immediately after saving. It also supports defining pages through Excel.
+6. The system inherits other advantages of React and Django.
 
+## Notes
+1. Python 3.10 or above.
+2. Django 4.x.
+3. React.
+4. Django Rest Framework ([Official Website](https://www.django-rest-framework.org)).
+5. Database: SQLite3.
 
-# History
-| Version | Date | Author | Description |
-| ------- | ---- | ------ | ----------- |
-| 1       | 2023-11-20 | ikyo | Init |
-|  |  | |  |
+## History
+| Version | Date       | Author | Description    |
+| ------- | ---------- | ------ | -------------- |
+| 2.000   | 2023-11-20 | ikyo   | Initial release |
+| 2.001   | 2023-12-01 | ikyo   | Fix typo error |
+| 2.002   | 2023-12-04 | ikyo   | 1. Add a "Screen Definition" page. 2.Allow dragging and dropping of multi-selected cells, starting from the dateBox.|
 
-
-# Folder structure
-1. **django_backend**  
-   Python django backend folder.
-2. **react**  
-   React frontend folder.
-3. **apps**  
-   Demo apps folder.
-4. README.md  
-   Readme file.
-
+# Folder Structure
+1. **django_backend**: Python Django backend folder.
+2. **react**: React frontend folder.
+3. **apps**: Demo apps folder.
+4. README.md: Readme file.
 
 # Python and Django Environment Setup
 
 To set up your Python environment, follow these steps:
 
-1. **Install Python 3.10.x**  
-   Download and install Python 3.10.x from the official [Python website](https://www.python.org/downloads/).
-
-2. **Create a Virtual Environment**  
-   Open a terminal in the project directory and first run the following command to enter the backend folder:   
+1. **Install Python 3.10.x**: Download and install Python 3.10.x from the official [Python website](https://www.python.org/downloads/).  
+2. **Create a Virtual Environment**: Open a terminal in the project directory and first navigate to the backend folder:  
    ``cd django_backend``  
-   Then run the following command to create a virtual environment:   
+   Then create a virtual environment:    
    ``python -m venv .venv``
-3. **Activate virtual environment**  
-   On Windows, use:  
+3. ***Activate the Virtual Environment**: On Windows, use:
    ``.\.venv\Scripts\activate``
-4. **Install python modules**  
-   Ensure you have a requirements.txt file in your project directory. Install the required modules using the following command:  
+   Linux:  
+   ``source .\.venv\bin\activate``
+4. **Install Python Modules**: Ensure you have a `requirements.txt` file in your project directory. Install the required modules using the following command:
    ``pip install -r requirements.txt``
-5. **Start the Django Development Server**   
-   Start the development server using the following command:   
+5. **Start the Django Development Server**: Start the development server using the following command:   
    ``python manage.py runserver``
 
-## Python modules
-| #  | Name                    | Version         | Description         |
-| -- | ----------------------- | --------------- | ------------------- |
-| 1  | django                  | 4.x             |                     |
-| 2  | django-cors-headers     |                 |                     |
-| 3  | djangorestframework     |                 |                     |
-| 4  | markdown                |                 | Markdown support for the browsable API. |
-| 5  | django-filte            |                 | Filtering support   |
-| 6  | json5                   |                 | Convert no standard json string to json object. |
-| 7  | pandas                  |                 | Process spreadsheet. |
-| 8  | openpyxl                |                 | Process spreadsheet. |
-| 9 | pycryptodome            |                 | Used for login page. |
-|  |  | |
+## Python Modules
+| #  | Name                | Version | Description                                           |
+| -- | ------------------- | ------- | ----------------------------------------------------- |
+| 1  | django              | 4.x     |                                                       |
+| 2  | django-cors-headers |         |                                                       |
+| 3  | djangorestframework |         |                                                       |
+| 4  | markdown            |         | Markdown support for the browsable API.               |
+| 5  | django-filte        |         | Filtering support                                     |
+| 6  | json5               |         | Convert non-standard JSON strings to JSON objects.    |
+| 7  | pandas              |         | Process spreadsheets.                                 |
+| 8  | openpyxl            |         | Process spreadsheets.                                 |
+| 9  | pycryptodome        |         | Used for the login page.                              |
 
 # Setting Up and Integrating React with Django
 
@@ -86,10 +83,9 @@ Follow these steps to set up and run your React application:
 For more information, please reference to *react/README.md* file.
 
 ## React packages
-Please reference to *package.json* file.
-| #  | Name                    | Version         | Description         |
-| -- | ----------------------- | --------------- | ------------------- |
-|  |  | |
+Please reference to *package.json* file.  
+
+Frontend table is base on React Spreadsheet v0.6.2 (https://iddan.github.io/react-spreadsheet).
 
 
 # Debug django and react (Visual Studio Code)
@@ -142,4 +138,3 @@ npm start
 
 3. React  
    https://react.dev
-

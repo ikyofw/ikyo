@@ -364,7 +364,7 @@ const TableFg = forwardRef(<CellType extends Types.CellBase>(props: Props<CellTy
   const blur = React.useCallback(() => dispatch(Actions.blur()), [dispatch])
 
   const setShowRange = React.useCallback((showRange) => dispatch(Actions.setShowRange(showRange)), [dispatch])
-  const addRow = React.useCallback(() => dispatch(Actions.addRow(comboPrams)), [dispatch])
+  const addRow = React.useCallback(() => dispatch(Actions.addRow(comboPrams)), [dispatch, comboPrams])
   const addRowAndShowData = () => {
     if (filterRow) {
       resetFilterRow()
@@ -537,15 +537,15 @@ const TableFg = forwardRef(<CellType extends Types.CellBase>(props: Props<CellTy
       }
 
       if (!state.dragging && event.buttons === 1) {
-        // LHH.ikyo 2022-05-20 start: fix the bug that the dragging affects the calendar
-        if (state.active != null && typeof dateBoxCols != "undefined") {
-          for (var i = 0; i < dateBoxCols.length; i++) {
-            if (dateBoxCols[i].colIndex === state.active.column) {
-              return
-            }
-          }
-        }
-        // LHH.ikyo 2022-05-20 end
+        // LHH 2022-05-20 start: fix the bug that the dragging affects the calendar
+        // if (state.active != null && typeof dateBoxCols != "undefined") {
+        //   for (var i = 0; i < dateBoxCols.length; i++) {
+        //     if (dateBoxCols[i].colIndex === state.active.column) {
+        //       return
+        //     }
+        //   }
+        // }
+        // LHH 2022-05-20 end
         onDragStart()
         document.addEventListener("mouseup", handleMouseUp)
       }

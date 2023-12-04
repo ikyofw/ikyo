@@ -584,7 +584,7 @@ def __GetRequestData_oneRecord(screen, parameterModelMap, name, values, initData
     hasIDField = False
     for field in screenFieldGroup.fields:
         # if field.dataField is not None and field.visible and field.editable and field.widget.lower() in ('textbox', 'combobox', 'checkBox'.lower(), 'datebox', 'textarea'): # TODO: get from somewhere
-        if field.dataField is not None and field.visible and field.widget.lower() in ('label', 'textbox', 'combobox', 'checkBox'.lower(), 'datebox', 'textarea', 'password'):
+        if field.dataField is not None and field.visible and field.widget.lower() in ('label', 'textbox', 'combobox', 'AdvancedSelection'.lower(), 'checkBox'.lower(), 'datebox', 'textarea', 'password'):
             if field.dataField.startswith('_'):  # read only fields. E.g. _cre_usr_nm, _mod_usr_nm
                 continue  # ignore
             elif '__' in field.dataField:  # foreign key fields. E.g. foreign key field user. access to user.name: user__usr_nm

@@ -1280,7 +1280,7 @@ class __ScreenManager:
             field.style = self.__getStylePrms(style)
             # field is an input parameter, then put this line at the end.
             # TODO:....
-            field.widgetParameter = self.__getWidgetPrmsOnly(widget, widgetPrms)
+            field.widgetParameter = self.__getWidgetPramsOnly(widgetPrms)
 
             DNF_Summary.addFieldWidget(screenName, field.widget)
             DNF_Summary.addFieldWidgetParameters(screenName + ' -> ' + str(widget), widgetPrms)
@@ -1500,7 +1500,7 @@ class __ScreenManager:
         field.eventHandlerParameter = eventHandlerPrms
 
         field.style = None
-        field.widgetParameter = self.__getWidgetPrmsOnly(field.widget, RESULT_TABLE_WIDGET_DEFAULT_PARAMETERS)
+        field.widgetParameter = self.__getWidgetPramsOnly(RESULT_TABLE_WIDGET_DEFAULT_PARAMETERS)
         return field
 
     def __isScreenExists(self, name) -> bool:
@@ -1599,7 +1599,7 @@ class __ScreenManager:
         # YL.ikyo, 2023-04-20 - end
         return yesNo is not None and yesNo.lower() == 'yes'
 
-    def __getWidgetPrmsOnly(self, widget, parameters) -> dict:
+    def __getWidgetPramsOnly(self, parameters) -> dict:
         prms = {}
         if not isNullBlank(parameters):
             for kv in parameters.splitlines():  # YL.ikyo, 2022-08-05 split by line breaks
@@ -1618,6 +1618,9 @@ class __ScreenManager:
                         v = self.__addQuotes(v)
                     prms[k] = v
         return prms
+    
+    def parseWidgetPrams(self, parameters):
+        return self.__getWidgetPramsOnly(parameters)
 
     def __addQuotes(self, s):
         # Add double quotes to keys only when they are not already surrounded by quotes

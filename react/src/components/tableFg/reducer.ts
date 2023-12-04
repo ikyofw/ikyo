@@ -452,13 +452,14 @@ const reducer = createReducer(INITIAL_STATE, (builder) => {
     }
 
     let copiedMatrix = Matrix.split(text, (value) => ({ value }))
-    // const copiedMatrixLength = copiedMatrix.length
-    // const copiedLastCell = copiedMatrix[copiedMatrixLength - 1][0]
-    // if (copiedLastCell) {
-    //   if (copiedLastCell.value === "") {
-    //     copiedMatrix = [...copiedMatrix.slice(0, copiedMatrixLength - 1)]
-    //   }
-    // }
+    // data copied from Excel
+    const copiedMatrixLength = copiedMatrix.length
+    const copiedLastCell = copiedMatrix[copiedMatrixLength - 1][0]
+    if (copiedLastCell) {
+      if (copiedLastCell.value === "") {
+        copiedMatrix = [...copiedMatrix.slice(0, copiedMatrixLength - 1)]
+      }
+    }
 
     const copied = PointMap.fromMatrix<any>(copiedMatrix)
     const minPoint = PointSet.min(copied)

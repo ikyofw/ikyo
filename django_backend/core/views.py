@@ -4,13 +4,13 @@ from django.core.paginator import Paginator
 from django.forms import model_to_dict
 
 import core.ui.ui as ikui
-import core.user.usrMntManager as UsrMntManager
+from core.manager import ugmm, umm
 from core.auth.index import hasLogin
 from core.core.http import *
 from core.db.transaction import IkTransaction
 from core.init import initIk
 from core.menu.menuManager import MenuManager
-from core.user import UsrGrpMntManager, userManager
+from core.user import userManager
 from core.utils.langUtils import isNotNullBlank, isNullBlank
 from core.view.screenView import ScreenAPIView
 from iktools import IkConfig
@@ -75,7 +75,7 @@ class UsrMnt(ScreenAPIView):
 
     def getUserListRcs(self):
         schItems = self.getSessionParameter('schItems')
-        usrRcs = UsrMntManager.getUsrList(schItems)
+        usrRcs = umm.getUsrList(schItems)
         pageSize = self._getPaginatorPageSize("usrListFg")  # screen
         pageNum = self._getPaginatorPageNumber("usrListFg")  # from client
 
@@ -131,7 +131,7 @@ class UsrMnt(ScreenAPIView):
         oldPsw = self.getSessionParameter('oldPsw')
         requestData = self.getRequestData()
 
-        b = UsrMntManager.save(saveUsrID, currentUsrID, createNew, requestData, oldPsw)
+        b = umm.save(saveUsrID, currentUsrID, createNew, requestData, oldPsw)
         if b.value:
             self.deleteSessionParameters(nameFilters='createNew')
             self.setSessionParameters({'currentUsrID': b.data})
@@ -306,7 +306,7 @@ class UsrGrpMnt(ScreenAPIView):
         isNew = self.getSessionParameterBool("isNew")
         requestData = self.getRequestData()
 
-        b = UsrGrpMntManager.save(saveUsrID, curGrpID, isNew, requestData, self.__validate)
+        b = ugmm.save(saveUsrID, curGrpID, isNew, requestData, self.__validate)
         if b.value:
             self.setSessionParameters({'curGrpID': b.data})
             return IkSccJsonResponse(message='Saved!')

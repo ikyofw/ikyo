@@ -12,8 +12,8 @@ import { useHttp } from "../../utils/http"
 import pyiLogger from "../../utils/log"
 import { validateResponse } from "../../utils/sysUtil"
 import { useContext } from "react"
-import { DialogContext } from "../ConText"
-import { getDialogEventHandler } from "../Dialog"
+import { DialogContext } from "../../components/ConText"
+import { getDialogEventHandler } from "../../components/Dialog"
 
 const pyiGlobal = pyiLocalStorage.globalParams
 
@@ -164,8 +164,8 @@ const AdvancedSelection: React.FC<IAdvancedSelection> = (props) => {
             if (validateResponse(result, false)) {
               const newValue = result.data["value"]
               let newDisplay = result.data["display"]
-              if (newValue) {
-                if (!newDisplay) {
+              if (newValue || newValue === '' || newValue === false) {
+                if (!newDisplay && newValue !== '' && newValue !== false) {
                   newDisplay = newValue
                 }
                 updateCellValue({ value: newValue, display: newDisplay })
