@@ -2,12 +2,18 @@
 Python ikyo.
 
 ## Features
-1. Based on React and Django Rest Framework. Ikyo inherits various advantages of React and Django.
-2. Ikyo provides a variety of built-in controls that can be used directly. Developers don't need to start from scratch to write React components. Adding new controls is also straightforward.
-3. Django Rest Framework API is closely integrated with the frontend, enabling control of the frontend display through the backend.
-4. Menu management, user management, and permission management are already integrated.
-5. Developers can define new pages or modify existing ones online through the web and see the changes take effect immediately after saving. It also supports defining pages through Excel.
-6. The system inherits other advantages of React and Django.
+1. This framework was originally developed in 2002 using Java and JavaScript.
+2. The main objective of this framework is to minimize the development effort for typical screens that do not require fancy user interfaces.
+3. Only one standard UI style is provided.
+4. In 2022, we migrated the framework to React and Django. This new version is numbered 2.0.
+5. The backend submits the screen definition to the React frontend. The screen definition might consist of dialogues, enquiry fields, simple fields, tabular fields, button bars, etc. We call these "field groups." The frontend then renders the screen accordingly.
+6. React development is usually not required unless a new type of field group is needed.
+7. The tabular field group is a powerful feature in the framework. Data can be input and displayed in a tabular format. The UI is similar to a spreadsheet, allowing navigation in the table using cursor keys or the mouse. Copy and paste are also supported.
+8. Menu management, user management, and permission management are already integrated.
+9. Developers can define new pages or modify existing ones online and see the changes immediately after saving. These screens are also defined using the framework itself.
+10. An option to define the screen in an Excel spreadsheet is also provided.
+11. We have provided three sample applications: timesheet, task management, and expenses.
+12. Database: SQLite3, Postgresql and all the other ones supported by Django.
 
 ## Notes
 1. Python 3.10 or above.
@@ -19,9 +25,8 @@ Python ikyo.
 ## History
 | Version | Date       | Author | Description    |
 | ------- | ---------- | ------ | -------------- |
-| 2.000   | 2023-11-20 | ikyo   | Initial release |
-| 2.001   | 2023-12-01 | ikyo   | Fix typo error |
-| 2.002   | 2023-12-04 | ikyo   | 1. Add a "Screen Definition" page. 2.Allow dragging and dropping of multi-selected cells, starting from the dateBox.|
+| 2.000   | 2023-12-05 | ikyo   | Initial release |
+|  |  |  |  |
 
 # Folder Structure
 1. **django_backend**: Python Django backend folder.
@@ -82,13 +87,8 @@ Follow these steps to set up and run your React application:
 
 For more information, please reference to *react/README.md* file.
 
-## React packages
-Please reference to *package.json* file.  
 
-Frontend table is base on React Spreadsheet v0.6.2 (https://iddan.github.io/react-spreadsheet).
-
-
-# Debug django and react (Visual Studio Code)
+# Debug django and react in Visual Studio Code
 Please reference to *.vscode/launch.json* file.  
 ```json
 {
@@ -120,14 +120,15 @@ Please reference to *.vscode/launch.json* file.
     ]
 }
 ```
-When debug the react app, plesae start the react server first:  
+
+Start the react server:  
 ```shell
 cd pyi-react
 npm start
-```
+``` 
 
-# License  
-   N/A
+# License
+MIT
 
 # Reference
 1. Django  
@@ -138,3 +139,6 @@ npm start
 
 3. React  
    https://react.dev
+
+4. React Spreadsheet (0.6.2)  
+   https://iddan.github.io/react-spreadsheet

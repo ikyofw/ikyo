@@ -39,6 +39,6 @@ def getRandomStr(length) -> str:
 def isEmail(email) -> bool:
     if email is None or email == '':
         return False
-    if email.endswith('@ywlgroup.com') or email.endswith('@int.ywlgroup.com'):
+    if "@" in email:
         return True
     return False

@@ -8,6 +8,7 @@ import useSelector from "./use-selector"
 import useDispatch from "./use-dispatch"
 import { getCellDimensions } from "./util"
 import { isDateBoxColumn } from "../calendar/DatePicker"
+import { formatNumber } from "./reducer"
 
 type Props = {
   DataEditor: Types.DataEditorComponent
@@ -55,13 +56,8 @@ const ActiveCell: React.FC<Props> = (props) => {
       let newData = data
       let newValue = Number(String(newData.value).replace(/,/g, "")) as any
       if (format && !isDateBox && !isNaN(newValue)) {
-        const index = format.indexOf(".")
-        if (index !== -1) {
-          const digits = format.slice(index + 1).length
-          newValue = newValue.toFixed(Number(digits))
-          newValue = newValue.replace(/\B(?<!\.\d*)(?=(\d{3})+(?!\d))/g, ",")
-        }
-        newData.value = newValue
+        newData.comboKey = newValue
+        newData.value = formatNumber(newValue, format)
       }
 
       setCellData(active, newData, initialData)
@@ -69,7 +65,7 @@ const ActiveCell: React.FC<Props> = (props) => {
     [formatPrams, active, setCellData, initialData]
   )
 
-  // LHH.ikyo 2022-05-06 start
+  // LHH 2022-05-06 start
   const handleClick = React.useCallback(() => {
     if (mode === "view" && !readOnly) {
       edit()

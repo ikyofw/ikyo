@@ -231,15 +231,5 @@ class Mailer():
         content = t.render({} if templateParameters is None else templateParameters)
         return self.send(subject=subject, content=content, contentType=contentType, sendFrom=sendFrom, to=to, cc=cc, attachments=attachments)
 
-
-def __test():
-    to_emails = ['tester@ywlgroup.com', 'abc <abc@ywlgroup.com>']
-    cc_emails = 'efg@ywlgroup.com'
-    file_path = 'D:\\var\\test.csv'  # attachments
-    m = Mailer()
-    m.send(subject='test 2', content='hello', contentType='plain', sendFrom=None, to=to_emails, cc=cc_emails, attachments=[file_path])
-
-
 if __name__ == '__main__':
-    # __test()
     pass

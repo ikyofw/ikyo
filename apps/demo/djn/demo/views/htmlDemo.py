@@ -34,7 +34,7 @@ class HtmlDemo(ScreenAPIView):
 
     def getHtmlFg(self):
         for i in htmlTestList:
-            i['html1'] = "<a href='mailto:dexiang.li@ywlgroup.com'>dexiang.li@ywlgroup.com</a>"
+            i['html1'] = "<a href='mailto:tester@test.com'>Tester</a>"
             i['html2'] = "<div style=\"background-color: yellow;\">test</div>"
         return IkSccJsonResponse(data=htmlTestList)
 

@@ -26,8 +26,7 @@ import core.models as ikModels
 logger = logging.getLogger('pyi')
 
 NO_PARAMETERS_WIDGET = [
-    ikui.SCREEN_FIELD_WIDGET_LABEL, ikui.SCREEN_FIELD_WIDGET_TEXT_BOX, ikui.SCREEN_FIELD_WIDGET_TEXT_AREA, ikui.SCREEN_FIELD_WIDGET_PLUGIN, ikui.SCREEN_FIELD_WIDGET_HTML,
-    ikui.SCREEN_FIELD_WIDGET_VIEWER, ikui.SCREEN_FIELD_WIDGET_PASSWORD
+    ikui.SCREEN_FIELD_WIDGET_TEXT_AREA, ikui.SCREEN_FIELD_WIDGET_PLUGIN, ikui.SCREEN_FIELD_WIDGET_HTML, ikui.SCREEN_FIELD_WIDGET_VIEWER, ikui.SCREEN_FIELD_WIDGET_PASSWORD
 ]
 
 
@@ -41,14 +40,16 @@ class ScreenDfn(ScreenAPIView):
                 widgetNm = self.getSessionParameter('widgetNm')
                 screen.setFieldsVisible(fieldGroupName='dialogWidgetPramsFg',
                                         fieldNames=[
-                                            'formatField', 'stateNumField', 'multipleField', 'dataField', 'dataUrlField', 'valuesField', 'onChangeField', 'dialogField',
+                                            'formatField1', 'formatField2', 'stateNumField', 'multipleField', 'dataField', 'dataUrlField', 'valuesField', 'onChangeField', 'dialogField',
                                             'iconField', 'typeField'
                                         ],
                                         visible=False)
                 if widgetNm in NO_PARAMETERS_WIDGET:
                     screen.setFieldGroupsVisible(fieldGroupNames=['dialogWidgetPramsFg'], visible=False)
+                elif widgetNm == ikui.SCREEN_FIELD_WIDGET_LABEL or widgetNm == ikui.SCREEN_FIELD_WIDGET_TEXT_BOX:
+                    screen.setFieldsVisible(fieldGroupName='dialogWidgetPramsFg', fieldNames=['formatField1'], visible=True)
                 elif widgetNm == ikui.SCREEN_FIELD_WIDGET_DATE_BOX:
-                    screen.setFieldsVisible(fieldGroupName='dialogWidgetPramsFg', fieldNames=['formatField'], visible=True)
+                    screen.setFieldsVisible(fieldGroupName='dialogWidgetPramsFg', fieldNames=['formatField2'], visible=True)
                 elif widgetNm == ikui.SCREEN_FIELD_WIDGET_COMBO_BOX or widgetNm == ikui.SCREEN_FIELD_WIDGET_LIST_BOX or widgetNm == ikui.SCREEN_FIELD_WIDGET_ADVANCED_COMBOBOX:
                     screen.setFieldsVisible(fieldGroupName='dialogWidgetPramsFg', fieldNames=['dataField', 'dataUrlField', 'valuesField', 'onChangeField'], visible=True)
                 elif widgetNm == ikui.SCREEN_FIELD_WIDGET_ADVANCED_SELECTION:
@@ -798,10 +799,14 @@ class ScreenDfn(ScreenAPIView):
     def getDialogWidgetPramsRc(self):
         widgetNm = self.getSessionParameter('widgetNm')
         widgetPrams = self.getSessionParameter('widgetPrams')
-        if widgetPrams == {}:
-            widgetPrams = {'format': 'yyyy-MM-dd', 'stateNumber': '2', 'values': '{"value": "value", "display": "display"}'}
+        if widgetNm == ikui.SCREEN_FIELD_WIDGET_DATE_BOX and widgetPrams == {}:
+            widgetPrams = {'format': 'yyyy-MM-dd'}
+        elif widgetNm == ikui.SCREEN_FIELD_WIDGET_CHECK_BOX and widgetPrams == {}:
+            widgetPrams = {'stateNumber': '2'}
         elif widgetNm in ikui.SCREEN_FIELD_SELECT_WIDGETS and 'values' not in widgetPrams:
             widgetPrams['values'] = '{"value": "value", "display": "display"}'
+        elif widgetNm == ikui.SCREEN_FIELD_WIDGET_ICON_AND_TEXT and 'type' not in widgetPrams:
+            widgetPrams['type'] = 'normal'
         return IkSccJsonResponse(data=widgetPrams)
 
     def getHtmlDialogHtml(self):

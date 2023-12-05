@@ -74,17 +74,18 @@ const reducer = createReducer(INITIAL_STATE, (builder) => {
             }
           }
         }
-        if (formatPrams[index] && cell.value) {
+        if (formatPrams[index] && newCell.value) {
           const format = formatPrams[index]
           if (!isNaN(newCell.value)) {
-            const index = format.indexOf(".")
-            let newValue = Number(newCell.value) as any
-            if (index !== -1) {
-              const digits = format.slice(index + 1).length
-              newValue = newValue.toFixed(Number(digits))
-              newValue = newValue.replace(/\B(?<!\.\d*)(?=(\d{3})+(?!\d))/g, ",")
-            }
-            newCell.value = newValue
+            // const index = format.indexOf(".")
+            // let newValue = Number(newCell.value) as any
+            // if (index !== -1) {
+            //   const digits = format.slice(index + 1).length
+            //   newValue = newValue.toFixed(Number(digits))
+            //   newValue = newValue.replace(/\B(?<!\.\d*)(?=(\d{3})+(?!\d))/g, ",")
+            // }
+            newCell.comboKey = newCell.value
+            newCell.value = formatNumber(newCell.value, format)
           } else {
             let newValue = newCell.value
             newValue = dateFormat(newValue, format)
@@ -134,7 +135,7 @@ const reducer = createReducer(INITIAL_STATE, (builder) => {
         }
       }
     });
-    
+
     column[1] = { value: "+" }
     return {
       ...state,
@@ -146,7 +147,7 @@ const reducer = createReducer(INITIAL_STATE, (builder) => {
   })
   builder.addCase(Actions.delRow, (state, action) => {
     const { row } = action.payload.point // XH 2022-04-24
-    const statusPoint = { row: row, column: 1 } // XH 2022-05-09 invisible column
+    const statusPoint = { row: row, column: 1 } // XH 2022-05-09 隐藏列
     const status = Matrix.get(statusPoint, state.data)?.value
     let preData = state.data
 
@@ -981,4 +982,31 @@ function areMultiSelectValuesEqual(value1, value2) {
 
   // Check if the sorted arrays are equal
   return JSON.stringify(sortedArray1) === JSON.stringify(sortedArray2)
+}
+
+
+export function formatNumber(number, format) {
+  const decimalPlaces = format.includes('.') ? format.split('.')[1].length : 0;
+  // Rounding to the specified number of decimal places
+  number = Number(number).toFixed(decimalPlaces);
+
+  let [integerPart, decimalPart] = number.split('.');
+  // Handling the formatting of integer parts
+  const integerFormat = format.split('.')[0];
+  const thousandSeparator = integerFormat.includes(',') ? ',' : '';
+  const shouldPadZero = integerFormat.includes('0');
+
+  if (shouldPadZero) {
+    // Calculate the number of zeros to be filled
+    const neededPadding = integerFormat.replace(/,/g, '').length - integerPart.length;
+    if (neededPadding > 0) {
+      integerPart = '0'.repeat(neededPadding) + integerPart;
+    }
+  }
+  if (decimalPart && !shouldPadZero) {
+    decimalPart = decimalPart.replace(/0+$/, '');
+  }
+
+  integerPart = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, thousandSeparator);
+  return integerPart + (decimalPart ? '.' + decimalPart : '');
 }
