@@ -13,20 +13,18 @@ Python ikyo.
 9. Developers can define new pages or modify existing ones online and see the changes immediately after saving. These screens are also defined using the framework itself.
 10. An option to define the screen in an Excel spreadsheet is also provided.
 11. We have provided three sample applications: timesheet, task management, and expenses.
-12. Database: SQLite3, Postgresql and all the other ones supported by Django.
 
 ## Notes
 1. Python 3.10 or above.
 2. Django 4.x.
 3. React.
 4. Django Rest Framework ([Official Website](https://www.django-rest-framework.org)).
-5. Database: SQLite3.
+5. Database: SQLite3, Postgresql and all the other ones supported by Django.
 
 ## History
 | Version | Date       | Author | Description    |
 | ------- | ---------- | ------ | -------------- |
 | 2.000   | 2023-12-05 | ikyo   | Initial release |
-|  |  |  |  |
 
 # Folder Structure
 1. **django_backend**: Python Django backend folder.
