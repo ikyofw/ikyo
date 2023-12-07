@@ -1,5 +1,7 @@
 django
+django-cors-headers
 djangorestframework
+psycopg2-binary
 json5
 pandas
 openpyxl

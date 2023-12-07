@@ -38,7 +38,7 @@ from iktools import IkConfig
 
 from .authView import AuthAPIView
 
-logger = logging.getLogger('backend')
+logger = logging.getLogger('ikyo')
 
 REQUEST_PRM_ACTION = 'action'
 REQUEST_SYSTEM_ACTION_INIT_SCREEN = 'initScreen'

@@ -27,7 +27,7 @@ class HtmlDemo(ScreenAPIView):
         # self._addStaticResource('static/js/test.js')
 
     def getHtmlHtmlComponent(self):
-        f = './var/devdemo/htmlExample.html'
+        f = './var/demo-files/htmlDemo.html'
         with open(f, 'r', encoding='utf-8') as f:
             content = f.read()
         return IkSccJsonResponse(data=content)

@@ -1,11 +1,7 @@
 '''
 Description: PYI Screen Definition
-version: 
-Author: YL
-Date: 2023-04-18 15:36:52
 '''
 import logging
-import traceback
 import datetime
 
 from django.db.models import Case, Q, When
@@ -357,8 +353,7 @@ class ScreenDfn(ScreenAPIView):
     def getFgTypes(self):
         types = [
             ikui.SCREEN_FIELD_TYPE_SEARCH, ikui.SCREEN_FIELD_TYPE_FIELDS, ikui.SCREEN_FIELD_TYPE_TABLE, ikui.SCREEN_FIELD_TYPE_RESULT_TABLE, ikui.SCREEN_FIELD_TYPE_ICON_BAR,
-            ikui.SCREEN_FIELD_TYPE_HTML, ikui.SCREEN_FIELD_TYPE_IFRAME, ikui.SCREEN_FIELD_TYPE_UDF_VIEWER, ikui.SCREEN_FIELD_TYPE_UDF_PD001N,
-            ikui.SCREEN_FIELD_TYPE_UDF_PD001N_COUNTER
+            ikui.SCREEN_FIELD_TYPE_HTML, ikui.SCREEN_FIELD_TYPE_IFRAME, ikui.SCREEN_FIELD_TYPE_UDF_VIEWER
         ]
         order = Case(*[When(type_nm=typeNm, then=pos) for pos, typeNm in enumerate(types)])
         return ikModels.ScreenFgType.objects.all().order_by(order)

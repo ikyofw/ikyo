@@ -14,7 +14,7 @@ from core.models import *
 from core.utils.langUtils import isNullBlank
 from core.view.authView import AuthAPIView
 
-logger = logging.getLogger('backend')
+logger = logging.getLogger('ikyo')
 
 
 class ScreenHelpView(AuthAPIView):

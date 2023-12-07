@@ -1,18 +1,13 @@
 '''
     User Manager
 '''
-import inspect
-
-from django.core.handlers.wsgi import WSGIHandler
 from django.db import connection
 
 import core.utils.db as dbUtils
 from core.core.exception import IkException
 from core.core.mailer import EmailAddress
 from core.models import User
-from core.utils import strUtils
 from core.view.authView import getCurrentView
-from iktools import IkConfig
 
 ADMINISTRATOR_USER_ID = -2
 '''
@@ -56,14 +51,6 @@ def isEnable(userID) -> bool:
             raise IkException("User does not exist: id=" + str(userID))
 
 
-def getUserDisplayName(userID) -> str:
-    rs = None
-    with connection.cursor() as cursor:
-        cursor.execute("select * from iky_get_usr_full_nm(" + str(userID) + ") AS usr_nm")
-        rs = dbUtils.dictfetchall(cursor)
-        return None if dbUtils.isEmpty(rs) else rs[0]['usr_nm']
-
-
 def getUserEmailAddress(userID) -> EmailAddress | None:
     rs = None
     with connection.cursor() as cursor:
@@ -93,39 +80,13 @@ def getUserEmailAddresses(userIDs) -> list:
     return emails
 
 
-def getLastCoDt(userID) -> str:
-    rs = None
-    with connection.cursor() as cursor:
-        cursor.execute("SELECT last_co_dt FROM ik_usr WHERE id=" + str(userID))
-        rs = dbUtils.dictfetchall(cursor)
-        if not dbUtils.isEmpty(rs):
-            return rs[0]['last_co_dt']
-    return None
-
-
 def getIkyUserByDbField(userID, dbField):
-    '''ikyUsr'''
+    '''ik_usr'''
     rs = None
     with connection.cursor() as cursor:
         cursor.execute("SELECT %s FROM ik_usr WHERE id=%s" % (dbField, userID))
         rs = dbUtils.dictfetchall(cursor)
     return None if dbUtils.isEmpty(rs) else rs[0][dbField]
-
-
-def getUserFavoriteProjectID(userID) -> int:
-    return getUserInfo(userID, 'favorite_prj_id')
-
-
-def updateUserFavoriteProjectID(userID, projectID) -> None:
-    updateUserInfo(userID, "favorite_prj_id", projectID, userID)
-
-
-# YL.ikyo, 2022-11-01
-def getUserDefaultOffice(usrId) -> str | None:
-    with connection.cursor() as cursor:
-        cursor.execute('SELECT office FROM ik_usr WHERE id=%s' % usrId)
-        rs = dbUtils.dictfetchall(cursor)
-    return None if dbUtils.isEmpty(rs) else rs[0]['office']
 
 
 def getCurrentUser() -> User:

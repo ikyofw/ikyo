@@ -1,5 +1,4 @@
-import logging
-
+import logging, sys
 from django.db import connection
 from django.urls import URLPattern, path, re_path
 
@@ -74,5 +73,5 @@ def getScreenUrlFromDatabase() -> list[URLPattern]:
                 # logger.error(e,exc_info=True)
     return urlpatterns
 
-
-urlpatterns.extend(getScreenUrlFromDatabase())
+if 'runserver' in sys.argv: # makemigrations and migrate don'et need to parse screen files.
+    urlpatterns.extend(getScreenUrlFromDatabase())

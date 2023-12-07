@@ -1,6 +1,0 @@
-|# YL, 2023-11-27 Init database.
-InitDatabase.sql
-
-
-# YL, 2023-11-24 Demo Menus
-Menu 20231124.sql

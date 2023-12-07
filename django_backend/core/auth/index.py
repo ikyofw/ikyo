@@ -1,5 +1,4 @@
 import hashlib
-import importlib
 import logging
 import time
 import traceback
@@ -9,7 +8,6 @@ from core.core.exception import IkException
 from core.core.http import (IkErrJsonResponse, IkSccJsonResponse,
                             IkSysErrJsonResponse, isSupportSession)
 from core.core.lang import Boolean2
-from core.menu.menuManager import MenuManager
 from core.utils.encrypt import decryptData, generateRsaKeys, getPublicKey
 from core.utils.langUtils import isNullBlank
 from django.http import QueryDict
@@ -20,7 +18,7 @@ from rest_framework.views import APIView
 from ..models import User, UsrToken
 from ..utils import strUtils
 
-logger = logging.getLogger('backend')
+logger = logging.getLogger('ikyo')
 
 SESSION_KEY_USER_NAME = 'USER_NAME'
 

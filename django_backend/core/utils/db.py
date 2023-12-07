@@ -4,7 +4,7 @@ from enum import Enum
 
 from django.db import connection
 
-logger = logging.getLogger('backend')
+logger = logging.getLogger('ikyo')
 
 
 def toSqlField(s) -> str:

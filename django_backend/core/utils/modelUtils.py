@@ -11,7 +11,7 @@ from iktools import IkConfig
 
 from .langUtils import isNullBlank
 
-logger = logging.getLogger('backend')
+logger = logging.getLogger('ikyo')
 
 
 def updateSystemFields(modelRc, usrId, date=None):

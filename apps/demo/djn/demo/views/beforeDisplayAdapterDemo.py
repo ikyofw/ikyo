@@ -28,30 +28,3 @@ class BeforeDisplayAdapterDemo(ScreenAPIView):
 
     def getClockins(self):
         return IkSccJsonResponse(data=beforeDisplayAdapterDemoList)
-
-    def save(self):
-        requestData = devDemoGetRequestData(self.request)
-        fgNames = list(requestData.keys())
-        updatedRmk = False
-        data = requestData.get(fgNames[0]).get('data')
-        for i in range(len(data)):
-            rc = {"id": data[i][2], "rmk1": data[i][3], "rmk2": data[i][4]}
-            if data[i][0] == "~":
-                for j in range(len(beforeDisplayAdapterDemoList)):
-                    if str(beforeDisplayAdapterDemoList[j]["id"]) == str(rc["id"]):
-                        beforeDisplayAdapterDemoList[j] = rc
-                        break
-                updatedRmk = True
-            elif data[i][0] == "+":
-                beforeDisplayAdapterDemoList.append(rc)
-                updatedRmk = True
-            elif data[i][0] == "-":
-                for j in range(len(beforeDisplayAdapterDemoList)):
-                    if str(beforeDisplayAdapterDemoList[j]["id"]) == str(rc["id"]):
-                        del beforeDisplayAdapterDemoList[j]
-                        break
-                updatedRmk = True
-        if updatedRmk:
-            return IkSccJsonResponse(message="Saved")
-        else:
-            return IkErrJsonResponse(message="No modification")

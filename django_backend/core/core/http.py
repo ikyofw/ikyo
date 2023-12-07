@@ -21,7 +21,7 @@ from django.http.response import JsonResponse, StreamingHttpResponse
 from .code import IkCode, MessageType
 from .exception import IkMessageException, IkValidateException
 
-logger = logging.getLogger('backend')
+logger = logging.getLogger('ikyo')
 
 
 def isSupportSession(request) -> bool:

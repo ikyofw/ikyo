@@ -13,7 +13,7 @@ from django.db.models.query import QuerySet
 
 from .model import IDModel, Model
 
-logger = logging.getLogger('backend')
+logger = logging.getLogger('ikyo')
 
 
 class IkTransactionModel():

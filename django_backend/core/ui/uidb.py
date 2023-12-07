@@ -16,10 +16,13 @@ from core.utils.langUtils import isNullBlank
 
 from . import ui as ikui
 
-logger = logging.getLogger('backend')
+logger = logging.getLogger('ikyo')
 
 
 def syncScreenDefinitions(userID=None):
+    from core.db.db import getSqlFileFile, executeSqlFiles
+    executeSqlFiles(getSqlFileFile('InitSDN.sql'))
+
     # excel to database
     screenFileFolder = Path(os.path.join(ikfs.getVarFolder(), 'sys', 'views'))
     if not screenFileFolder.is_dir():

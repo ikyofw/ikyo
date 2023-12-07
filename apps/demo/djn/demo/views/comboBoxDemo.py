@@ -128,7 +128,3 @@ class ComboBoxDemo(ScreenAPIView):
         # simpleData['rmk2'] = simpleData['rmk1']
         schRmk2 = [{'value': 'test1', 'display': 'test1'}, {'value': 'test2', 'display': 'test2'}, {'value': 'test3', 'display': 'test3'}]
         return self._returnComboboxQueryResult(fgName='searchFg', fgData=None, resultDict={'schRmk2': schRmk2})
-
-    def save(self):
-        requestData = self.getRequestData()
-        pass

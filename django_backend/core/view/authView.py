@@ -16,7 +16,7 @@ from django.core.handlers.wsgi import WSGIHandler
 from iktools import IkConfig
 from rest_framework.views import APIView
 
-logger = logging.getLogger('backend')
+logger = logging.getLogger('ikyo')
 
 SESSION_DATA_NAME_PREFIX = '$IKG_'
 SESSION_DATA_NAME = '$IK_$G'

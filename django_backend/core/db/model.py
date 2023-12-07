@@ -18,7 +18,7 @@ from django.dispatch import receiver
 
 from django_backend.settings import DATABASES
 
-logger = logging.getLogger('backend')
+logger = logging.getLogger('ikyo')
 
 MODEL_RECORD_DATA_STATUS_KEY_NAME = '__STT_'
 MODEL_RECORD_DATA_CURRENT_KEY_NAME = '__CRR_'

@@ -11,15 +11,12 @@ import Logout from "./screen/Logout"
 import ScreenRender from "./components/ScreenRender"
 import Help from "./screen/Help"
 import Menu from "./screen/Menu"
-import PD001N from "./screen/PD001N/PD001N"
 import { useHttp } from "./utils/http"
 import { validateResponse } from "./utils/sysUtil"
 
 import { useEffect, useState } from "react"
 import pyiLogger from "./utils/log"
 import pyiLocalStorage from "./utils/pyiLocalStorage"
-
-// This line is used for PD001N, please don't delete it, otherwise soil profile color will be lost.
 
 function App() {
   const HttpGet = useHttp(pyiLocalStorage.globalParams.HTTP_TYPE_GET)
@@ -92,7 +89,6 @@ function App() {
                         <Route path={"/" + paths[index]} element={<ScreenRender screenID={screenID} />} key={index} />
                       ))
                     : null}
-                  <Route path="/pd001n" element={<PD001N screenID="pd001n" />} />
                 </Routes>
               </BrowserRouter>
               <div style={{ height: "10px" }}></div>

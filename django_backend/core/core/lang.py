@@ -1,7 +1,7 @@
 '''
 Description: 
 version: 
-Author: YL
+Author: YL.ik
 Date: 2023-11-24 10:49:49
 '''
 from .exception import IkValidateException

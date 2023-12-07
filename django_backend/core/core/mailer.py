@@ -38,7 +38,6 @@ def getEmailAddressName(emailAddress):
     return getEmailName(name)
 
 
-# YL.ikyo, 2023-03-09 - start
 def toEmailAddressList(addrsStr) -> list:
     addressList = []
     if strUtils.isEmpty(addrsStr):
@@ -51,10 +50,6 @@ def toEmailAddressList(addrsStr) -> list:
             email = addr[addr.index("<") + 1:len(addr) - 1].strip()
             addressList.append(convert2EmailAddress(email) if strUtils.isEmpty(name) else EmailAddress(email, name))
     return addressList
-
-
-# YL.ikyo, 2023-03-09 - end
-
 
 class EmailAddress:
     '''
@@ -98,32 +93,28 @@ def standardEmailAddress(emailAddress) -> str:
     '''
         return Name<Email>
     '''
-    # YL.ikyo, 2023-04-06 - start
     if not isinstance(emailAddress, EmailAddress):
         emailAddress = convert2EmailAddress(emailAddress)
     return str(emailAddress)
-    # YL.ikyo, 2023-04-06 - end
-
 
 class Mailer():
 
     def __init__(self) -> None:
-        self.smtpHost = getSetting(name='SMTP Host', default=IkConfig.get("Email", "mail.smtp"))
-        self.smtpPort = int(getSetting(name='SMTP Port', default=IkConfig.get("Email", "mail.smtp.port")))
-        self.smtpWithSSL = getSetting(name='SMTP With SSL', default=IkConfig.get("Email", "mail.smtp.ssl")).lower() == 'yes'
-        self.smtpAccount = getSetting(name='SMTP Account', default=IkConfig.get("Email", "mail.username"))
-        self.smtpPassword = getSetting(name='SMTP Password', default=IkConfig.get("Email", "mail.password"))
-        self.senderAddress = getSetting(name='SMTP Sender Address', default=IkConfig.get("Email", "mail.from"))
-        self.senderName = getSetting(name='SMTP Sender Name', default=IkConfig.get("Email", "mail.from,name"))
+        self.smtpHost = SystemSetting.get(name='SMTP Host', default=IkConfig.get("Email", "mail.smtp"))
+        self.smtpPort = int(SystemSetting.get(name='SMTP Port', default=IkConfig.get("Email", "mail.smtp.port")))
+        self.smtpWithSSL = SystemSetting.get(name='SMTP With SSL', default=IkConfig.get("Email", "mail.smtp.ssl")).lower() == 'yes'
+        self.smtpAccount = SystemSetting.get(name='SMTP Account', default=IkConfig.get("Email", "mail.username"))
+        self.smtpPassword = SystemSetting.get(name='SMTP Password', default=IkConfig.get("Email", "mail.password"))
+        self.senderAddress = SystemSetting.get(name='SMTP Sender Address', default=IkConfig.get("Email", "mail.from"))
+        self.senderName = SystemSetting.get(name='SMTP Sender Name', default=IkConfig.get("Email", "mail.from,name"))
         if self.senderName is None or self.senderName.strip() == '' and self.senderAddress is not None:
             self.senderName = getEmailAddressName(self.senderAddress)
         self.sender = formataddr(pair=(self.senderName, self.senderAddress))
 
-    # YL.ikyo, 2023-03-16
     # get default email sender
     def getDefaultMailSender(self) -> EmailAddress:
-        mailFrom = SystemSetting().get("mail.from")
-        mailFromName = SystemSetting().get("mail.from.name")
+        mailFrom = SystemSetting.get("mail.from")
+        mailFromName = SystemSetting.get("mail.from.name")
         if strUtils.isEmpty(mailFromName):
             mailFromName = "IKYO"
         return EmailAddress(mailFrom, mailFromName)
@@ -141,7 +132,6 @@ class Mailer():
         if to is None or len(to) == 0:
             raise IkException('Parameter [to] is mandatory.')
         sendTo = []
-        # YL.ikyo, 2023-03-16 UPDATE, add EmailAddress check - start
         if isinstance(to, EmailAddress):
             sendTo.append(str(to))
         elif isinstance(to, str):
@@ -170,7 +160,6 @@ class Mailer():
                         ccTo.append(standardEmailAddress(addr))
             else:
                 raise IkException('Unknown email address: %s' % cc)
-        # YL.ikyo, 2023-03-16 - end
 
         # prepare message
         msg = MIMEMultipart()
@@ -230,6 +219,3 @@ class Mailer():
         t = loader.get_template(templateFile)
         content = t.render({} if templateParameters is None else templateParameters)
         return self.send(subject=subject, content=content, contentType=contentType, sendFrom=sendFrom, to=to, cc=cc, attachments=attachments)
-
-if __name__ == '__main__':
-    pass

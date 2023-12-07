@@ -25,7 +25,7 @@ class UploadAndDownloadDemo(ScreenAPIView):
     def uploadFile(self):
         data = self.getRequestData()
         uploadFile = data.getFiles('importFile1')
-        return
+        return IkSccJsonResponse(message='uploaded')
 
     def downloadFile(self):
         f = './var/demo-files/HtmlDemo.html'

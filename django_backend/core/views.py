@@ -1,4 +1,5 @@
 from typing import Union
+import sys
 
 from django.core.paginator import Paginator
 from django.forms import model_to_dict
@@ -38,7 +39,8 @@ def getRouters(request):
 # ------------------------------------------------------------------------------
 # initializing the all services
 # ------------------------------------------------------------------------------
-initIk()
+if 'runserver' in sys.argv: # makemigrations and migrate don'et need to parse screen files.
+    initIk()
 
 
 class UsrMnt(ScreenAPIView):

@@ -1,8 +1,6 @@
 import base64
 import logging
 import os
-import shutil
-import traceback
 from pathlib import Path
 
 import core.core.fs as fs
@@ -12,7 +10,7 @@ from Crypto.PublicKey import RSA
 
 from django_backend.settings import BASE_DIR
 
-logger = logging.getLogger('backend')
+logger = logging.getLogger('ikyo')
 
 ENCRYPT_FORDER = os.path.join(BASE_DIR, 'var', 'encrypt')
 ENCRYPT_PUBLIC_PEM = Path(os.path.join(BASE_DIR, 'var', 'encrypt'), 'rsa_public_key.pem')

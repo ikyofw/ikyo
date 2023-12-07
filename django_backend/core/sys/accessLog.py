@@ -10,7 +10,7 @@ from core.models import AccessLog, Menu
 from django.db import connection
 from django.db.models import Q
 
-logger = logging.getLogger('backend')
+logger = logging.getLogger('ikyo')
 
 
 def addAccessLog(request, menuID, pageName, actionName=None, remarks=None):

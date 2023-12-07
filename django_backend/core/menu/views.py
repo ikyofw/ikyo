@@ -1,6 +1,3 @@
-from datetime import datetime as datetime_
-from datetime import timedelta
-
 import core.models as ikModels
 from core.core.http import IkSccJsonResponse
 from core.sys.accessLog import getAccessLog, getLatestAccessLog
@@ -8,7 +5,7 @@ from core.utils.langUtils import isNullBlank
 from core.view.authView import AuthAPIView
 from core.view.screenView import ScreenAPIView
 
-from .menu import Menu, getUserMenus
+from .menu import getUserMenus
 from .menuManager import ACL_DENY, MenuManager
 
 

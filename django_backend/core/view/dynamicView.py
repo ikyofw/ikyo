@@ -1,7 +1,7 @@
 import logging
 from .screenView import ScreenAPIView
 
-logger = logging.getLogger('backend')
+logger = logging.getLogger('ikyo')
 
 class DynamicAPIView(ScreenAPIView):
     def __init__(self, **kwargs) -> None:

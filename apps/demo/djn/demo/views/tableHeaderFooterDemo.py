@@ -32,27 +32,3 @@ class TableHeaderFooterDemo(ScreenAPIView):
             rc.ik_set_status_retrieve()
             rcs.append(rc)
         return rcs
-
-    def submit(self):
-        '''
-            Save Author, Category and Book tables.
-        '''
-        reqData = self.getRequestData()
-        rcs = reqData.get('tableFg')
-        cNew = 0
-        cUpdate = 0
-        cDelete = 0
-        rcs2 = []
-        for rc in rcs:
-            if rc.ik_is_status_new():
-                cNew += 1
-            elif rc.ik_is_status_modified():
-                cUpdate += 1
-            elif rc.ik_is_status_delete():
-                cDelete += 1
-            if not rc.ik_is_status_delete():
-                rcs2.append(rc)
-        print('Total %s, new %s, update %s, delete %s' % (len(rcs), cNew, cUpdate, cDelete))
-        print(rcs2)
-        self.setSessionParameters({'data': rcs2})
-        return Boolean2(True, 'saved')

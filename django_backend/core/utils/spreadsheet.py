@@ -13,7 +13,7 @@ from core.core.lang import Boolean2
 from core.utils.langUtils import isNullBlank
 from openpyxl import load_workbook
 
-logger = logging.getLogger('backend')
+logger = logging.getLogger('ikyo')
 
 
 def columnName2Index(colname):

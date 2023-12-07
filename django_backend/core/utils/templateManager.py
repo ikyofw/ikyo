@@ -9,7 +9,7 @@ import logging
 from core.core.exception import IkException
 from django.template import loader
 
-logger = logging.getLogger('backend')
+logger = logging.getLogger('ikyo')
 
 
 def loadTemplateFile(templateFile, parameters=None) -> str:

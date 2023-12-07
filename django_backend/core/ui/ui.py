@@ -2,10 +2,11 @@ import copy
 import json
 import logging
 import os
+import sys
 import re
 from datetime import datetime
 from pathlib import Path
-from threading import Lock, Thread
+from threading import Lock
 
 import core.core.http as ikhttp
 import core.db.model as ikModels
@@ -23,7 +24,7 @@ from django_backend.settings import BASE_DIR
 from . import uiCache as ikuiCache
 from . import uidb as ikuidb
 
-logger = logging.getLogger('backend')
+logger = logging.getLogger('ikyo')
 
 
 SCREEN_FIELD_TYPE_TABLE = 'table'
@@ -33,9 +34,7 @@ SCREEN_FIELD_TYPE_SEARCH = 'search'
 SCREEN_FIELD_TYPE_ICON_BAR = 'iconBar'
 SCREEN_FIELD_TYPE_HTML = 'html'
 SCREEN_FIELD_TYPE_IFRAME = 'iframe'
-SCREEN_FIELD_TYPE_UDF_VIEWER = 'viewer'              # User Define Type, used for Pile Design.
-SCREEN_FIELD_TYPE_UDF_PD001N = 'PD001N'              # User Define Type, used for Pile Design.
-SCREEN_FIELD_TYPE_UDF_PD001N_COUNTER = 'PD001NCounter'       # User Define Type, used for Pile Design.
+SCREEN_FIELD_TYPE_UDF_VIEWER = 'viewer'
 
 
 SCREEN_FIELD_GROUP_TYPES_TABLE = (SCREEN_FIELD_TYPE_TABLE,         SCREEN_FIELD_TYPE_RESULT_TABLE)
@@ -43,8 +42,7 @@ SCREEN_FIELD_GROUP_TYPE_DETAILS = (SCREEN_FIELD_TYPE_FIELDS,        SCREEN_FIELD
 SCREEN_FIELD_GROUP_TYPES = (SCREEN_FIELD_TYPE_TABLE,         SCREEN_FIELD_TYPE_RESULT_TABLE,
                             SCREEN_FIELD_TYPE_FIELDS,       SCREEN_FIELD_TYPE_SEARCH,
                             SCREEN_FIELD_TYPE_ICON_BAR,     SCREEN_FIELD_TYPE_HTML,
-                            SCREEN_FIELD_TYPE_IFRAME,       SCREEN_FIELD_TYPE_UDF_VIEWER,
-                            SCREEN_FIELD_TYPE_UDF_PD001N,   SCREEN_FIELD_TYPE_UDF_PD001N_COUNTER)
+                            SCREEN_FIELD_TYPE_IFRAME,       SCREEN_FIELD_TYPE_UDF_VIEWER)
 
 SCREEN_FIELD_WIDGET_LABEL = 'Label'
 SCREEN_FIELD_WIDGET_TEXT_BOX = 'TextBox'
@@ -937,7 +935,8 @@ class __ScreenManager:
         self.__screenDefinitions = {}  # {screen name: screen definition}
         self.__screenFileFolder = self.getScreenFileFolder()
         self.__readLock = Lock()
-        self.__parseScreenFiles()
+        if 'runserver' in sys.argv: # makemigrations and migrate don'et need to parse screen files.
+            self.__parseScreenFiles()
 
     def getScreenFileFolder(self) -> Path:
         return Path(os.path.join(BASE_DIR, 'var/sys/views'))
@@ -971,47 +970,6 @@ class __ScreenManager:
             raise e
         finally:
             self.__readLock.release()
-
-    # def __parserScreenFile(self, name, path):
-    #     try:
-    #         if name in self.__screenDefinitions.keys():
-    #             raise IkValidateException('[%s] is exists. Please check: %s' % (name, path))
-    #         sp = SpreadsheetParser(path)
-    #         # add shot name. e.g. gp.GP020's short name is GP020. The short name is unique.
-    #         if '.' in name:
-    #             i = name.rindex('.')
-    #             shortName = name[i + 1:]
-    #             if shortName == '':
-    #                 raise IkValidateException("[%s]'s parent folder name cannot be empty. Please check: %s" % (name, path))
-    #         if isNullBlank(shortName):
-    #             shortName = name
-    #         if shortName in self.__screenDefinitions.keys():
-    #             raise IkValidateException("[%s]'s short name [%s] is unique. Please check: %s" % (name, shortName, path))
-    #         self.__screenDefinitions[name] = ScreenDefinition(name = shortName, fullName=name, filePath=path, definition=sp.data)
-    #         self.__screenDefinitions[shortName] = self.__screenDefinitions[name]
-    #     except Exception as e:
-    #         logger.error('Parse screen [%s] failed: %s' % (name, str(e)))
-    #         logger.error(e, exc_info=True)
-
-    # def __getScreenID(self, name) -> str:
-    #     if name in self.__screenDefinitions.keys():
-    #         return name
-    #     ss = name.split('.')
-    #     if len(ss) == 2 and self.__isScreenExists(ss[1]):
-    #         return ss[1]
-    #     return None
-
-    # def __getScreenDefinition(self, name) -> ScreenDefinition:
-    #     dfn = self.__screenDefinitions.get(self.__getScreenID(name), None)
-    #     if dfn is None:
-    #         # for bugfix checking
-    #         for screenName2, dfn2 in self.__screenDefinitions.items():
-    #             if screenName2.lower() == name.lower():
-    #                 dfn = dfn2
-    #                 logger.warning('getScreenDefinition(%s) is not found, then use %s instead.' % (name, name.lower()))
-    #                 return dfn
-    #         logger.error('getScreenDefinition(%s)=None' % name)
-    #     return dfn
 
     # YL.ikyo, 2023-04-18 get screen from database
     def _getScreenDefinitionFromDB(self, name) -> ScreenDefinition:

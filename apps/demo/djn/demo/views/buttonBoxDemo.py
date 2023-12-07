@@ -37,3 +37,8 @@ class ButtonBoxDemo(ScreenAPIView):
         currentID = self.getRequestData().get('id', None)
         self.setSessionParameters({"currentID": currentID})
         return IkSccJsonResponse(message="test")
+    
+    def refresh(self):
+        for i in buttonBoxTestList:
+            i['enable'] = True
+        return self.deleteSessionParameters("currentID")

@@ -1,7 +1,6 @@
 import transform from "css-to-react-native"
 import React, { Ref, forwardRef, useImperativeHandle, useRef, useState } from "react"
 import { createIconColumn } from "./TableFg"
-import PD001N from "../screen/PD001N/PD001N"
 import { useHttp } from "../utils/http"
 import pyiLogger from "../utils/log"
 import pyiLocalStorage from "../utils/pyiLocalStorage"
@@ -77,7 +76,6 @@ const Screen: React.FC<IScreenBox> = forwardRef((props, ref: Ref<any>) => {
     })
     return initialFlags
   })
-  const [pd001nRefreshFlag, setPD001NRefreshFlag] = useState(1)
 
   const [dialogOpen, setDialogOpen] = React.useState(false)
   const [dialogPrams, setDialogPrams] = React.useState({ onCancel: () => closeDialog() })
@@ -136,7 +134,6 @@ const Screen: React.FC<IScreenBox> = forwardRef((props, ref: Ref<any>) => {
 
   // set page data
   const refreshList = async () => {
-    setPD001NRefreshFlag(pd001nRefreshFlag + 1)
     Loading.show()
     // get table data
     try {
@@ -737,10 +734,6 @@ const Screen: React.FC<IScreenBox> = forwardRef((props, ref: Ref<any>) => {
                   {String(screenJson[fgName].type) === pyiGlobal.VIEWER ? (
                     <FileViewer key={index} params={screenJson[fgName]} screenID={props.screenID} />
                   ) : null}
-
-                  {String(screenJson[fgName].type) === "PD001NCounter" ? (
-                    <PD001N key={index} refreshFlag={pd001nRefreshFlag} screenID="pd001s" />
-                  ) : null}
                 </div>
               ) : null
             )}
@@ -756,7 +749,6 @@ const Screen: React.FC<IScreenBox> = forwardRef((props, ref: Ref<any>) => {
     screenEditable,
     screenPluginLists,
     resources,
-    pd001nRefreshFlag,
   ])
 
   const subScreenNode = React.useMemo(() => {

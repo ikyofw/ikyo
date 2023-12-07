@@ -1,6 +1,5 @@
 from django.db import models
-
-from core.db.model import IDModel, IDModelView, Model
+from core.db.model import IDModel
 
 
 class Menu(IDModel):

@@ -188,15 +188,3 @@ class __IkConfig():
 
 
 IkConfig = __IkConfig()
-
-
-# if __name__ == '__main__':
-#     if len(sys.argv) != 2:
-#         raise Exception('Please specify prebuild or postbuild')
-#     command = sys.argv[1]
-#     if command == 'prebuild':
-#         reactPrebuild()
-#     elif command == 'postbuild':
-#         reactPostbuild()
-#     else:
-#         raise Exception('Unsupport command [%s]' % command)

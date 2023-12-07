@@ -8,11 +8,11 @@ import core.utils.db as dbUtils
 from core.core.exception import IkValidateException
 from core.ui.ui import IkUI, Screen
 
-logger = logging.getLogger('backend')
+logger = logging.getLogger('ikyo')
 '''
-    ik_menu.app = 'backend'
+    ik_menu.app = 'ikyo'
 '''
-MENU_APP_IK = 'backend'
+MENU_APP_IK = 'ikyo'
 
 ACL_READ = 'R'
 ACL_WRITE = 'W'

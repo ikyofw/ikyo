@@ -268,7 +268,7 @@ LOGGING = {
             'propagate': True,
             'level': 'DEBUG' if IkConfig.isDebug else 'INFO',
         },
-        'backend': {
+        'ikyo': {
             'handlers': ['console', 'ikFile'],
             'level': 'DEBUG' if IkConfig.isDebug else 'INFO',
             'propagate': True,

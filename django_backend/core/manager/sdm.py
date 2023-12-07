@@ -1,25 +1,18 @@
 '''
 Description: Screen Definition Manager
 version: 
-Author: YL
+Author: YL.ik
 Date: 2023-04-19 11:49:27
 '''
-import hashlib
-import json
 import logging
 import os
 import sys
-import traceback
-from datetime import datetime
-
 from django.apps import apps
 from django.db.models.fields.related import ForeignKey
-
 
 import core.core.fs as ikfs
 import core.ui.ui as ikui
 import core.ui.uidb as ikuidb
-import core.ui.uiCache as ikuiCache
 import core.utils.spreadsheet as ikSpreadsheet
 import core.utils.modelUtils as modelUtils
 from core.core.exception import IkException

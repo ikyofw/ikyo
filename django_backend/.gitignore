@@ -4,4 +4,4 @@
 .djnenv
 __pycache__
 migrations
-db.sqlite3
+var/sql/sql.json
