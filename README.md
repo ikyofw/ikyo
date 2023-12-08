@@ -1,16 +1,16 @@
 # Background
-The main objective of this framework is to minimize the development effort for typical web-based applications that do not require fancy user interfaces. Only one standard UI style is provided. This framework was originally developed in 2002 using Java and JavaScript. In 2022, we migrated the framework to React and Django, resulting in the new version, 2.0. In December 2023, we open-sourced the framework.
+The main objective of this framework is to minimize development effort for typical web-based applications that do not require complex user interfaces. It provides only one standard UI style for efficiency. Originally developed in 2002 using Java and JavaScript, the framework was migrated to React and Django in 2022, resulting in the current version 2.0. As of December 2023, the framework has been open-sourced.
 # Features
-1. Web screens can be defined online.
-2. Upon saving a screen definition, although not in a WYSIWYG manner, the layout can be previewed.
-3.	Screen definition involves high-level objects such as dialogues, enquiry fields, simple fields, tabular fields, button bars, etc., which we refer to as 'field groups'.
-4.	These screen definition screens are also created using the framework itself.
-5.	An option is also available to define a screen using an Excel spreadsheet.
-6.	Once defined, the backend can submit the screen definition to the React frontend, which will then render the screen accordingly.
-7.	React development is generally not required unless there is a need for a new type of field group.
-8.	The tabular field group is a powerful feature of the framework. It allows data input and display in a tabular format, with a UI similar to a spreadsheet. This includes navigation in the table using cursor keys or the mouse, and supports copy and paste functions.
-9.	Menu management, user management, and permission management are already integrated into the framework.
-10.	We have provided three sample applications: a timesheet, task management, and expense tracking.
+•	Online web screen definition: Web screens can be directly defined within the framework.
+•	Preview functionality: Screen layouts can be previewed immediately after saving a screen definition although the nature of the process is not WYSIWYG.
+•	High-level object approach: Screens are defined using high-level objects like dialogues, enquiry fields, simple fields, tabular fields, button bars, etc., which we refer to as "field groups".
+•	Self-referential development: The framework itself is used to build the screens that define other screens.
+•	Excel import option: Screen definitions can alternatively be created using an Excel spreadsheet.
+•	Dynamic screen rendering: Once defined, the backend can submit the screen definition to the React frontend, which will then render the screen accordingly.
+•	Minimal React development: React development is generally not required unless a new type of field group is needed.
+•	Powerful tabular field group: This feature allows data input and display in a spreadsheet-like format, including navigation using cursor keys or mouse, and supports copy and paste functionalities.
+•	Integrated management: Menu, user, and permission management systems are already integrated into the framework.
+•	Sample applications: Three sample applications are provided: a timesheet, task management, and an expense tracking system.
 
 # Notes
 1. Python 3.10 or above.
