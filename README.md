@@ -1,6 +1,6 @@
 # Background
 The main objective of this framework is to minimize the development effort for typical web-based applications that do not require fancy user interfaces. Only one standard UI style is provided. This framework was originally developed in 2002 using Java and JavaScript. In 2022, we migrated the framework to React and Django, resulting in the new version, 2.0. In December 2023, we open-sourced the framework.
-Features
+# Features
 1. Web screens can be defined online.
 2. Upon saving a screen definition, although not in a WYSIWYG manner, the layout can be previewed.
 3. Screen definition involves high-level objects such as dialogues, enquiry fields, simple fields, tabular fields, button bars, etc., which we refer to as 'field groups.'
