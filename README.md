@@ -3,15 +3,14 @@ The main objective of this framework is to minimize the development effort for t
 # Features
 1. Web screens can be defined online.
 2. Upon saving a screen definition, although not in a WYSIWYG manner, the layout can be previewed.
-3. Screen definition involves high-level objects such as dialogues, enquiry fields, simple fields, tabular fields, button bars, etc., which we refer to as 'field groups.'
-4. These screen definition screens are also created using the framework itself.
-5. An option is also provided to define the screen in an Excel spreadsheet.
-6. Once defined, the backend can submit the screen definition to the React frontend, which will then render the screen accordingly.
-7. React development is generally not required unless there is a need for a new type of field group.
-8. The tabular field group is a powerful feature of the framework. It allows data input and display in a tabular format, with a UI similar to a spreadsheet. This includes navigation in the table using cursor keys or the mouse, and supports copy and paste functions.
-9. Menu management, user management, and permission management are already integrated into the framework.
-10 We have provided three sample applications: a timesheet, task management, and expense tracking.
-11. An option is also available to define a screen using an Excel spreadsheet.
+3.	Screen definition involves high-level objects such as dialogues, enquiry fields, simple fields, tabular fields, button bars, etc., which we refer to as 'field groups'.
+4.	These screen definition screens are also created using the framework itself.
+5.	An option is also available to define a screen using an Excel spreadsheet.
+6.	Once defined, the backend can submit the screen definition to the React frontend, which will then render the screen accordingly.
+7.	React development is generally not required unless there is a need for a new type of field group.
+8.	The tabular field group is a powerful feature of the framework. It allows data input and display in a tabular format, with a UI similar to a spreadsheet. This includes navigation in the table using cursor keys or the mouse, and supports copy and paste functions.
+9.	Menu management, user management, and permission management are already integrated into the framework.
+10.	We have provided three sample applications: a timesheet, task management, and expense tracking.
 
 # Notes
 1. Python 3.10 or above.
@@ -23,7 +22,7 @@ The main objective of this framework is to minimize the development effort for t
 # History
 | Version | Date       | Author | Description    |
 | ------- | ---------- | ------ | -------------- |
-| 2.000   | 2023-12-07 | ikyo   | Initial release |
+| 2.000   | 2023-12-08 | ikyo   | Initial release |
 
 # Folder Structure
 1. **django_backend**: Python Django backend folder.
