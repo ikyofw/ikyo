@@ -36,6 +36,9 @@ class AuthAPIView(APIView):
         self.__viewUUID = None  # client request ID. E.g. SUUID, each screen instance has its own suuid
         self.__instanceID = int(datetime.now().timestamp() * 1e6)
 
+    def initial(self, request, *args, **kwargs):
+        super().initial(request, *args, **kwargs)
+
     def getCurrentUser(self) -> User:
         '''
             return User

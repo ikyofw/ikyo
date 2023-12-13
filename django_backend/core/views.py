@@ -312,7 +312,7 @@ class UsrGrpMnt(ScreenAPIView):
         if b.value:
             self.setSessionParameters({'curGrpID': b.data})
             return IkSccJsonResponse(message='Saved!')
-        return b.toIksonResponse1()
+        return b.toIkJsonResponse1()
 
     def refresh(self):
         return self.deleteSessionParameters(nameFilters=['newUserIDList', 'officeTeamFg'])

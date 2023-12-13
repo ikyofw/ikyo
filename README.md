@@ -23,7 +23,7 @@ The main objective of this framework is to minimize development effort for typic
 # History
 | Version | Date       | Author | Description    |
 | ------- | ---------- | ------ | -------------- |
-| 2.000   | 2023-12-08 | ikyo   | Initial release |
+| 2.000   | 2023-12-13 | ikyo   | Initial release |
 
 # Folder Structure
 1. **django_backend**: Python Django backend folder.

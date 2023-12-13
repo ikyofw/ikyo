@@ -13,6 +13,7 @@ from django.db.models.fields.related import ForeignKey
 import core.core.fs as ikfs
 import core.ui.ui as ikui
 import core.ui.uidb as ikuidb
+import core.ui.uiCache as ikuiCache
 import core.utils.spreadsheet as ikSpreadsheet
 import core.utils.modelUtils as modelUtils
 from core.core.exception import IkException
@@ -24,7 +25,7 @@ from core.utils import strUtils
 
 import core.models as ikModels
 
-logger = logging.getLogger('pyi')
+logger = logging.getLogger('ikyo')
 
 
 ### Screen
@@ -90,30 +91,30 @@ def deleteScreen(self, screenSn) -> Boolean2:
             screenFgLinkRcs = []
             screenFgHeaderFooterRcs = []
             for screenRc in screenRcs:
-                screenRc.pyi_set_status_delete()
+                screenRc.ik_set_status_delete()
                 fileRcs = ikModels.ScreenFile.objects.filter(screen=screenRc)
                 for i in fileRcs:
-                    i.pyi_set_status_delete()
+                    i.ik_set_status_delete()
                     screenFileRcs.append(i)
                 recordsetRcs = ikModels.ScreenRecordset.objects.filter(screen=screenRc)
                 for j in recordsetRcs:
-                    j.pyi_set_status_delete()
+                    j.ik_set_status_delete()
                     screenRecordsetRcs.append(j)
                 fieldGroupRcs = ikModels.ScreenFieldGroup.objects.filter(screen=screenRc)
                 for k in fieldGroupRcs:
-                    k.pyi_set_status_delete()
+                    k.ik_set_status_delete()
                     screenFieldGroupRcs.append(k)
                 fieldRcs = ikModels.ScreenField.objects.filter(screen=screenRc)
                 for l in fieldRcs:
-                    l.pyi_set_status_delete()
+                    l.ik_set_status_delete()
                     screenFieldRcs.append(l)
                 fgLinkRcs = ikModels.ScreenFgLink.objects.filter(screen=screenRc)
                 for m in fgLinkRcs:
-                    m.pyi_set_status_delete()
+                    m.ik_set_status_delete()
                     screenFgLinkRcs.append(m)
                 fgHeaderFooterRcs = ikModels.ScreenFgHeaderFooter.objects.filter(screen=screenRc)
                 for n in fgHeaderFooterRcs:
-                    n.pyi_set_status_delete()
+                    n.ik_set_status_delete()
                     screenFgHeaderFooterRcs.append(n)
 
             ptrn = IkTransaction(self)
@@ -156,30 +157,30 @@ def deleteLastScreen(self, screenSn) -> Boolean2:
             screenFgLinkRcs = []
             screenFgHeaderFooterRcs = []
 
-            screenRc.pyi_set_status_delete()
+            screenRc.ik_set_status_delete()
             fileRcs = ikModels.ScreenFile.objects.filter(screen=screenRc)
             for i in fileRcs:
-                i.pyi_set_status_delete()
+                i.ik_set_status_delete()
                 screenFileRcs.append(i)
             recordsetRcs = ikModels.ScreenRecordset.objects.filter(screen=screenRc)
             for j in recordsetRcs:
-                j.pyi_set_status_delete()
+                j.ik_set_status_delete()
                 screenRecordsetRcs.append(j)
             fieldGroupRcs = ikModels.ScreenFieldGroup.objects.filter(screen=screenRc)
             for k in fieldGroupRcs:
-                k.pyi_set_status_delete()
+                k.ik_set_status_delete()
                 screenFieldGroupRcs.append(k)
             fieldRcs = ikModels.ScreenField.objects.filter(screen=screenRc)
             for l in fieldRcs:
-                l.pyi_set_status_delete()
+                l.ik_set_status_delete()
                 screenFieldRcs.append(l)
             fgLinkRcs = ikModels.ScreenFgLink.objects.filter(screen=screenRc)
             for m in fgLinkRcs:
-                m.pyi_set_status_delete()
+                m.ik_set_status_delete()
                 screenFgLinkRcs.append(m)
             fgHeaderFooterRcs = ikModels.ScreenFgHeaderFooter.objects.filter(screen=screenRc)
             for n in fgHeaderFooterRcs:
-                n.pyi_set_status_delete()
+                n.ik_set_status_delete()
                 screenFgHeaderFooterRcs.append(n)
 
             ptrn = IkTransaction(self)
@@ -238,7 +239,7 @@ def copyScreen(self, userID, screenSn) -> Boolean2:
             filePath = __getImportScreenFilePath(screenRc.class_nm, screenRc.screen_sn)
         filename = '%s-v%s.xlsx' % (screenRc.screen_sn, '0')
         outputFile = os.path.join(filePath, filename)
-        templateFileFolder = ikui.PyiUI.getScreenFileTemplateFolder()
+        templateFileFolder = ikui.IkUI.getScreenFileTemplateFolder()
         templateFile = ikfs.getLastRevisionFile(templateFileFolder, 'template.xlsx')
         if isNullBlank(templateFile):
             logger.error("Template file does not exist in folder [%s]." % templateFileFolder.absolute())
@@ -277,21 +278,21 @@ def saveScreenRecordsets(self, screenSn, currentBtnClick) -> Boolean2:
         uniqueCheckList = []
         if recordsetLists:
             for rc in recordsetLists:
-                if rc.pyi_is_status_delete():
+                if rc.ik_is_status_delete():
                     # if delete check has related recordset
                     relateFgRc = ikModels.ScreenFieldGroup.objects.filter(screen=screenRc, recordset__id=rc.id).first()
                     if relateFgRc:
                         return Boolean2(False, rc.recordset_nm + " was used by field group: " + relateFgRc.fg_nm + ", please delete " + relateFgRc.fg_nm + " first.")
                     # hasUpdate = True
-                    rc.pyi_set_status_delete()
+                    rc.ik_set_status_delete()
                 else:
                     recordsetNm = strUtils.stripStr(rc.recordset_nm)
                     if strUtils.isEmpty(recordsetNm):
                         return Boolean2(False, "Recordset Name is mandatory, please check.")
                     if strUtils.isEmpty(rc.sql_fields):
                         rc.sql_fields = "*"
-                        # if (rc.pyi_is_status_retrieve()):
-                        #     rc.pyi_set_status_modified()
+                        # if (rc.ik_is_status_retrieve()):
+                        #     rc.ik_set_status_modified()
                     if strUtils.isEmpty(rc.sql_models):
                         return Boolean2(False, "Models is mandatory, please check.")
                     # check unique
@@ -299,7 +300,7 @@ def saveScreenRecordsets(self, screenSn, currentBtnClick) -> Boolean2:
                         return Boolean2(False, "Recordset Name is unique. Please check: " + recordsetNm)
                     uniqueCheckList.append(recordsetNm)
 
-                    # if rc.pyi_is_status_new() or rc.pyi_is_status_modified():
+                    # if rc.ik_is_status_new() or rc.ik_is_status_modified():
                     #     hasUpdate = True
 
         # if hasUpdate and currentBtnClick:
@@ -370,7 +371,7 @@ def saveFieldGroup(self, screenSn, isNew, currentBtnClick) -> Boolean2:
             if fieldListFg:
                 fieldSeq = 1
                 for rc in fieldListFg:
-                    if not rc.pyi_is_status_delete():
+                    if not rc.ik_is_status_delete():
                         # auto set field name & field seq
                         rc.seq = strUtils.stripStr(rc.seq)
                         rc.field_nm = strUtils.stripStr(rc.field_nm)
@@ -386,7 +387,7 @@ def saveFieldGroup(self, screenSn, isNew, currentBtnClick) -> Boolean2:
                         else:
                             rc.seq = float(rc.seq) - 0.5
                         fieldSeq += 1
-                        # if not rc.pyi_is_status_retrieve():
+                        # if not rc.ik_is_status_retrieve():
                         #     rc.visible = not rc.visible  # page is hidden
                         #     rc.editable = not rc.editable  # page is not editable
 
@@ -658,7 +659,7 @@ def __createNewRevScreen(self, screenSn, screenRc: ikModels.Screen, recordsetRcs
                 screenRc.rev = lastRevScreenRc.rev + 1
             else:
                 screenRc.rev = 0  # the first rev screen
-            screenRc.pyi_set_status_new()
+            screenRc.ik_set_status_new()
             screenRc.id = ikModels.Screen().assignPrimaryID()
 
         isNewScreen = True if self.getSessionParameterBool("isNewScreen") else False
@@ -676,14 +677,14 @@ def __createNewRevScreen(self, screenSn, screenRc: ikModels.Screen, recordsetRcs
                 recordsetRcs = ikModels.ScreenRecordset.objects.filter(screen=lastRevScreenRc).order_by("id")
             recordsetNewIdMap = {}  # **import: for create new field group
             for rc in recordsetRcs:
-                if not rc.pyi_is_status_delete():
+                if not rc.ik_is_status_delete():
                     ## _import if modified recordset_nm need update field group recordset id
                     orgRecordsetNm = None
-                    if rc.pyi_is_status_modified():
+                    if rc.ik_is_status_modified():
                         orgRecordsetNm = ikModels.ScreenRecordset.objects.filter(id=rc.id).first().recordset_nm
                         if rc.recordset_nm != orgRecordsetNm:
                             recordsetNewIdMap.update({orgRecordsetNm: rc.id})
-                    rc.pyi_set_status_new()
+                    rc.ik_set_status_new()
                     rc.screen = screenRc
                     rc.id = ikModels.ScreenRecordset().assignPrimaryID()
                     recordsetNewIdMap.update({rc.recordset_nm: rc.id})
@@ -706,7 +707,7 @@ def __createNewRevScreen(self, screenSn, screenRc: ikModels.Screen, recordsetRcs
                 if not strUtils.isEmpty(currentFgId) and fieldGroupRc and fgRc.id == currentFgId and not isDeleteFieldGroup:  # modify current field group info
                     ## _import if modified field group name need update fg link and header footer table id
                     orgFgNm = ikModels.ScreenFieldGroup.objects.filter(id=fgRc.id).first().fg_nm
-                    fieldGroupRc.pyi_set_status_new()
+                    fieldGroupRc.ik_set_status_new()
                     fieldGroupRc.id = ikModels.ScreenFieldGroup().assignPrimaryID()
                     newCurrentFgId = fieldGroupRc.id  # get new current field group id
                     curSeq = fieldGroupRc.seq
@@ -720,16 +721,16 @@ def __createNewRevScreen(self, screenSn, screenRc: ikModels.Screen, recordsetRcs
                         fieldRcs.sort(key=lambda obj: obj.seq)  # sort fields
                         seq1 = 1
                         for fRc in fieldRcs:
-                            if not fRc.pyi_is_status_delete():
+                            if not fRc.ik_is_status_delete():
                                 ## _import if modified field name need update header and footer field id
                                 orgFieldNm = None
-                                if fRc.pyi_is_status_modified():
+                                if fRc.ik_is_status_modified():
                                     orgFieldNm = ikModels.ScreenField.objects.filter(id=fRc.id).first().field_nm
                                     if fRc.field_nm != orgFieldNm:
                                         fgFieldNewIdMap.update({fRc.field_group.fg_nm + "-" + orgFieldNm: fRc.id})
-                                # if fRc.pyi_is_status_modified():
+                                # if fRc.ik_is_status_modified():
                                 #     fRc.visible = not fRc.visible if fRc.visible else True  # in page is use hidden
-                                fRc.pyi_set_status_new()
+                                fRc.ik_set_status_new()
                                 fRc.field_group = fieldGroupRc
                                 fRc.id = ikModels.ScreenField().assignPrimaryID()
                                 fRc.seq = seq1
@@ -745,7 +746,7 @@ def __createNewRevScreen(self, screenSn, screenRc: ikModels.Screen, recordsetRcs
                 else:  # copy the last rev screen's field group
                     # get last rev fields
                     lastRevFieldRcs = ikModels.ScreenField.objects.filter(screen=lastRevScreenRc, field_group=fgRc).order_by("seq")
-                    fgRc.pyi_set_status_new()
+                    fgRc.ik_set_status_new()
                     fgRc.screen = screenRc
                     fgRc.id = ikModels.ScreenFieldGroup().assignPrimaryID()
                     if fgRc.seq >= curSeq:
@@ -756,7 +757,7 @@ def __createNewRevScreen(self, screenSn, screenRc: ikModels.Screen, recordsetRcs
                     fieldGroupNewIdMap.update({fgRc.fg_nm: fgRc.id})
                     fSeq = 1
                     for fRc in lastRevFieldRcs:
-                        fRc.pyi_set_status_new()
+                        fRc.ik_set_status_new()
                         fRc.field_group = fgRc
                         fRc.id = ikModels.ScreenField().assignPrimaryID()
                         fRc.seq = fSeq
@@ -770,7 +771,7 @@ def __createNewRevScreen(self, screenSn, screenRc: ikModels.Screen, recordsetRcs
 
             # create new field group
             if fieldGroupRc and strUtils.isEmpty(currentFgId) and not isDeleteFieldGroup:
-                fieldGroupRc.pyi_set_status_new()
+                fieldGroupRc.ik_set_status_new()
                 fieldGroupRc.id = ikModels.ScreenFieldGroup().assignPrimaryID()
                 newCurrentFgId = fieldGroupRc.id
                 # _import: use new screenRc and recordset(if have)
@@ -782,8 +783,8 @@ def __createNewRevScreen(self, screenSn, screenRc: ikModels.Screen, recordsetRcs
                     fieldRcs.sort(key=lambda obj: obj.seq)  # sort fields
                     fSeq = 1
                     for fRc in fieldRcs:
-                        if not fRc.pyi_is_status_delete():
-                            fRc.pyi_set_status_new()
+                        if not fRc.ik_is_status_delete():
+                            fRc.ik_set_status_new()
                             fRc.field_group = fieldGroupRc
                             fRc.id = ikModels.ScreenField().assignPrimaryID()
                             # fRc.visible = not fRc.visible if fRc.visible else True  # in page is use hidden
@@ -809,9 +810,9 @@ def __createNewRevScreen(self, screenSn, screenRc: ikModels.Screen, recordsetRcs
             if (subScreenRcs is None or len(subScreenRcs) <= 0) and lastRevScreenRc:
                 subScreenRcs = ikModels.ScreenDfn.objects.filter(screen=lastRevScreenRc).order_by("id")
             for rc in subScreenRcs:
-                if not rc.pyi_is_status_delete():
+                if not rc.ik_is_status_delete():
                     ## _import if modified recordset_nm need update field group recordset id
-                    rc.pyi_set_status_new()
+                    rc.ik_set_status_new()
                     rc.screen = screenRc
                     rc.id = ikModels.ScreenDfn().assignPrimaryID()
                     subScreenDBRcs.append(rc)
@@ -826,7 +827,7 @@ def __createNewRevScreen(self, screenSn, screenRc: ikModels.Screen, recordsetRcs
                 if rc.id == currentFgLinkId and isDeleteFgLink:
                     continue
                 if not strUtils.isEmpty(currentFgLinkId) and fgLinkRc and rc.id == currentFgLinkId and not isDeleteFgLink:  # modify current field group link info
-                    fgLinkRc.pyi_set_status_new()
+                    fgLinkRc.ik_set_status_new()
                     fgLinkRc.id = ikModels.ScreenFgLink().assignPrimaryID()
                     newCurrentFgLinkId = fgLinkRc.id  # for get new current field group link id
                     # _import: use new screenRc and field group
@@ -835,7 +836,7 @@ def __createNewRevScreen(self, screenSn, screenRc: ikModels.Screen, recordsetRcs
                     fgLinkRc.parent_field_group_id = fieldGroupNewIdMap.get(fgLinkRc.parent_field_group.fg_nm)
                     fgLinkDBRcs.append(fgLinkRc)
                 else:  # copy the last rev screen's field group
-                    rc.pyi_set_status_new()
+                    rc.ik_set_status_new()
                     rc.id = ikModels.ScreenFgLink().assignPrimaryID()
                     # _import: use new screenRc and field group
                     rc.screen = screenRc
@@ -846,7 +847,7 @@ def __createNewRevScreen(self, screenSn, screenRc: ikModels.Screen, recordsetRcs
             ## XH 2023-04-25 START
             # create new field group
             if fgLinkRc and strUtils.isEmpty(currentFgLinkId) and not isDeleteFgLink:
-                fgLinkRc.pyi_set_status_new()
+                fgLinkRc.ik_set_status_new()
                 fgLinkRc.id = ikModels.ScreenFgLink().assignPrimaryID()
                 newCurrentFgLinkId = fgLinkRc.id  # for get new current field group link id
                 # _import: use new screenRc and field group
@@ -868,7 +869,7 @@ def __createNewRevScreen(self, screenSn, screenRc: ikModels.Screen, recordsetRcs
                     continue
                 if not strUtils.isEmpty(currentFgHeaderFooterId
                                         ) and fgHeaderFooterRc and rc.id == currentFgHeaderFooterId and not isDeleteFgHeaderFooter:  # modify current header footer table info
-                    fgHeaderFooterRc.pyi_set_status_new()
+                    fgHeaderFooterRc.ik_set_status_new()
                     fgHeaderFooterRc.id = ikModels.ScreenFgHeaderFooter().assignPrimaryID()
                     newCurrentFgHeaderFooterId = fgHeaderFooterRc.id  # for get new current header and footer table id
                     # _import: use new screenRc and field group and field
@@ -877,7 +878,7 @@ def __createNewRevScreen(self, screenSn, screenRc: ikModels.Screen, recordsetRcs
                     fgHeaderFooterRc.field_group_id = fieldGroupNewIdMap.get(fgHeaderFooterRc.field_group.fg_nm)
                     fgHeaderFooterDBRcs.append(fgHeaderFooterRc)
                 else:  # copy the last rev screen's header footer table
-                    rc.pyi_set_status_new()
+                    rc.ik_set_status_new()
                     rc.id = ikModels.ScreenFgHeaderFooter().assignPrimaryID()
                     # _import: use new screenRc and field group and field
                     rc.screen = screenRc
@@ -887,7 +888,7 @@ def __createNewRevScreen(self, screenSn, screenRc: ikModels.Screen, recordsetRcs
 
             ## XH 2023-04-25 START
             if fgHeaderFooterRc and strUtils.isEmpty(currentFgHeaderFooterId) and not isDeleteFgHeaderFooter:
-                fgHeaderFooterRc.pyi_set_status_new()
+                fgHeaderFooterRc.ik_set_status_new()
                 fgHeaderFooterRc.id = ikModels.ScreenFgHeaderFooter().assignPrimaryID()
                 newCurrentFgHeaderFooterId = fgHeaderFooterRc.id  # for get new current header and footer table id
                 # _import: use new screenRc and field group and field
@@ -914,7 +915,7 @@ def __createNewRevScreen(self, screenSn, screenRc: ikModels.Screen, recordsetRcs
             filePath = __getImportScreenFilePath(lastRevScreenRc.class_nm, lastRevScreenRc.screen_sn)
             filename = '%s-v%s.xlsx' % (screenSn, lastRevScreenRc.rev)
             outputFile = os.path.join(filePath, filename)
-            templateFileFolder = ikui.PyiUI.getScreenFileTemplateFolder()
+            templateFileFolder = ikui.IkUI.getScreenFileTemplateFolder()
             templateFile = ikfs.getLastRevisionFile(templateFileFolder, 'template.xlsx')
             if isNullBlank(templateFile):
                 logger.error("Template file does not exist in folder [%s]." % templateFileFolder.absolute())
@@ -928,12 +929,12 @@ def __createNewRevScreen(self, screenSn, screenRc: ikModels.Screen, recordsetRcs
             else:
                 # save screen file
                 screenFileRc = ikModels.ScreenFile()
-                screenFileRc.pyi_set_status_new()
+                screenFileRc.ik_set_status_new()
                 screenFileRc.screen = lastRevScreenRc
                 screenFileRc.file_nm = filename
                 screenFileRc.file_size = os.path.getsize(outputFile)
                 screenFileRc.file_path = filePath
-                screenFileRc.file_dt = datetime.now()
+                screenFileRc.file_dt = datetime.datetime.now()
                 screenFileRc.file_md5 = ikuidb._getExcelMD5(outputFile)
                 screenFileRc.rmk = "Saved on Screen Definition"
 
@@ -944,7 +945,7 @@ def __createNewRevScreen(self, screenSn, screenRc: ikModels.Screen, recordsetRcs
                     return b
                 
                 # 在缓存中保存新的页面的定义
-                screenDefinition = ikui.PyiUI._getScreenDefinitionFromDB(screenRc.screen_sn)
+                screenDefinition = ikui.IkUI._getScreenDefinitionFromDB(screenRc.screen_sn)
                 ikuiCache.updatePageDefinitionCache(screenRc.screen_sn, screenDefinition)
             ## XH 2023-05-08 End
 

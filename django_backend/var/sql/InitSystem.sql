@@ -24,3 +24,4 @@ INSERT INTO ik_usr_grp(version_no, grp_id, usr_id) VALUES(0, (SELECT id FROM ik_
 
 INSERT INTO ik_grp_menu(version_no, grp_id, menu_id, acl) VALUES(0, (SELECT id FROM ik_grp WHERE grp_nm='Administrator'), (SELECT id FROM ik_menu WHERE menu_nm='UsrMnt'), 'W');
 INSERT INTO ik_grp_menu(version_no, grp_id, menu_id, acl) VALUES(0, (SELECT id FROM ik_grp WHERE grp_nm='Administrator'), (SELECT id FROM ik_menu WHERE menu_nm='UsrGrpMnt'), 'W');
+INSERT INTO ik_grp_menu(version_no, grp_id, menu_id, acl) VALUES(0, (SELECT id FROM ik_grp WHERE grp_nm='Administrator'), (SELECT id FROM ik_menu WHERE menu_nm='ScreenDfn'), 'W');

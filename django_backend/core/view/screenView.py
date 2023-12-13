@@ -185,6 +185,9 @@ class ScreenAPIView(AuthAPIView):
         if not isNullBlank(self.__menuName) and (isNullBlank(self.__functionCategory) or isNullBlank(self.__functionCode)):
             self.__updateFunctionInfoFromMenu()
 
+    def initial(self, request, *args, **kwargs):
+        super().initial(request, *args, **kwargs)
+
     def _getTableDataIndex(self, fieldGroupName) -> any:
         return self.getSessionParameter(fieldGroupName + '_EditIndexField')
 

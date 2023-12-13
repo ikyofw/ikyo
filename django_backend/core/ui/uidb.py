@@ -127,12 +127,14 @@ def screenDbWriteToExcel(screenRc, templateFile, outputFile) -> Boolean2:
     fgFieldRcs = ScreenField.objects.filter(screen=screenRc).order_by('field_group', 'seq', 'id')
     fgNm = ''
     for rc in fgFieldRcs:
-        if fgNm == rc.field_group.fg_nm:
+        rc.visible = '' if rc.visible == True else 'yes'  # column title: hide
+        rc.editable = '' if rc.editable == True else 'no'
+        if not rc.field_group:
+            continue
+        elif fgNm == rc.field_group.fg_nm:
             rc.field_group.fg_nm = ''
         else:
             fgNm = rc.field_group.fg_nm
-        rc.visible = '' if rc.visible == True else 'yes'  # column title: hide
-        rc.editable = '' if rc.editable == True else 'no'
 
     dfnRcs = ScreenDfn.objects.filter(screen=screenRc).order_by('sub_screen_nm')
 

@@ -1,5 +1,5 @@
 '''
-Description: PYI Screen Definition
+Description: IKYO Screen Definition
 '''
 import logging
 import datetime
@@ -19,7 +19,7 @@ from core.utils.langUtils import isNullBlank, isNotNullBlank
 
 import core.models as ikModels
 
-logger = logging.getLogger('pyi')
+logger = logging.getLogger('ikyo')
 
 NO_PARAMETERS_WIDGET = [
     ikui.SCREEN_FIELD_WIDGET_TEXT_AREA, ikui.SCREEN_FIELD_WIDGET_PLUGIN, ikui.SCREEN_FIELD_WIDGET_HTML, ikui.SCREEN_FIELD_WIDGET_VIEWER, ikui.SCREEN_FIELD_WIDGET_PASSWORD
@@ -47,9 +47,9 @@ class ScreenDfn(ScreenAPIView):
                 elif widgetNm == ikui.SCREEN_FIELD_WIDGET_DATE_BOX:
                     screen.setFieldsVisible(fieldGroupName='dialogWidgetPramsFg', fieldNames=['formatField2'], visible=True)
                 elif widgetNm == ikui.SCREEN_FIELD_WIDGET_COMBO_BOX or widgetNm == ikui.SCREEN_FIELD_WIDGET_LIST_BOX or widgetNm == ikui.SCREEN_FIELD_WIDGET_ADVANCED_COMBOBOX:
-                    screen.setFieldsVisible(fieldGroupName='dialogWidgetPramsFg', fieldNames=['dataField', 'dataUrlField', 'valuesField', 'onChangeField'], visible=True)
+                    screen.setFieldsVisible(fieldGroupName='dialogWidgetPramsFg', fieldNames=['dataField', 'recordsetField', 'dataUrlField', 'valuesField', 'onChangeField'], visible=True)
                 elif widgetNm == ikui.SCREEN_FIELD_WIDGET_ADVANCED_SELECTION:
-                    screen.setFieldsVisible(fieldGroupName='dialogWidgetPramsFg', fieldNames=['iconField', 'dataField', 'dataUrlField', 'valuesField', 'dialogField'], visible=True)
+                    screen.setFieldsVisible(fieldGroupName='dialogWidgetPramsFg', fieldNames=['iconField', 'dataField', 'recordsetField', 'dataUrlField', 'valuesField', 'dialogField'], visible=True)
                 elif widgetNm == ikui.SCREEN_FIELD_WIDGET_CHECK_BOX:
                     screen.setFieldsVisible(fieldGroupName='dialogWidgetPramsFg', fieldNames=['stateNumField'], visible=True)
                 elif widgetNm == ikui.SCREEN_FIELD_WIDGET_BUTTON or widgetNm == ikui.SCREEN_FIELD_WIDGET_ICON_AND_TEXT:
@@ -192,7 +192,7 @@ class ScreenDfn(ScreenAPIView):
         boo = sdm.saveScreen(self, screenSn, isNewScreen, True)
         if boo.value and isNewScreen:
             self.deleteSessionParameters("isNewScreen")
-        return boo.toPyisonResponse1()
+        return boo.toIkJsonResponse1()
 
     def deleteScreen(self):
         screenSn = self.getSessionParameter("screenSN")
@@ -203,7 +203,7 @@ class ScreenDfn(ScreenAPIView):
         if boo.value:
             self.deleteSessionParameters(
                 nameFilters=['isNewScreen', 'screenSN', 'isNewFg', 'currentFgID', 'isNewFgLink', 'currentFgLinkID', 'isNewFgHeaderFooter', 'currentFgHeaderFooterID'])
-        return boo.toPyisonResponse1()
+        return boo.toIkJsonResponse1()
 
     def checkBeforeDelete(self):
         requestData = self.getRequestData()
@@ -221,7 +221,7 @@ class ScreenDfn(ScreenAPIView):
         boo = sdm.deleteLastScreen(self, screenSn)
         if boo.value:
             self.deleteSessionParameters(nameFilters=['isNewScreen', 'isNewFg', 'currentFgID', 'isNewFgLink', 'currentFgLinkID', 'isNewFgHeaderFooter', 'currentFgHeaderFooterID'])
-        return boo.toPyisonResponse1()
+        return boo.toIkJsonResponse1()
 
     def checkBeforeDeleteLast(self):
         requestData = self.getRequestData()
@@ -236,7 +236,7 @@ class ScreenDfn(ScreenAPIView):
         if strUtils.isEmpty(screenSn):
             return IkErrJsonResponse(message="Please select a Screen first.")
         boo = sdm.copyScreen(self, userID, screenSn)
-        return boo.toPyisonResponse1()
+        return boo.toIkJsonResponse1()
 
     def exportScreen(self):
         '''
@@ -297,7 +297,7 @@ class ScreenDfn(ScreenAPIView):
         if strUtils.isEmpty(screenSn):
             return IkErrJsonResponse(message="Please select a Screen first.")
         boo = sdm.saveScreenRecordsets(self, screenSn, True)
-        return boo.toPyisonResponse1()
+        return boo.toIkJsonResponse1()
 
     ### Field Group
     # list screen's field group
@@ -427,7 +427,7 @@ class ScreenDfn(ScreenAPIView):
         message = "Are you sure save this field group?\n"
         delNum = 0
         for i in fieldListFg:
-            if i.pyi_is_status_delete():
+            if i.ik_is_status_delete():
                 relatedFgHeaderFooterRc =ikModels.ScreenFgHeaderFooter.objects.filter(screen=screenRc, field_group__id=fieldGroupId, field__id=i.id).first()
                 if relatedFgHeaderFooterRc:
                     delNum += 1
@@ -451,7 +451,7 @@ class ScreenDfn(ScreenAPIView):
         if boo.value:
             self.openFieldGroup()
             self.deleteSessionParameters("isNewFg")
-        return boo.toPyisonResponse1()
+        return boo.toIkJsonResponse1()
 
     # check related table when delete field group
     def checkFgIsRelated(self):
@@ -487,7 +487,7 @@ class ScreenDfn(ScreenAPIView):
         if boo.value:
             self.deleteSessionParameters("currentFgID")
             return IkSccJsonResponse(message="Deleted field group.")
-        return boo.toPyisonResponse1()
+        return boo.toIkJsonResponse1()
 
     def getScreenDfnRcs(self):
         screenSn = self.getSessionParameter("screenSN")
@@ -506,7 +506,7 @@ class ScreenDfn(ScreenAPIView):
             return IkErrJsonResponse(message="Please select a Screen first.")
 
         boo = sdm.saveSubScreen(self, screenSn, screenDfn)
-        return boo.toPyisonResponse1()
+        return boo.toIkJsonResponse1()
 
     ### Field Group Links
     # get field group's field group links
@@ -646,7 +646,7 @@ class ScreenDfn(ScreenAPIView):
         boo = sdm.saveFgLink(self, screenSn, isNewFgLink, True)
         if boo.value and isNewFgLink:
             self.deleteSessionParameters("isNewFgLink")
-        return boo.toPyisonResponse1()
+        return boo.toIkJsonResponse1()
 
     def deleteFgLink(self):
         screenSn = self.getSessionParameter("screenSN")
@@ -662,7 +662,7 @@ class ScreenDfn(ScreenAPIView):
         if boo.value:
             self.deleteSessionParameters("currentFgLinkID")
             return IkSccJsonResponse(message="Deleted field group link.")
-        return boo.toPyisonResponse1()
+        return boo.toIkJsonResponse1()
 
     ### Header And Footer
     # get field group's header and footer
@@ -764,7 +764,7 @@ class ScreenDfn(ScreenAPIView):
         boo = sdm.saveFgHeaderFooter(self, screenSn, isNewFgHeaderFooter, True)
         if boo.value and isNewFgHeaderFooter:
             self.deleteSessionParameters("isNewFgHeaderFooter")
-        return boo.toPyisonResponse1()
+        return boo.toIkJsonResponse1()
 
     def deleteFgHeaderFooter(self):
         screenSn = self.getSessionParameter("screenSN")
@@ -780,7 +780,7 @@ class ScreenDfn(ScreenAPIView):
         if boo.value:
             self.deleteSessionParameters("currentFgHeaderFooterID")
             return IkSccJsonResponse(message="Deleted header and footer table.")
-        return boo.toPyisonResponse1()
+        return boo.toIkJsonResponse1()
 
     def hideFgDetail(self):
         return self.deleteSessionParameters(nameFilters=["currentFgID", "isNewFg"])
@@ -802,6 +802,12 @@ class ScreenDfn(ScreenAPIView):
             widgetPrams['values'] = '{"value": "value", "display": "display"}'
         elif widgetNm == ikui.SCREEN_FIELD_WIDGET_ICON_AND_TEXT and 'type' not in widgetPrams:
             widgetPrams['type'] = 'normal'
+        elif (widgetNm in ikui.SCREEN_FIELD_SELECT_WIDGETS or widgetNm == ikui.SCREEN_FIELD_WIDGET_ADVANCED_SELECTION) and 'recordset' in widgetPrams:
+            screenSn = self.getSessionParameter("screenSN")
+            screenRc = ikModels.Screen.objects.filter(screen_sn__iexact=screenSn).order_by("-rev").first()
+            recordsetRc = ikModels.ScreenRecordset.objects.filter(screen=screenRc, recordset_nm=widgetPrams['recordset']).first()
+            if isNotNullBlank(recordsetRc):
+                widgetPrams['recordset'] = recordsetRc.id
         return IkSccJsonResponse(data=widgetPrams)
 
     def getHtmlDialogHtml(self):
@@ -856,6 +862,9 @@ class ScreenDfn(ScreenAPIView):
         data = ''
         if isNotNullBlank(widgetPrams):
             cleanedDict = {k: v for k, v in widgetPrams.items() if isNotNullBlank(v) and (k != 'multiple' or v != 'false')}
+            if 'recordset' in cleanedDict and isNotNullBlank(cleanedDict['recordset']):
+                recordsetRc = ikModels.ScreenRecordset.objects.filter(id=cleanedDict['recordset']).first()
+                cleanedDict['recordset'] = recordsetRc.recordset_nm
             newWidgetPrams = '\n'.join(f"{k}: {v}" for k, v in cleanedDict.items())
             data = {'value': newWidgetPrams, 'display': newWidgetPrams}
         return IkSccJsonResponse(data=data)
