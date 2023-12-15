@@ -16,16 +16,20 @@ interface ISearchFg {
   searchParams: any
   searchEvent: any
   onChangeEvent: any
+  editable: boolean
 }
 const SearchFg: React.FC<ISearchFg> = forwardRef((props, ref: Ref<any>) => {
   const HttpGet = useHttp(pyiLocalStorage.globalParams.HTTP_TYPE_GET)
 
   let refs: { [key: string]: React.MutableRefObject<any> } = {}
   const _useRef = useRef
-  const caption = props.searchParams?.caption
-  const name = props.searchParams.name
-  const cols = props.searchParams.cols
-  const fields = props.searchParams.fields
+
+  const { searchParams, editable: screenEditable } = props
+  const caption = searchParams?.caption
+  const name = searchParams.name
+  const cols = searchParams.cols
+  const fields = searchParams.fields
+  const editable = screenEditable && searchParams.editable
   const searchBtn = pyiLocalStorage.globalParams.PUBLIC_URL + "images/search_button.gif"
   const [updateFields, setUpdateFields] = useState<Boolean>(false)
   const [searchData, setSearchData] = useState(Object)
@@ -105,9 +109,9 @@ const SearchFg: React.FC<ISearchFg> = forwardRef((props, ref: Ref<any>) => {
       setSearchData(schData)
       sessionStorage.removeItem("SEARCH_DATA_" + name)
     } else {
-      setSearchData(props.searchParams.data)
+      setSearchData(searchParams.data)
     }
-  }, [name, props.searchParams.data])
+  }, [name, searchParams.data])
 
   return (
     <>
@@ -150,7 +154,7 @@ const SearchFg: React.FC<ISearchFg> = forwardRef((props, ref: Ref<any>) => {
                                 textBoxLabel={field.caption}
                                 textBoxValue={simpleFg.formatValue(searchData, field)}
                                 name={field.name}
-                                editable={field.editable}
+                                editable={editable && field.editable}
                                 style={field.style}
                                 widgetParameter={field.widgetParameter}
                               />
@@ -164,7 +168,7 @@ const SearchFg: React.FC<ISearchFg> = forwardRef((props, ref: Ref<any>) => {
                                 require={field.required}
                                 name={field.name}
                                 onChangeEvent={props.onChangeEvent}
-                                editable={field.editable}
+                                editable={editable && field.editable}
                                 style={field.style}
                                 widgetParameter={field.widgetParameter}
                               />
@@ -177,7 +181,7 @@ const SearchFg: React.FC<ISearchFg> = forwardRef((props, ref: Ref<any>) => {
                                 require={field.required}
                                 name={field.name}
                                 onChangeEvent={props.onChangeEvent}
-                                editable={field.editable}
+                                editable={editable && field.editable}
                                 style={field.style}
                                 widgetParameter={field.widgetParameter}
                               />
@@ -188,7 +192,7 @@ const SearchFg: React.FC<ISearchFg> = forwardRef((props, ref: Ref<any>) => {
                                 checkBoxLabel={field.caption}
                                 value={simpleFg.formatValue(searchData, field)}
                                 name={field.name}
-                                editable={field.editable}
+                                editable={editable && field.editable}
                                 widgetParameter={field.widgetParameter}
                               />
                             ) : String(field.widget).trim().toLocaleLowerCase() === "datebox" ? (
@@ -197,7 +201,7 @@ const SearchFg: React.FC<ISearchFg> = forwardRef((props, ref: Ref<any>) => {
                                 ref={refs[field.name]}
                                 inputLabel={field.caption}
                                 inputValue={simpleFg.formatValue(searchData, field)}
-                                editable={field.editable}
+                                editable={editable && field.editable}
                                 style={field.style}
                                 widgetParameter={field.widgetParameter}
                               />

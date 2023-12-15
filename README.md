@@ -1,3 +1,11 @@
+<div style="padding-bottom: 20px;">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="images/ikyo2.png" style="max-height: 100%; height: 60px; margin-bottom: 20px">
+    <img alt="Ikyo" src="images/ikyo2.png" height="60px">
+  </picture>
+  <span style="font-size: 3em">Ikyo</span>
+</div>
+
 # Background
 The main objective of this framework is to minimize development effort for typical web-based applications that do not require complex user interfaces. It provides only one standard UI style for efficiency. Originally developed in 2002 using Java and JavaScript, the framework was migrated to React and Django in 2022, resulting in the current version 2.0. As of December 2023, the framework has been open-sourced.
 

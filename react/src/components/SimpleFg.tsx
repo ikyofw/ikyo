@@ -256,7 +256,7 @@ const SimpleFg: React.FC<ISimpleFg> = forwardRef((props, ref: Ref<any>) => {
                           require={field.required}
                           name={field.name}
                           onChangeEvent={props.onChangeEvent}
-                          editable={field.editable}
+                          editable={editable && field.editable}
                           style={field.style}
                           widgetParameter={field.widgetParameter}
                         />
@@ -268,7 +268,7 @@ const SimpleFg: React.FC<ISimpleFg> = forwardRef((props, ref: Ref<any>) => {
                           value={formatValue(data, field)}
                           require={field.required}
                           name={field.name}
-                          editable={field.editable}
+                          editable={editable && field.editable}
                           style={field.style}
                           widgetParameter={field.widgetParameter}
                         />
@@ -314,7 +314,7 @@ const SimpleFg: React.FC<ISimpleFg> = forwardRef((props, ref: Ref<any>) => {
                           name={field.name}
                           widgetParameter={field.widgetParameter}
                           clickEvent={() => props.btnClickEvent([field.eventHandler, field.eventHandlerParameter, field.widgetParameter])}
-                          editable={props.editable && field.editable}
+                          editable={editable && field.editable}
                         />
                       ) : String(field.widget).trim().toLocaleLowerCase() === "file" ? (
                         <FileUpload
@@ -323,7 +323,7 @@ const SimpleFg: React.FC<ISimpleFg> = forwardRef((props, ref: Ref<any>) => {
                           fileBoxLabel={field.caption}
                           name={field.name}
                           widgetParameter={field.widgetParameter}
-                          editable={true}
+                          editable={editable && field.editable}
                         />
                       ) : (
                         // default use Label

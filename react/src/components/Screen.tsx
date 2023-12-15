@@ -673,6 +673,7 @@ const Screen: React.FC<IScreenBox> = forwardRef((props, ref: Ref<any>) => {
                         })
                       }
                       onChangeEvent={(eventHandler) => comboBoxOnChange({ fgName, eventHandler })}
+                      editable={screenEditable}
                     />
                   ) : null}
 
