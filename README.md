@@ -3,7 +3,6 @@
     <source media="(prefers-color-scheme: dark)" srcset="images/ikyo2.png" style="max-height: 100%; height: 60px; margin-bottom: 20px">
     <img alt="Ikyo" src="images/ikyo2.png" height="60px">
   </picture>
-  <span style="font-size: 32px; font-weight:bold;">Ikyo</span>
 </div>
 
 # Background
