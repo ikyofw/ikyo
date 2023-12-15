@@ -36,7 +36,7 @@ class ScreenDfn(ScreenAPIView):
                 widgetNm = self.getSessionParameter('widgetNm')
                 screen.setFieldsVisible(fieldGroupName='dialogWidgetPramsFg',
                                         fieldNames=[
-                                            'formatField1', 'formatField2', 'stateNumField', 'multipleField', 'dataField', 'dataUrlField', 'valuesField', 'onChangeField', 'dialogField',
+                                            'formatField1', 'formatField2', 'stateNumField', 'multipleField', 'dataField', 'recordsetField', 'dataUrlField', 'valuesField', 'onChangeField', 'dialogField',
                                             'iconField', 'typeField'
                                         ],
                                         visible=False)
