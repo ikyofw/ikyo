@@ -1,5 +1,6 @@
 import React, { Ref, forwardRef, useState } from "react"
 import pyiLocalStorage from "../utils/pyiLocalStorage"
+import "../../public/static/css/CheckBox.css"
 
 const pyiGlobal = pyiLocalStorage.globalParams
 const iconFalse = pyiGlobal.PUBLIC_URL + "images/checkbox_false.gif"

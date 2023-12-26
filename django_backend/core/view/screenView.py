@@ -362,23 +362,16 @@ class ScreenAPIView(AuthAPIView):
         '''
             used for react ScreenRender
         '''
-        # YL.ikyo, 2023-05-08 for forward screen - start
+        # XH, 2023-12-20 for forward screen - start
 
-        # can't delete session data when open screen, for forward screen
-        # # delete the old session parameters
-        # if not self.deleteSessionParameters(nameFilters="*"):
-        #     logger.warn('delete old session parameters failed.')
-        # self.cleanSessionParameters()
-
-        openScreenParams = self.request.GET.get(_OPEN_SCREEN_PARAM_KEY_NAME, None)
-        if openScreenParams:
-            try:
-                if not isinstance(openScreenParams, dict):
-                    openScreenParams = json.loads(openScreenParams)
-                self.setSessionParameters(openScreenParams)
-            except Exception as e:
-                logger.error('The format of the redirect page parameter is incorrect. ' + str(openScreenParams))
-        # YL.ikyo, 2023-05-08 - end
+        # When jumping to open a new page, save the initial parameters(if any).
+        oldSUUID = self.request.GET.get(PARAMETER_KEY_NAME_SCREEN_UUID, None)
+        openScreenKey = "%s_%s" % (_OPEN_SCREEN_PARAM_KEY_NAME, oldSUUID)
+        openScreenParams = self.getSessionParameter(openScreenKey, delete=True, isGlobal=True)
+        if isNotNullBlank(openScreenParams):
+            for key, value in openScreenParams.items():
+                self.setSessionParameter(key, value)
+        # XH, 2023-12-20 - end
         screen = self.getScreen()
         fieldGroupNames = []
         if screen is not None:
@@ -964,8 +957,7 @@ class ScreenAPIView(AuthAPIView):
         '''
         rspData = {_OPEN_SCREEN_KEY_NAME: menuName}
         if parameters is not None:
-            for key, value in parameters.items():
-                rspData[key] = value
+            self.setSessionParameter(name="%s_%s" % (_OPEN_SCREEN_PARAM_KEY_NAME, self.__viewUUID), value=parameters, isGlobal=True)
         return ikhttp.IkSccJsonResponse(data=rspData)
 
     def convert2DummyModelRcs(self, dataList, initStatus=None) -> list:

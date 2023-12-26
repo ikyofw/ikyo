@@ -142,6 +142,8 @@ def screenDbWriteToExcel(screenRc, templateFile, outputFile) -> Boolean2:
     hfRcs = ScreenFgHeaderFooter.objects.filter(screen=screenRc).order_by('field_group', 'field__seq')
     fgNm = ''
     for rc in hfRcs:
+        if not rc.field_group:
+            continue
         if fgNm == rc.field_group.fg_nm:
             rc.field_group.fg_nm = ''
         else:

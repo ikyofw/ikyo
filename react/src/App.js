@@ -1,4 +1,6 @@
 import "./App.css"
+import "../public/static/css/menu-v1.css"
+import "../public/static/css/style-v2.css"
 
 import { BrowserRouter, Route, Routes } from "react-router-dom"
 import TopBar from "./components/TopBar"

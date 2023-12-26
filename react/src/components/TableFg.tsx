@@ -22,7 +22,7 @@ import DefaultRow from "./tableFg/Row"
 import DefaultRowIndicator, { enhance as enhanceRowIndicator } from "./tableFg/RowIndicator"
 import Selected from "./tableFg/Selected"
 import DefaultTable from "./tableFg/Table"
-// import "../../public/static/css/TableFg.css"
+import "../../public/static/css/TableFg.css"
 import { useHttp } from "../utils/http"
 import pyiLogger from "../utils/log"
 import { getResponseData, showErrorMessage, showInfoMessage, validateResponse } from "../utils/sysUtil"
@@ -794,7 +794,11 @@ const TableFg = forwardRef(<CellType extends Types.CellBase>(props: Props<CellTy
     if (pageType === pyiGlobal.CLIENT_PAGING) {
       getPageDataWithClient(pageNation)
     } else if (pageType === pyiGlobal.SERVER_PAGING) {
-      getPageDataWithServer(pageNation, true)
+      if (pluginActiveRows.length > 0) {
+        getPageDataWithServer(1, true)
+      } else {
+        getPageDataWithServer(pageNation, true)
+      }
     }
   }, [tableParams]) // Clear the search when the page is refreshed; if there is a pagination you need to re-fetch the current pagination's data
 

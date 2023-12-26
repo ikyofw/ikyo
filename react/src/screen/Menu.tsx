@@ -1,4 +1,4 @@
-// import "../../public/static/css/menu-v1.css"
+import "../../public/static/css/menu-v1.css"
 
 import { useEffect, useState } from "react"
 import cookie from "react-cookies"

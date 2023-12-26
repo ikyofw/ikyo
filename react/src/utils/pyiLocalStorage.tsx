@@ -7,7 +7,6 @@ const pyiLocalStorage = {
 
     // open screen
     OPEN_SCREEN_KEY_NAME: "OPEN_SCREEN",
-    OPEN_SCREEN_PARAM_KEY_NAME: "OPEN_SCREEN_PARAM",
     ACTION_COMMAND: "__CMD",
 
     //  sub screen

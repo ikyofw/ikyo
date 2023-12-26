@@ -149,7 +149,6 @@ const Button: React.FC<IButton> = (props) => {
           .then((response) => response.json())
           .then((result) => {
             if (result.data && result.data[pyiGlobal.OPEN_SCREEN_KEY_NAME]) {
-              sessionStorage.setItem(pyiGlobal.OPEN_SCREEN_PARAM_KEY_NAME, JSON.stringify(result.data))
               window.location.href = result.data[pyiGlobal.OPEN_SCREEN_KEY_NAME]
             }
             if (validateResponse(result, false)) {
@@ -218,7 +217,6 @@ const Button: React.FC<IButton> = (props) => {
           .then((response) => response.json())
           .then((result) => {
             if (result.data && result.data[pyiGlobal.OPEN_SCREEN_KEY_NAME]) {
-              sessionStorage.setItem(pyiGlobal.OPEN_SCREEN_PARAM_KEY_NAME, JSON.stringify(result.data))
               window.location.href = result.data[pyiGlobal.OPEN_SCREEN_KEY_NAME]
             }
             if (validateResponse(result, false)) {
@@ -307,7 +305,6 @@ const Button: React.FC<IButton> = (props) => {
           .then((response) => response.json())
           .then((result) => {
             if (result.data && result.data[pyiGlobal.OPEN_SCREEN_KEY_NAME]) {
-              sessionStorage.setItem(pyiGlobal.OPEN_SCREEN_PARAM_KEY_NAME, JSON.stringify(result.data))
               window.location.href = result.data[pyiGlobal.OPEN_SCREEN_KEY_NAME]
             }
             if (validateResponse(result, false)) {

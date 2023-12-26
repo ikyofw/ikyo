@@ -6,7 +6,7 @@ import pyiLocalStorage from "../utils/pyiLocalStorage"
 import { getScreenDfn } from "../utils/sysUtil"
 import ImageButton from "./ImageButton"
 import Screen from "./Screen"
-// import "../../public/static/css/Dialog-v2.css"
+import "../../public/static/css/Dialog-v2.css"
 
 const pyiGlobal = pyiLocalStorage.globalParams
 const close_icon = pyiGlobal.PUBLIC_URL + "images/close1.png"

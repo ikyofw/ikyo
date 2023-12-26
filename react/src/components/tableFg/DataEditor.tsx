@@ -10,7 +10,7 @@ import * as Types from "./types"
 import { moveCursorToEnd } from "./util"
 // TODO
 // DropdownList cant set required
-// import "../../../public/static/css/combocell-v1.css"
+import "../../../public/static/css/combocell-v1.css"
 import { formatDate, getDateFormatStr } from "../../utils/sysUtil"
 import { Calendar as DatePicker } from "../calendar/DatePicker" // LHH.ikyo 2022-05-09
 // LHH.ikyo 2022-05-20 start

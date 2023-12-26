@@ -1,5 +1,6 @@
 import ReactDOM from "react-dom"
 import pyiLocalStorage from "../utils/pyiLocalStorage"
+import "../../public/static/css/Loading.css"
 
 const pyiGlobal = pyiLocalStorage.globalParams
 const loadingImgUrl = pyiGlobal.PUBLIC_URL + "images/loading.gif"

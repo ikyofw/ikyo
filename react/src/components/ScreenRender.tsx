@@ -65,10 +65,9 @@ const ScreenRender = (props) => {
   const refreshList = async () => {
     try {
       let params = ''
-      if (sessionStorage.getItem(pyiGlobal.OPEN_SCREEN_PARAM_KEY_NAME)) {
-        const openScreenParams = sessionStorage.getItem(pyiGlobal.OPEN_SCREEN_PARAM_KEY_NAME)
-        sessionStorage.removeItem(pyiGlobal.OPEN_SCREEN_PARAM_KEY_NAME)
-        params = "?" + pyiGlobal.OPEN_SCREEN_PARAM_KEY_NAME + "=" + openScreenParams
+      if (sessionStorage.getItem("SUUID")) {
+        const oldSUUID = sessionStorage.getItem("SUUID")
+        params = "?SUUID=" + oldSUUID
       }
       await HttpGet("/api/" + props.screenID + "/initScreen" + params)
         .then((response) => {
