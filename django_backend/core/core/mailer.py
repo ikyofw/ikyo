@@ -1,16 +1,24 @@
-import logging
-import os
+import logging, time, os, threading
 import smtplib
+from threading import Lock
 from email.mime.application import MIMEApplication
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.utils import formataddr
+
+from django.template import loader
 
 from core.core.exception import IkException
 from core.sys.systemSetting import SystemSetting
 from core.utils import strUtils
 from django.template import loader
 from iktools import IkConfig
+
+from core.utils import templateManager
+from core.utils.langUtils import validateEmail
+import core.user.userManager as UserManager
+from core.utils import strUtils
+
 
 logger = logging.getLogger('ikyo')
 
@@ -219,3 +227,207 @@ class Mailer():
         t = loader.get_template(templateFile)
         content = t.render({} if templateParameters is None else templateParameters)
         return self.send(subject=subject, content=content, contentType=contentType, sendFrom=sendFrom, to=to, cc=cc, attachments=attachments)
+
+
+class __MailQueueData:
+    """mail data class.
+
+    Attributes:
+        subject (str): Mail subject.
+        toUserIDs (:obj:`list`): Send to users' IDs.
+        ccUserIDs (:obj:`list`): CC to users' IDs.
+        templateFilename (str): Mail content template file name.
+        parameters (:obj:`dict`): Mail content template file parameters.
+
+    """
+    def __init__(self, subject, toUserIDs, ccUserIDs, templateFilename, parameters):
+        self.subject = subject
+        self._toUserIDs = toUserIDs
+        self._ccUserIDs = ccUserIDs
+        self._templateFilename = templateFilename
+        self._parameters = parameters
+
+        # get email to address
+        errorMessage, send2EmailList = self.__getEmailAddresses(toUserIDs)
+        if len(send2EmailList) == 0:
+            raise IkException(errorMessage)
+        self.send2EmailList = send2EmailList
+        # get email cc to address
+        cc2EmailList = None
+        if ccUserIDs is not None and len(ccUserIDs) > 0:
+            errorMessage2, cc2EmailList = self.__getEmailAddresses(ccUserIDs)
+            if errorMessage == '' or errorMessage is None:
+                errorMessage = errorMessage2
+            else:
+                errorMessage += errorMessage2    
+        if cc2EmailList is not None:
+            cc2EmailList.extend(self.__bcc2Self)
+        else:
+            cc2EmailList = self.__bcc2Self
+        self.cc2EmailList = cc2EmailList
+        if errorMessage is not None and errorMessage != '':
+            logger.warning(errorMessage)
+        self.mailAddressErrorMessage = errorMessage if errorMessage else None
+
+        # read templates
+        self.mailContent = templateManager.loadTemplateFile(templateFilename, parameters)
+
+    def __getEmailAddresses(self, userIDs) -> tuple:
+        errorMessage = ''
+        emails = UserManager.getUserEmailAddresses(userIDs)
+        for i in range(len(emails)):
+            email = emails[i]
+            if emails is None or str(email).strip() == '':
+                # no email
+                if errorMessage != '':
+                    errorMessage += ' '
+                errorMessage += "%s's email is not define." % email.name
+                emails[i] = None
+            elif not validateEmail(email.email):
+                # incorrect email
+                if errorMessage != '':
+                    errorMessage += ' '
+                errorMessage += "%s's email [%s] is incorrect." % (email.name, email.email)
+                emails[i] = None
+        if errorMessage == '':
+            return (None, emails)
+        emails2 = []
+        for email in emails:
+            if email is not None:
+                emails2.append(email)
+        return (errorMessage, emails2)
+
+
+class _MailQueue:
+    """mailer queue class.
+
+    Only allow to create one instance.
+
+    """
+    SEND_FAILED_RETRY_TIMES = 5
+
+    def __init__(self) -> None:
+        self.__mailFrom = SystemSetting.get(name='SMTP Sender Address', default=IkConfig.get("Email", "mail.from"))
+        self.__bcc2Self = [EmailAddress(email = SystemSetting.get(name='SMTP Account', default=IkConfig.get("Email", "mail.username")), name = 'Ikyo')]
+        self.__mailQueues = []
+        self.__queueLock = Lock()
+        self.__senderThread = threading.Thread(target=self.__sendMailFromPool, args=())
+        self.__senderThread.start()
+
+    def send(self, subject, toUserIDs, ccUserIDs, templateFilename, parameters) -> None:
+        """Send mail
+
+        Args:
+            subject (str): Mail subject.
+            toUserIDs (:obj:`list`): Receiver's IDs (int list).
+            ccUserIDs (:obj:`list`): CC users' IDs (int list).
+            templateFilename (str): Email template file name.
+            parameters (dict): Email template file parameters.
+
+        """
+        self.__queueLock.acquire()
+        try:
+            self.__mailQueues.append(_MailQueueData(subject, toUserIDs, ccUserIDs, templateFilename, parameters))
+        finally:
+            self.__queueLock.release()
+
+    @property
+    def queueSize(self) -> int:    
+        """Get mail queue size.
+
+        Returns:
+            Return Mail queue's size.
+        """
+        return len(self.__mailQueues)
+    
+    @property
+    def queue(self) -> list:
+        """Get mail queue.
+        
+        Returns:
+            Return Mail queue.
+        """
+        return self.__mailQueues
+
+    def clearQueue(self) -> None:
+        """Clean mail queue.
+        
+        """
+        try:
+            self.__queueLock.acquire()
+            self.__mailQueues.clear()
+        finally:
+            self.__queueLock.release()
+
+    def __sendMail(self, mailData: _MailQueueData) -> tuple:
+        '''
+        '''
+        if mailData.send2EmailList is None or len(mailData.send2EmailList) == 0:
+            return (False, 'No sender found.')
+        isSuccess = Mailer.sendHtmlMail(subject=mailData.subject, content=mailData.mailContent, sendFrom=self.__mailFrom, to=mailData.send2EmailList, cc=mailData.cc2EmailList)
+        errorMessage = None
+        if mailData.mailAddressErrorMessage:
+            errorMessage = mailData.mailAddressErrorMessage
+        if isSuccess:
+            message = 'sent' if errorMessage == '' else 'sent with these errors: %s' % errorMessage
+            logger.info(message)
+            return (True, message)
+        else:
+            message = 'sent failed.' if errorMessage == '' else 'sent failed with these errors: %s' % errorMessage
+            logger.error(message)
+            return (False, message)
+
+    def __sendMailFromPool(self) -> None:
+        mailSendTimes = {}
+        try:
+            while True:
+                if len(self.__mailQueues) == 0:
+                    try:
+                        time.sleep(3)
+                    except Exception as e:
+                        logger.error('Sleep faioed: %s' % str(e))
+                        pass
+                if len(self.__mailQueues) > 0:
+                    try:
+                        mailData = None
+                        try:
+                            self.__queueLock.acquire()
+                            mailData = self.__mailQueues.pop()
+                        finally:
+                            self.__queueLock.release()
+                        if mailData is not None:
+                            try:
+                                isSuccess, message = self.__sendMail(mailData)
+                                if isSuccess:
+                                    logger.debug('Send mail success. Message=%s' % message)
+                                else:
+                                    logger.error('Send mail failed. Message=%s' % message)
+                            except Exception as e:
+                                # add to last and try again later
+                                self.__queueLock.acquire()
+                                try:
+                                    retryTimes = mailSendTimes.get(mailData, 0)
+                                    retryTimes += 1
+                                    mailSendTimes[mailData] = retryTimes
+                                    if retryTimes >= __MailQueue.SEND_FAILED_RETRY_TIMES:
+                                        logger.error('send mail [%s] to [%s] failed (tried %s of %s).' \
+                                                     % (mailData.subject, mailData.send2EmailList, retryTimes, __MailQueue.SEND_FAILED_RETRY_TIMES))
+                                        del mailSendTimes[mailData]
+                                    else:
+                                        logger.error('send mail [%s] to [%s] failed. Then add it to queue and try again later (tried %s of %s).' \
+                                                     % (mailData.subject, mailData.send2EmailList, retryTimes, __MailQueue.SEND_FAILED_RETRY_TIMES))
+                                        self.__mailQueues.append(mailData) # TODO: if tried too many times, then ignore ?
+                                finally:
+                                    self.__queueLock.release()
+                                pass
+                    except Exception as e:
+                        logger.error('Send mail failed: %s' % str(e))
+                        logger.fatal(e, exc_info=True)
+        except Exception as e:
+            logger.fatal(e, exc_info=True)
+        finally:
+            mailSendTimes.clear()
+
+
+# create one instance only
+MailQueue = __MailQueue()
