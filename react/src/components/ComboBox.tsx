@@ -26,6 +26,8 @@ const ComboBox: React.FC<IComboBox> = forwardRef((props, ref: Ref<any>) => {
   useEffect(() => {
     if (props.value || props.value === 0 || props.value === false) {
       setSelectValue(props.value)
+    } else {
+      setSelectValue("")
     }
     // set tooltip
     if (props.tip) {
