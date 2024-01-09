@@ -1,4 +1,4 @@
-import os, logging, json
+import os, logging, json, hashlib
 from threading import Lock
 from datetime import datetime
 from pathlib import Path
@@ -7,10 +7,6 @@ import core.core.fs as pyifs
 from core.core.exception import IkException
 
 logger = logging.getLogger('pyi')
-
-NEW_SQL_FILE_FOLDER = 'new'
-PROCESSED_SQL_FILE_FOLDER = 'processed'
-
 
 __EXECUTE_SQL_FILE_LOCK = Lock()
 
@@ -51,10 +47,16 @@ def executeSqlFiles(specifiedSqlFile: object = None) -> None:
         # 3. get the new sql files
         newSqlFiles = []
         executedSqlFiles = sqlFileData.get('executed', [])
-        processedFilenames = [r['name'] for r in executedSqlFiles]
+        processedFileMD5s = {}
+        for pf in executedSqlFiles:
+            processedFileMD5s[pf['name']] = pf['md5']
         for f in allSqlFiles:
-            if Path(f).name not in processedFilenames:
+            if Path(f).name not in processedFileMD5s.keys():
                 newSqlFiles.append(Path(f))
+            else:
+                fileMD5 = __fileMD5(f)
+                if fileMD5 != processedFileMD5s[Path(f).name]: # file changed
+                    newSqlFiles.append(Path(f))
 
         # 4. process each new sql file
         if len(newSqlFiles) == 0:
@@ -88,7 +90,9 @@ def executeSqlFiles(specifiedSqlFile: object = None) -> None:
                     modifyTime = os.path.getmtime(newSqlFile)
                     modifyTime = datetime.fromtimestamp(modifyTime).strftime('%Y-%m-%d %H:%M:%S')
                     executedFilePath = os.path.relpath(newSqlFile, sqlDir).replace('\\', '/')
-                    fileData = {'name': newSqlFile.name, 'path': executedFilePath, 'filemtime': modifyTime, 'executetime': datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+                    fileMD5 = __fileMD5(newSqlFile)
+                    fileData = {'name': newSqlFile.name, 'path': executedFilePath, 'filemtime': modifyTime, 
+                                'executetime': datetime.now().strftime('%Y-%m-%d %H:%M:%S'), 'md5': fileMD5}
                     executedSqlFiles.append(fileData)
             except Exception as e:
                 logger.error(e, exc_info=True)
@@ -112,3 +116,13 @@ def __getSqlFiles(sqlFilePath):
                 fileList.append(os.path.join(root, filename))
     sortedFiles = sorted(fileList, key=lambda x: (os.path.getmtime(x), os.path.basename(x)))
     return sortedFiles
+
+def __fileMD5(file: Path) -> str:
+    with open(file, 'rb') as f:
+        md5_hash = hashlib.md5()
+        while True:
+            data = f.read(8192)
+            if not data:
+                break
+            md5_hash.update(data)
+    return md5_hash.hexdigest()

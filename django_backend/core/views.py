@@ -352,3 +352,45 @@ class UsrGrpMnt(ScreenAPIView):
             if not rc.ik_is_status_delete():
                 if rc.ik_is_status_new():
                     rc.grp_id = groupID
+
+
+class TypeWidgetMnt(ScreenAPIView):
+
+    def __init__(self) -> None:
+        super().__init__()
+
+    def getSystemFgTypeRcs(self):
+        sysTypeList = ikui.SCREEN_FIELD_NORMAL_GROUP_TYPES
+        typeRcs = ScreenFgType.objects.filter(type_nm__in=sysTypeList).order_by('type_nm')
+        return IkSccJsonResponse(data=typeRcs)
+
+    def getCustomFgTypeRcs(self):
+        sysTypeList = ikui.SCREEN_FIELD_NORMAL_GROUP_TYPES
+        typeRcs = ScreenFgType.objects.exclude(type_nm__in=sysTypeList).order_by('type_nm')
+        return IkSccJsonResponse(data=typeRcs)
+
+    def saveFgType(self):
+        customFgTypeFg = self.getRequestData().get('customFgTypeFg', None)
+        ptrn = IkTransaction(self)
+        if isNotNullBlank(customFgTypeFg):
+            ptrn.add(customFgTypeFg)
+        b = ptrn.save()
+        return b.toIkJsonResponse1()
+
+    def getSystemFieldWidgetRcs(self):
+        sysWidgetList = ikui.SCREEN_FIELD_NORMAL_WIDGETS
+        typeRcs = ScreenFieldWidget.objects.filter(widget_nm__in=sysWidgetList).order_by('widget_nm')
+        return IkSccJsonResponse(data=typeRcs)
+
+    def getCustomFieldWidgetRcs(self):
+        sysWidgetList = ikui.SCREEN_FIELD_NORMAL_WIDGETS
+        typeRcs = ScreenFieldWidget.objects.exclude(widget_nm__in=sysWidgetList).order_by('widget_nm')
+        return IkSccJsonResponse(data=typeRcs)
+
+    def saveWidget(self):
+        customFieldWidgetFg = self.getRequestData().get('customFieldWidgetFg', None)
+        ptrn = IkTransaction(self)
+        if isNotNullBlank(customFieldWidgetFg):
+            ptrn.add(customFieldWidgetFg)
+        b = ptrn.save()
+        return b.toIkJsonResponse1()

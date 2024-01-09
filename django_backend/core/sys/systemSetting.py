@@ -5,13 +5,14 @@ logger = logging.getLogger('ikyo')
 
 DEFAULT_SETTING_CODE = 'IKYO'
 
-class SystemSetting:
+
+class __SystemSetting:
     serverProperties = None
 
     def __init__(self):
         pass
 
-    def init(self, serverProperties):
+    def _init(self, serverProperties):
         self.serverProperties = serverProperties
 
     def get(self, name: str, code: str = DEFAULT_SETTING_CODE, default: str = None) -> str:
@@ -35,3 +36,6 @@ class SystemSetting:
     def getInteger(self, name: str, code: str = DEFAULT_SETTING_CODE, default: int = None) -> int:
         v = self.get(name, code, default)
         return int(v) if v else None
+
+
+SystemSetting = __SystemSetting()

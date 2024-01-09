@@ -11,6 +11,7 @@ import django.core.files.uploadedfile as djangoUploadedfile
 from core.core.exception import IkValidateException
 from core.core.lang import Boolean2
 from core.db.transaction import IkTransaction
+from core.db.db import getSqlFileFile, executeSqlFiles
 from core.models import *
 from core.utils.langUtils import isNullBlank
 
@@ -20,7 +21,6 @@ logger = logging.getLogger('ikyo')
 
 
 def syncScreenDefinitions(userID=None):
-    from core.db.db import getSqlFileFile, executeSqlFiles
     executeSqlFiles(getSqlFileFile('InitSDN.sql'))
 
     # excel to database

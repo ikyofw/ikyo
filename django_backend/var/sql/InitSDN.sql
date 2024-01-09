@@ -20,7 +20,6 @@ INSERT INTO ik_screen_field_widget (version_no, widget_nm, rmk) VALUES(0, 'IconA
 INSERT INTO ik_screen_field_widget (version_no, widget_nm, rmk) VALUES(0, 'File', 'Download file.');
 INSERT INTO ik_screen_field_widget (version_no, widget_nm, rmk) VALUES(0, 'Plugin', 'Currently only used for the last column of the table, open the details table');
 INSERT INTO ik_screen_field_widget (version_no, widget_nm, rmk) VALUES(0, 'Html', 'HTML');
-INSERT INTO ik_screen_field_widget (version_no, widget_nm, rmk) VALUES(0, 'viewer', 'Used for Pile Design.');
 INSERT INTO ik_screen_field_widget (version_no, widget_nm, rmk) VALUES(0, 'AdvancedComboBox', 'Combobox that allow filtering and multi-selection.');
 INSERT INTO ik_screen_field_widget (version_no, widget_nm, rmk) VALUES(0, 'Password', 'Entry password text box.');
 INSERT INTO ik_screen_field_widget (version_no, widget_nm, rmk) VALUES(0, 'AdvancedSelection', 'Select the content displayed in the Label in the dialog after clicking the button.');

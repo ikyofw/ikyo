@@ -22,7 +22,7 @@ import core.models as ikModels
 logger = logging.getLogger('ikyo')
 
 NO_PARAMETERS_WIDGET = [
-    ikui.SCREEN_FIELD_WIDGET_TEXT_AREA, ikui.SCREEN_FIELD_WIDGET_PLUGIN, ikui.SCREEN_FIELD_WIDGET_HTML, ikui.SCREEN_FIELD_WIDGET_VIEWER, ikui.SCREEN_FIELD_WIDGET_PASSWORD
+    ikui.SCREEN_FIELD_WIDGET_TEXT_AREA, ikui.SCREEN_FIELD_WIDGET_PLUGIN, ikui.SCREEN_FIELD_WIDGET_HTML, ikui.SCREEN_FIELD_WIDGET_PASSWORD
 ]
 
 
@@ -49,7 +49,9 @@ class ScreenDfn(ScreenAPIView):
                 elif widgetNm == ikui.SCREEN_FIELD_WIDGET_COMBO_BOX or widgetNm == ikui.SCREEN_FIELD_WIDGET_LIST_BOX or widgetNm == ikui.SCREEN_FIELD_WIDGET_ADVANCED_COMBOBOX:
                     screen.setFieldsVisible(fieldGroupName='dialogWidgetPramsFg', fieldNames=['dataField', 'recordsetField', 'dataUrlField', 'valuesField', 'onChangeField'], visible=True)
                 elif widgetNm == ikui.SCREEN_FIELD_WIDGET_ADVANCED_SELECTION:
-                    screen.setFieldsVisible(fieldGroupName='dialogWidgetPramsFg', fieldNames=['iconField', 'dataField', 'recordsetField', 'dataUrlField', 'valuesField', 'dialogField'], visible=True)
+                    screen.setFieldsVisible(fieldGroupName='dialogWidgetPramsFg', 
+                                            fieldNames=['iconField', 'dataField', 'recordsetField', 'dataUrlField', 'valuesField', 'dialogField'], 
+                                            visible=True)
                 elif widgetNm == ikui.SCREEN_FIELD_WIDGET_CHECK_BOX:
                     screen.setFieldsVisible(fieldGroupName='dialogWidgetPramsFg', fieldNames=['stateNumField'], visible=True)
                 elif widgetNm == ikui.SCREEN_FIELD_WIDGET_BUTTON or widgetNm == ikui.SCREEN_FIELD_WIDGET_ICON_AND_TEXT:
@@ -351,12 +353,15 @@ class ScreenDfn(ScreenAPIView):
 
     # field group types
     def getFgTypes(self):
-        types = [
-            ikui.SCREEN_FIELD_TYPE_SEARCH, ikui.SCREEN_FIELD_TYPE_FIELDS, ikui.SCREEN_FIELD_TYPE_TABLE, ikui.SCREEN_FIELD_TYPE_RESULT_TABLE, ikui.SCREEN_FIELD_TYPE_ICON_BAR,
-            ikui.SCREEN_FIELD_TYPE_HTML, ikui.SCREEN_FIELD_TYPE_IFRAME, ikui.SCREEN_FIELD_TYPE_UDF_VIEWER
-        ]
-        order = Case(*[When(type_nm=typeNm, then=pos) for pos, typeNm in enumerate(types)])
-        return ikModels.ScreenFgType.objects.all().order_by(order)
+        typeRcs = ikModels.ScreenFgType.objects.all().order_by('type_nm')
+        sysTypeList, usrTypeList = [], []
+        for i in typeRcs:
+            if i.type_nm in ikui.SCREEN_FIELD_NORMAL_GROUP_TYPES:
+                sysTypeList.append({'id': i.id, 'type_nm': i.type_nm})
+            else:
+                usrTypeList.append({'id': i.id, 'type_nm': "Custom - " + i.type_nm})
+        
+        return IkSccJsonResponse(data=[*sysTypeList, *usrTypeList])
 
     # get screen recordsets
     def getScreenRecordsets(self):
@@ -395,17 +400,14 @@ class ScreenDfn(ScreenAPIView):
 
     # get field all widget
     def getWidgets(self):
-        widgets = [
-            ikui.SCREEN_FIELD_WIDGET_LABEL, ikui.SCREEN_FIELD_WIDGET_TEXT_BOX, ikui.SCREEN_FIELD_WIDGET_COMBO_BOX, ikui.SCREEN_FIELD_WIDGET_DATE_BOX,
-            ikui.SCREEN_FIELD_WIDGET_CHECK_BOX, ikui.SCREEN_FIELD_WIDGET_TEXT_AREA, ikui.SCREEN_FIELD_WIDGET_BUTTON, ikui.SCREEN_FIELD_WIDGET_ICON_AND_TEXT,
-            ikui.SCREEN_FIELD_WIDGET_PLUGIN, ikui.SCREEN_FIELD_WIDGET_FILE, ikui.SCREEN_FIELD_WIDGET_HTML, ikui.SCREEN_FIELD_WIDGET_VIEWER
-        ]
-        order = Case(*[When(widget_nm=widgetNm, then=pos) for pos, widgetNm in enumerate(widgets)])
-        querySet = ikModels.ScreenFieldWidget.objects.all().order_by(order)
-        data = []
-        for i in querySet:
-            data.append({"widget_id": i.id, "widget_nm": i.widget_nm})
-        return IkSccJsonResponse(data=data)
+        widgetRcs = ikModels.ScreenFieldWidget.objects.all().order_by('widget_nm')
+        sysWidgetList, usrWidgetList = [], []
+        for i in widgetRcs:
+            if i.widget_nm in ikui.SCREEN_FIELD_NORMAL_WIDGETS:
+                sysWidgetList.append({'widget_id': i.id, 'widget_nm': i.widget_nm})
+            else:
+                usrWidgetList.append({'widget_id': i.id, 'widget_nm': "Custom - " + i.widget_nm})
+        return IkSccJsonResponse(data=[*sysWidgetList, *usrWidgetList])
 
     # events
     def newFieldGroup(self):

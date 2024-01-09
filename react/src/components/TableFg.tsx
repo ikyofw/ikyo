@@ -637,6 +637,11 @@ const TableFg = forwardRef(<CellType extends Types.CellBase>(props: Props<CellTy
               let serverPageData = []
               if (data[name]) {
                 serverPageData = data[name]
+                if (serverPageData.length === 0 && pageNum !== 0 && pageNum !== 1) {
+                  getPageDataWithServer(1)
+                  return
+                }
+
                 if (data["style"]) {
                   setTbodyStylePrams(tableUtil.getTableBodyStylePrams(name, tableParams.fields, data[name], data["style"]))
                 } else {
@@ -781,6 +786,7 @@ const TableFg = forwardRef(<CellType extends Types.CellBase>(props: Props<CellTy
   React.useEffect(() => {
     if (pageType === pyiGlobal.CLIENT_PAGING) {
       setTotalPageNm(Math.ceil(state.data.length / pageSize))
+      getPageDataWithClient(pageNation)
     } else {
       setShowRange(range(state.data.length, 0))
       setPreShowRange(range(state.data.length, 0))
@@ -791,14 +797,8 @@ const TableFg = forwardRef(<CellType extends Types.CellBase>(props: Props<CellTy
     if (filterRow) {
       resetFilterRow()
     }
-    if (pageType === pyiGlobal.CLIENT_PAGING) {
-      getPageDataWithClient(pageNation)
-    } else if (pageType === pyiGlobal.SERVER_PAGING) {
-      if (pluginActiveRows.length > 0) {
-        getPageDataWithServer(1, true)
-      } else {
-        getPageDataWithServer(pageNation, true)
-      }
+    if (pageType === pyiGlobal.SERVER_PAGING) {
+      getPageDataWithServer(pageNation, true)
     }
   }, [tableParams]) // Clear the search when the page is refreshed; if there is a pagination you need to re-fetch the current pagination's data
 
@@ -1352,7 +1352,7 @@ const TableFg = forwardRef(<CellType extends Types.CellBase>(props: Props<CellTy
                             // @ts-ignore
                             DataViewer={DataViewer}
                             stylePrams={tbodyStylePrams[rowNumber]}
-                            dialogPrams = {dialogPrams}
+                            dialogPrams={dialogPrams}
                             buttonBoxPrams={buttonPrams}
                             advancedSelectionBoxPrams={advancedSelectionPrams}
                             htmlCols={htmlCols}
@@ -1391,7 +1391,7 @@ const TableFg = forwardRef(<CellType extends Types.CellBase>(props: Props<CellTy
                             // @ts-ignore
                             DataViewer={DataViewer}
                             stylePrams={tbodyStylePrams[rowNumber]}
-                            dialogPrams = {dialogPrams}
+                            dialogPrams={dialogPrams}
                             buttonBoxPrams={buttonPrams}
                             advancedSelectionBoxPrams={advancedSelectionPrams}
                             htmlCols={htmlCols}
@@ -1524,7 +1524,7 @@ const TableFg = forwardRef(<CellType extends Types.CellBase>(props: Props<CellTy
   const pageNode = React.useMemo(() => {
     if (pageSize !== null && pageType !== null && pageSize > 0) {
       return (
-        <div className="PageSelectDiv" style={{ display: 'flex', alignItems: 'flex-end', paddingLeft: '3px' }}>
+        <div className="PageSelectDiv" style={{ display: "flex", alignItems: "flex-end", paddingLeft: "3px" }}>
           {pageNation === 1 || pageNation === 0 ? null : <img src={img_firstButton} alt="got to first page" onClick={getTheFirstPage}></img>}
           {pageNation === 1 || pageNation === 0 ? null : <img src={img_previousButton} alt="go to previous page" onClick={getPreviousPage}></img>}
           {pageNation === totalPageNm || pageNation === 0 || totalPageNm === 0 ? null : (
@@ -1534,7 +1534,7 @@ const TableFg = forwardRef(<CellType extends Types.CellBase>(props: Props<CellTy
             <img src={img_lastButton} alt="Go to the last page" onClick={getTheLastPage}></img>
           )}
           &nbsp;
-          <select title="select" value={pageSelect} id="pageSelect" onChange={setPageNum} style={{height: '21px'}}>
+          <select title="select" value={pageSelect} id="pageSelect" onChange={setPageNum} style={{ height: "21px" }}>
             {range(totalPageNm + 1).map((pn) => (
               <option title={String(pn)} key={pn} value={pn} onClick={() => setPageSelect(pn + 1)}>
                 {pn === 0 ? "" : pn}

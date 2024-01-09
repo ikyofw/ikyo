@@ -93,7 +93,7 @@ def getUserMenus(request) -> list:
             if isNotNullBlank(currentTopMenu) and currentTopMenu.id == menu.id:
                 topMenu.isCurrentMenu = True
                 if showSubMenus:
-                    submenusParentMenuID = MenuManager.getParentMenuId(currentMenu.menu_nm)
+                    submenusParentMenuID = MenuManager.getParentMenuIdByMenuNm(currentMenu.menu_nm)
                     subMenus = MenuManager.getUserAclMenus(usrId, submenusParentMenuID)
                     for subMenu in subMenus:
                         if str(subMenu.parent_menu_id) == str(submenusParentMenuID):

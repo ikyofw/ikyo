@@ -229,7 +229,7 @@ class Mailer():
         return self.send(subject=subject, content=content, contentType=contentType, sendFrom=sendFrom, to=to, cc=cc, attachments=attachments)
 
 
-class __MailQueueData:
+class _MailQueueData:
     """mail data class.
 
     Attributes:
@@ -298,7 +298,7 @@ class __MailQueueData:
         return (errorMessage, emails2)
 
 
-class _MailQueue:
+class __MailQueue:
     """mailer queue class.
 
     Only allow to create one instance.

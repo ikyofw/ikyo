@@ -986,27 +986,35 @@ function areMultiSelectValuesEqual(value1, value2) {
 
 
 export function formatNumber(number, format) {
-  const decimalPlaces = format.includes('.') ? format.split('.')[1].length : 0;
-  // Rounding to the specified number of decimal places
-  number = Number(number).toFixed(decimalPlaces);
-
-  let [integerPart, decimalPart] = number.split('.');
   // Handling the formatting of integer parts
-  const integerFormat = format.split('.')[0];
-  const thousandSeparator = integerFormat.includes(',') ? ',' : '';
-  const shouldPadZero = integerFormat.includes('0');
-
-  if (shouldPadZero) {
-    // Calculate the number of zeros to be filled
-    const neededPadding = integerFormat.replace(/,/g, '').length - integerPart.length;
-    if (neededPadding > 0) {
-      integerPart = '0'.repeat(neededPadding) + integerPart;
+  let integerShouldPadZero, decimalShouldPadZero
+  let integerFormat: String = format.split(".")[0]
+  const thousandSeparator = integerFormat.includes(",") ? "," : ""
+  if (format.includes(".")) {
+    const decimalFormat = format.split(".")[1]
+    const decimalPlaces = decimalFormat.length
+    number = Number(number).toFixed(decimalPlaces)
+    integerShouldPadZero = integerFormat.includes("0")
+    decimalShouldPadZero = decimalFormat.includes("0")
+  } else {
+    integerShouldPadZero = !integerFormat.includes("#")
+    if (integerFormat.endsWith('0')) {
+      number = Number(number).toFixed(0)
     }
   }
-  if (decimalPart && !shouldPadZero) {
-    decimalPart = decimalPart.replace(/0+$/, '');
+
+  let [integerPart, decimalPart] = String(number).split(".")
+  if (integerShouldPadZero) {
+    // Calculate the number of zeros to be filled
+    const neededPadding = integerFormat.replace(/,/g, "").length - integerPart.length
+    if (neededPadding > 0) {
+      integerPart = "0".repeat(neededPadding) + integerPart
+    }
+  }
+  if (decimalPart && !decimalShouldPadZero) {
+    decimalPart = decimalPart.replace(/0+$/, "")
   }
 
-  integerPart = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, thousandSeparator);
-  return integerPart + (decimalPart ? '.' + decimalPart : '');
+  integerPart = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, thousandSeparator)
+  return integerPart + (decimalPart ? "." + decimalPart : "")
 }

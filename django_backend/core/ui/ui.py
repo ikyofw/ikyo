@@ -14,7 +14,8 @@ import core.models as ikModel
 import core.utils.httpUtils as ikHttpUtils
 import core.utils.modelUtils as modelUtils
 from core.core.exception import IkValidateException
-from core.utils.langUtils import convertStr2Json, isNullBlank
+from core.utils.langUtils import convertStr2Json, isNotNullBlank, isNullBlank
+from core.models import ScreenFgType, ScreenFieldWidget
 from django.db import models
 from django.db.models.query import QuerySet
 from iktools import IkConfig
@@ -27,46 +28,43 @@ from . import uidb as ikuidb
 logger = logging.getLogger('ikyo')
 
 
-SCREEN_FIELD_TYPE_TABLE = 'table'
-SCREEN_FIELD_TYPE_RESULT_TABLE = 'resultTable'
-SCREEN_FIELD_TYPE_FIELDS = 'fields'
-SCREEN_FIELD_TYPE_SEARCH = 'search'
-SCREEN_FIELD_TYPE_ICON_BAR = 'iconBar'
-SCREEN_FIELD_TYPE_HTML = 'html'
-SCREEN_FIELD_TYPE_IFRAME = 'iframe'
-SCREEN_FIELD_TYPE_UDF_VIEWER = 'viewer'
+SCREEN_FIELD_TYPE_TABLE                 = 'table'
+SCREEN_FIELD_TYPE_RESULT_TABLE          = 'resultTable'
+SCREEN_FIELD_TYPE_FIELDS                = 'fields'
+SCREEN_FIELD_TYPE_SEARCH                = 'search'
+SCREEN_FIELD_TYPE_ICON_BAR              = 'iconBar'
+SCREEN_FIELD_TYPE_HTML                  = 'html'
+SCREEN_FIELD_TYPE_IFRAME                = 'iframe'
+SCREEN_FIELD_TYPE_UDF_VIEWER            = 'viewer'              
 
-
-SCREEN_FIELD_GROUP_TYPES_TABLE = (SCREEN_FIELD_TYPE_TABLE,         SCREEN_FIELD_TYPE_RESULT_TABLE)
+SCREEN_FIELD_GROUP_TYPES_TABLE  = (SCREEN_FIELD_TYPE_TABLE,         SCREEN_FIELD_TYPE_RESULT_TABLE)
 SCREEN_FIELD_GROUP_TYPE_DETAILS = (SCREEN_FIELD_TYPE_FIELDS,        SCREEN_FIELD_TYPE_SEARCH)
-SCREEN_FIELD_GROUP_TYPES = (SCREEN_FIELD_TYPE_TABLE,         SCREEN_FIELD_TYPE_RESULT_TABLE,
-                            SCREEN_FIELD_TYPE_FIELDS,       SCREEN_FIELD_TYPE_SEARCH,
-                            SCREEN_FIELD_TYPE_ICON_BAR,     SCREEN_FIELD_TYPE_HTML,
-                            SCREEN_FIELD_TYPE_IFRAME,       SCREEN_FIELD_TYPE_UDF_VIEWER)
+SCREEN_FIELD_NORMAL_GROUP_TYPES = (SCREEN_FIELD_TYPE_TABLE,         SCREEN_FIELD_TYPE_RESULT_TABLE,
+                                   SCREEN_FIELD_TYPE_FIELDS,       SCREEN_FIELD_TYPE_SEARCH,
+                                   SCREEN_FIELD_TYPE_ICON_BAR,     SCREEN_FIELD_TYPE_HTML,
+                                   SCREEN_FIELD_TYPE_IFRAME,       SCREEN_FIELD_TYPE_UDF_VIEWER)
 
-SCREEN_FIELD_WIDGET_LABEL = 'Label'
-SCREEN_FIELD_WIDGET_TEXT_BOX = 'TextBox'
-SCREEN_FIELD_WIDGET_TEXT_AREA = 'TextArea'
-SCREEN_FIELD_WIDGET_PASSWORD = 'Password'
-SCREEN_FIELD_WIDGET_DATE_BOX = 'DateBox'
-SCREEN_FIELD_WIDGET_COMBO_BOX = 'ComboBox'
-SCREEN_FIELD_WIDGET_LIST_BOX = 'ListBox'
-SCREEN_FIELD_WIDGET_ADVANCED_COMBOBOX = 'AdvancedComboBox'
-SCREEN_FIELD_WIDGET_ADVANCED_SELECTION = 'AdvancedSelection'
-SCREEN_FIELD_WIDGET_CHECK_BOX = 'CheckBox'
-SCREEN_FIELD_WIDGET_BUTTON = 'Button'
-SCREEN_FIELD_WIDGET_ICON_AND_TEXT = 'IconAndText'
-SCREEN_FIELD_WIDGET_FILE = 'File'
-SCREEN_FIELD_WIDGET_PLUGIN = 'Plugin'
-SCREEN_FIELD_WIDGET_HTML = 'Html'
-SCREEN_FIELD_WIDGET_VIEWER = 'viewer'  # User Define Type, used for Pile Design.\
+SCREEN_FIELD_WIDGET_LABEL               = 'Label'
+SCREEN_FIELD_WIDGET_TEXT_BOX            = 'TextBox'
+SCREEN_FIELD_WIDGET_TEXT_AREA           = 'TextArea'
+SCREEN_FIELD_WIDGET_PASSWORD            = 'Password'
+SCREEN_FIELD_WIDGET_DATE_BOX            = 'DateBox'
+SCREEN_FIELD_WIDGET_COMBO_BOX           = 'ComboBox'
+SCREEN_FIELD_WIDGET_LIST_BOX            = 'ListBox'
+SCREEN_FIELD_WIDGET_ADVANCED_COMBOBOX   = 'AdvancedComboBox'
+SCREEN_FIELD_WIDGET_ADVANCED_SELECTION  = 'AdvancedSelection'
+SCREEN_FIELD_WIDGET_CHECK_BOX           = 'CheckBox'
+SCREEN_FIELD_WIDGET_BUTTON              = 'Button'
+SCREEN_FIELD_WIDGET_ICON_AND_TEXT       = 'IconAndText'
+SCREEN_FIELD_WIDGET_FILE                = 'File'
+SCREEN_FIELD_WIDGET_PLUGIN              = 'Plugin'
+SCREEN_FIELD_WIDGET_HTML                = 'Html'
 
-SCREEN_FIELD_SELECT_WIDGETS = (SCREEN_FIELD_WIDGET_COMBO_BOX, SCREEN_FIELD_WIDGET_LIST_BOX,
-                               SCREEN_FIELD_WIDGET_ADVANCED_COMBOBOX, SCREEN_FIELD_WIDGET_ADVANCED_SELECTION)
-SCREEN_FIELD_WIDGETS = (SCREEN_FIELD_WIDGET_LABEL, SCREEN_FIELD_WIDGET_TEXT_BOX, SCREEN_FIELD_WIDGET_TEXT_AREA, SCREEN_FIELD_WIDGET_PASSWORD, SCREEN_FIELD_WIDGET_DATE_BOX,
-                        SCREEN_FIELD_WIDGET_COMBO_BOX, SCREEN_FIELD_WIDGET_LIST_BOX, SCREEN_FIELD_WIDGET_ADVANCED_COMBOBOX, SCREEN_FIELD_WIDGET_ADVANCED_SELECTION,
-                        SCREEN_FIELD_WIDGET_CHECK_BOX, SCREEN_FIELD_WIDGET_BUTTON, SCREEN_FIELD_WIDGET_ICON_AND_TEXT, SCREEN_FIELD_WIDGET_FILE, SCREEN_FIELD_WIDGET_PLUGIN,
-                        SCREEN_FIELD_WIDGET_VIEWER, SCREEN_FIELD_WIDGET_HTML)
+SCREEN_FIELD_SELECT_WIDGETS = (SCREEN_FIELD_WIDGET_COMBO_BOX, SCREEN_FIELD_WIDGET_LIST_BOX, SCREEN_FIELD_WIDGET_ADVANCED_COMBOBOX, SCREEN_FIELD_WIDGET_ADVANCED_SELECTION)
+SCREEN_FIELD_NORMAL_WIDGETS = (SCREEN_FIELD_WIDGET_LABEL, SCREEN_FIELD_WIDGET_TEXT_BOX, SCREEN_FIELD_WIDGET_TEXT_AREA, SCREEN_FIELD_WIDGET_PASSWORD, SCREEN_FIELD_WIDGET_DATE_BOX,
+                               SCREEN_FIELD_WIDGET_COMBO_BOX, SCREEN_FIELD_WIDGET_LIST_BOX, SCREEN_FIELD_WIDGET_ADVANCED_COMBOBOX, SCREEN_FIELD_WIDGET_ADVANCED_SELECTION,
+                               SCREEN_FIELD_WIDGET_CHECK_BOX, SCREEN_FIELD_WIDGET_BUTTON, SCREEN_FIELD_WIDGET_ICON_AND_TEXT, SCREEN_FIELD_WIDGET_FILE, SCREEN_FIELD_WIDGET_PLUGIN,
+                               SCREEN_FIELD_WIDGET_HTML)
 
 SCREEN_FIELD_GROUP_SELECTION_MODE_SINGLE = 'single'
 SCREEN_FIELD_GROUP_SELECTION_MODE_MULTIPLE = 'multiple'
@@ -82,17 +80,17 @@ REFRESH_INTERVAL = 1  # seconds
 
 def getScreenFieldGroupType(typeName) -> str:
     if not isNullBlank(typeName) and type(typeName) == str:
-        for t in SCREEN_FIELD_GROUP_TYPES:
-            if t.upper() == typeName.upper():
-                return t
+        fgTypeRc = ScreenFgType.objects.filter(type_nm=typeName).first()
+        if isNotNullBlank(fgTypeRc):
+            return fgTypeRc.type_nm
     raise IkValidateException('Unsupported screen field group type: %s' % typeName)
 
 
 def getScreenFieldWidget(widgetName) -> str:
     if not isNullBlank(widgetName) and type(widgetName) == str:
-        for w in SCREEN_FIELD_WIDGETS:
-            if w.upper() == widgetName.upper():
-                return w
+        fieldWidgetRc = ScreenFieldWidget.objects.filter(widget_nm=widgetName).first()
+        if isNotNullBlank(fieldWidgetRc):
+            return fieldWidgetRc.widget_nm
     raise IkValidateException('Unsupported screen field widget: %s' % widgetName)
 
 
@@ -455,10 +453,17 @@ class ScreenFieldGroup:
                    }
         else:
             # other types: E.g. viewer
-            jFg = {'name': self.name,
-                   'type': self.groupType,
-                   'caption': self.caption
-                   }
+            jFg = {
+                'caption': self.caption,
+                'name': self.name,
+                'type': self.groupType,
+                'data': self.data,
+                'dataUrl': self.__dataUrl,
+                'editable': editable,
+                'visible': self.visible,  # YL, 2022-12-23 bugfix
+                'rmk': self.rmk,  # YL, 2023-04-20
+                'beforeDisplayAdapter': self.beforeDisplayAdapter
+            }
 
         jFg['outerLayoutParams'] = self.outerLayoutParams
         if not isNullBlank(self.innerLayoutType):

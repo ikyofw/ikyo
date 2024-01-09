@@ -39,7 +39,7 @@ class __MenuManager():
             menu_ids = ikModels.GroupMenu.objects.filter(grp__in=menu_ids).values_list('menu_id', flat=True)
 
         usrAclMenusQs = ikModels.Menu.objects.filter(Q(is_free_access=True) | Q(
-            id__in=menu_ids)).exclude(menu_nm='Menu').order_by('order_no', 'caption')
+            id__in=menu_ids)).exclude(menu_nm__iexact='Menu').order_by('order_no', 'caption')
         if parentMenuID is not None:
             usrAclMenusQs = usrAclMenusQs.filter(parent_menu_id=parentMenuID)
         return usrAclMenusQs
@@ -112,7 +112,7 @@ class __MenuManager():
         menuName = menuRcs[0][0]
         return menuName
 
-    def getParentMenuId(self, menuName: str) -> int:
+    def getParentMenuIdByMenuNm(self, menuName: str) -> int:
         menuRcs = None
         with connection.cursor() as cursor:
             cursor.execute('SELECT parent_menu_id FROM ik_menu WHERE menu_nm=' + dbUtils.toSqlField(menuName))
@@ -139,7 +139,7 @@ class __MenuManager():
         # 1. get all user have permission menus (remove offline menus,  remove parent menus(will add later if sub menus has permission))
         groups_ids = ikModels.UserGroup.objects.filter(usr_id=usrId).values_list('grp_id', flat=True)
         menu_ids = ikModels.GroupMenu.objects.filter(grp__in=groups_ids).values_list('menu_id', flat=True)
-        usrAclMenusQs = ikModels.Menu.objects.filter(Q(is_free_access=True) | Q(id__in=menu_ids)).exclude(menu_nm='Menu').order_by('order_no')
+        usrAclMenusQs = ikModels.Menu.objects.filter(Q(is_free_access=True) | Q(id__in=menu_ids)).exclude(menu_nm__iexact='Menu').order_by('order_no')
         # If specified Top Menu should just get all Top Menu's sub menu(loop to level3 menus)
         if parentMenuId is not None:
             allSubMenuIDs = []

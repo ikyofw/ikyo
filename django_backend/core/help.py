@@ -30,7 +30,7 @@ class ScreenHelpView(AuthAPIView):
             return HttpResponse('Help page is not found.')
 
         screenRc = Screen.objects.filter(screen_sn__iexact=viewID).order_by("-rev").first()
-        menuRc = Menu.objects.filter(menu_nm__iexact=screenRc.screen_sn).exclude(menu_nm='Menu', enable=False).first()
+        menuRc = Menu.objects.filter(menu_nm__iexact=screenRc.screen_sn).exclude(menu_nm__iexact='Menu', enable=False).first()
         if screenRc is None or menuRc is None:
             logger.error('Screen: %s is no exists at, then raise error.' % viewID)
             return HttpResponse('Screen[%s] does not exist.' % viewID)
