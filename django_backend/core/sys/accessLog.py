@@ -2,9 +2,8 @@ import logging
 from datetime import datetime
 
 import core.utils.db as dbUtils
-from core.auth.index import (getRequestToken, getSessionID, getUser,
-                             isSupportSession)
-from core.core.http import getClientIP
+from core.auth.index import getRequestToken, getSessionID, getUser
+from core.core.http import getClientIP, isSupportSession
 from core.db.transaction import IkTransaction
 from core.models import AccessLog, Menu
 from django.db import connection
@@ -77,7 +76,7 @@ def getAccessLog(userID):
 
 def getLatestAccessLog(userID, menuIDs: str):
     sql = "SELECT a.screen_nm FROM ("
-    sql += " SELECT l.menu_id, m.menu_caption, m.screen_nm, max(l.id) AS id FROM ik_access_log l LEFT JOIN iky_menu m ON m.menu_id=l.menu_id WHERE usr_id=%s" % dbUtils.toSqlField(
+    sql += " SELECT l.menu_id, m.menu_caption, m.screen_nm, max(l.id) AS id FROM ik_access_log l LEFT JOIN ik_menu m ON m.id=l.menu_id WHERE usr_id=%s" % dbUtils.toSqlField(
         userID)
     sql += " AND l.menu_id IS NOT NULL AND l.menu_id NOT IN (%s) AND l.menu_id IN (%s)" % (__getExcludedMenus(), menuIDs)
     sql += " AND m.screen_nm IS NOT NULL AND m.parent_menu_id IS NOT NULL GROUP BY l.menu_id, m.menu_caption, m.screen_nm"

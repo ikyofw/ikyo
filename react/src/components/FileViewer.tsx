@@ -39,8 +39,7 @@ const FileViewer: React.FC<IFileViewer> = (props) => {
   const disHeight = props.params.disHeight
 
   const [fileUrl, setFileUrl] = React.useState(dataUrl)
-  const [isOperate, setIsOperate] = React.useState(props.isOperate)
-
+  const [isOperate, setIsOperate] = React.useState(props.isOperate ? props.isOperate : false)
 
   React.useEffect(() => {
     if (dataUrl && !isPdfFile(dataUrl) && !isImgFile(dataUrl)) {
@@ -63,7 +62,7 @@ const FileViewer: React.FC<IFileViewer> = (props) => {
             let fileType = respType.split("/")[1]
             let newPdfBlob = "data:" + (fileType === "pdf" ? "application" : "image") + "/" + fileType + ";base64," + base64
             setFileUrl(newPdfBlob)
-            if (respParam) {
+            if (respParam && respParam !== "null") {
               setIsOperate(JSON.parse(respParam).isOperate)
             }
           }

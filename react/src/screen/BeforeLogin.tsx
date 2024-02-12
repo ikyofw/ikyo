@@ -17,7 +17,7 @@ const BeforeLogin = () => {
           <tr>
             <td id="lr">
               <div>
-                <h1 style={{ fontSize: "1.1em" }}>Welcome to YWL Portal - IUI</h1>
+                <h1 style={{ fontSize: "1.1em" }}>Welcome to YWL Portal - IKYO</h1>
                 <div
                   style={{
                     textAlign: "left",

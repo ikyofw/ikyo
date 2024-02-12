@@ -24,6 +24,11 @@ def getSystemID() -> int:
     return SYSTEM_USER_ID
 
 
+def getUser(userID) -> str:
+    rc = User.objects.filter(id=userID).first()
+    return None if dbUtils.isEmpty(rc) else rc
+
+
 def getUserName(userID) -> str:
     rs = None
     with connection.cursor() as cursor:
@@ -80,13 +85,30 @@ def getUserEmailAddresses(userIDs) -> list:
     return emails
 
 
-def getIkyUserByDbField(userID, dbField):
+def getLastCoDt(userID) -> str:
+    rs = None
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT last_co_dt FROM ik_usr WHERE id=" + str(userID))
+        rs = dbUtils.dictfetchall(cursor)
+        if not dbUtils.isEmpty(rs):
+            return rs[0]['last_co_dt']
+    return None
+
+
+def getIkUserByDbField(userID, dbField):
     '''ik_usr'''
     rs = None
     with connection.cursor() as cursor:
         cursor.execute("SELECT %s FROM ik_usr WHERE id=%s" % (dbField, userID))
         rs = dbUtils.dictfetchall(cursor)
     return None if dbUtils.isEmpty(rs) else rs[0][dbField]
+
+
+def getUserDefaultOffice(usrId) -> str | None:
+    with connection.cursor() as cursor:
+        cursor.execute('SELECT office FROM ik_usr WHERE id=%s' % usrId)
+        rs = dbUtils.dictfetchall(cursor)
+    return None if dbUtils.isEmpty(rs) else rs[0]['office']
 
 
 def getCurrentUser() -> User:

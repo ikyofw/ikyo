@@ -46,28 +46,35 @@ export function isActive(active: Types.StoreState["active"], point: Point.Point)
 }
 
 /** Get the offset values of given element */
-export function getOffsetRect(element: HTMLElement, tableName: string): Types.Dimensions {
+export function getOffsetRect(element: HTMLElement, tableName: string, tableHeight: number): Types.Dimensions {
   const table = document.getElementById("table " + tableName)
-  const tbody = document.getElementById("tbody " + tableName)
   const thead = document.getElementById("thead " + tableName)
 
-  let width = element.getBoundingClientRect().width
-  let height = element.getBoundingClientRect().height
-  let left = element.getBoundingClientRect().left - table.getBoundingClientRect().left
-  let top = element.getBoundingClientRect().top - table.getBoundingClientRect().top
-  if (top - thead.getBoundingClientRect().height < 0) {
-    top = thead.getBoundingClientRect().height
-    height = element.getBoundingClientRect().bottom - table.getBoundingClientRect().top - thead.getBoundingClientRect().height
-    if (element.getBoundingClientRect().bottom - tbody.getBoundingClientRect().top < 0) {
-      height = 0
-    }
+  const scrollContainer = document.getElementById("scroll " + tableName)
+  const scrollTop = scrollContainer.scrollTop
+  const scrollLeft = scrollContainer.scrollLeft
+
+  let rect = element.getBoundingClientRect();
+  let tableRect = table.getBoundingClientRect();
+  let theadRect = thead.getBoundingClientRect();
+
+  let width = rect.width;
+  let height = rect.height;
+
+  let left = rect.left - tableRect.left - scrollLeft;
+  let top = rect.top - tableRect.top  - scrollTop;
+
+  if (top - theadRect.height < 0) {
+    height = top - theadRect.height + height > 0 ? top - theadRect.height + height  : 0;
+    top =  theadRect.height;  
   }
-  if (element.getBoundingClientRect().bottom - table.getBoundingClientRect().bottom > 0) {
-    height = tbody.getBoundingClientRect().bottom - element.getBoundingClientRect().top
-    if (element.getBoundingClientRect().top - table.getBoundingClientRect().bottom > 0) {
-      top = table.getBoundingClientRect().height
-      height = 0
-    }
+  if (tableHeight && tableHeight - height - top < 0) {
+    height = tableHeight - top > 0 ? tableHeight - top : 0;
+    top = tableHeight - height
+  }
+  
+  if (rect.bottom - tableRect.bottom > 0) {
+    height = tableRect.bottom - rect.top - scrollTop;
   }
 
   return {

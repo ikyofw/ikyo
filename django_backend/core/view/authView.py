@@ -6,8 +6,8 @@ from pathlib import Path
 from threading import Lock
 
 import core.core.fs as ikfs
-import core.core.http as ikHttp
 import core.utils.datetimeUtils as datetimeUtils
+from core.core.http import isSupportSession
 from core.auth.index import Authentication, UserPermission
 from core.core.exception import IkException
 from core.models import User
@@ -60,7 +60,7 @@ class AuthAPIView(APIView):
         return self.__class__.__name__.lower()
 
     def __isUseSession(self) -> bool:
-        return ikHttp.isSupportSession(self.request)
+        return isSupportSession(self.request)
 
     def __getSessionParameterName(self, name, isGlobal=False) -> str:
         if self.__isUseSession():

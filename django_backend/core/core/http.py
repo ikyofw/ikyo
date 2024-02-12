@@ -2,6 +2,7 @@ import datetime
 import decimal
 import json
 import logging
+import inspect
 import os
 from enum import Enum
 from pathlib import Path
@@ -233,6 +234,8 @@ class IkJsonResponse(JsonResponse):
             if type(r) == dict:  # model.values(a,b)
                 rs.append(r)
             elif type(r) == list:  # model.to_list()
+                rs.append(r)
+            elif type(r) == tuple:
                 rs.append(r)
             else:
                 rs.append(self.__model2Json(r))
@@ -511,6 +514,18 @@ def GetRequestData(request, parameterModelMap={}, screen=None, initDataFromDatab
                                 filterDict = {primaryKey: id}
                                 modelInstance = modelClass.objects.filter(**filterDict).first()
                             modelRecords.append(modelInstance)
+                            # update the no database fields (E.g. select field)
+                            rowValues = r[2:]
+                            rowValuesDict = {}
+                            for i in range(len(dbFieldNamesAttrs)):
+                                rowValuesDict[dbFieldNamesAttrs[i]] = rowValues[i]
+                            classMembers = inspect.getmembers(modelClass, lambda a: not(inspect.isroutine(a)))
+                            classMemberFields = [member[0] for member in classMembers if not member[0].startswith('__')]
+                            for cmf in classMemberFields:
+                                if cmf in dbFieldNamesAttrs:
+                                    if hasattr(modelInstance, cmf):
+                                        setattr(modelInstance, cmf, rowValuesDict[cmf])
+
                     # unique validate
                     if not issubclass(modelClass, ikModels.DummyModel):
                         dbFieldNamesAttrsIndex = -1
@@ -719,7 +734,7 @@ def __BigInteger2(s):
     return int(s) if s != '' else None
 
 
-def responseFile(filePath, filename=None, params=None) -> StreamingHttpResponse:
+def responseFile(filePath, filename: str = None, params: dict = None) -> StreamingHttpResponse:
     '''
         download file
         filename: download file's name from browser. default is filename in server side.

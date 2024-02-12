@@ -4,10 +4,9 @@
     2022-07-05
 """
 import os
-import sys
-import shutil
 import configparser
 from pathlib import Path
+import core.utils.djangoUtils as ikDjangoUtils
 
 PROJECT_APP = 'django_backend'
 
@@ -21,61 +20,7 @@ def getDjangoReactFolder() -> Path:
 
 
 def getStaticFolder() -> str:
-    s = Path(os.path.join(getDjangoReactFolder().absolute(), 'static')).absolute()
-    return s
-
-
-def reactPrebuild():
-    command = 'prebuild'
-    # clean react folder
-    print('%s start ...' % command)
-    p = getDjangoReactFolder()
-    if not p.is_dir():
-        print('Folder [%s] does not exist.' % p.absolute())
-    else:
-        for f in os.listdir(p):
-            f2 = Path(os.path.join(p.absolute(), f))
-            if f == 'static':
-                for f3 in os.listdir(Path(f2)):
-                    f4 = Path(os.path.join(f2.absolute(), f3))
-                    if f4.is_dir():
-                        shutil.rmtree(f4)
-                    else:
-                        f4.unlink()
-            else:
-                if f2.is_dir():
-                    shutil.rmtree(f2)
-                else:
-                    f2.unlink()
-    # created the empty folder
-    p.mkdir(parents=True, exist_ok=True)
-    print('%s completed' % command)
-
-
-def reactPostbuild():
-    command = 'postbuild'
-    # move build files to react folder
-    print('%s start ...' % command)
-    p = getDjangoReactFolder()
-    build = Path(os.path.join(os.path.dirname(__file__), 'react', 'build'))
-    if not build.is_dir():
-        raise Exception('Build folder [%s] does not exist.' % build.absolute())
-    if not p.is_dir():
-        p.mkdir(parents=True, exist_ok=True)
-    print('Moving build [%s] to [%s] ...' % (build.absolute(), p.absolute()))
-    for f in os.listdir(build):
-        f2 = os.path.join(build.absolute(), f)
-        if f == 'static':
-            # create static folder does not exist
-            staticPath = Path(os.path.join(p.absolute(), f))
-            staticPath.mkdir(parents=True, exist_ok=True)
-            buildStaticPath = Path(f2)
-            for f3 in os.listdir(buildStaticPath):
-                if f3 not in REACT_2_DJANGO_IGNORE_STATIC_FOLDERS:
-                    shutil.move(os.path.join(f2, f3), staticPath)
-        else:
-            shutil.move(f2, p)
-    print('%s completed' % command)
+    return Path(os.path.join(getDjangoReactFolder().absolute(), 'static')).absolute()
 
 
 def __getAppNames() -> list:
@@ -125,28 +70,29 @@ def getAppUrlFiles() -> list:
     '''
         Load django apps except "django_backend". Sorts by app name.
     '''
-    appNames = __getAppNames()
     urlFiles = []
-    projectRootDir = Path(os.path.join(os.path.dirname(__file__)))
-    for appName in appNames:
-        dir = os.path.join(projectRootDir, appName)
-        if os.path.isdir(dir):
-            # check the the urls.py file is exists or not
-            urlsFile = Path(os.path.join(dir, 'urls.py'))
-            if urlsFile.is_file():
-                urlModel = appName + '.urls'
-                # check the lsit urlpatterns is exists or not
-                try:
-                    data = []
-                    with open(urlsFile) as file:
-                        data = file.readlines()
-                    for line in data:
-                        if 'urlpatterns=[' in line.replace(' ', ''):
-                            urlFiles.append(urlModel)
-                            break
-                except Exception as e:
-                    print('ERROR %s' % str(e))
-    urlFiles.sort()
+    if ikDjangoUtils.isRunDjangoServer():
+        appNames = __getAppNames()
+        projectRootDir = Path(os.path.join(os.path.dirname(__file__)))
+        for appName in appNames:
+            dir = os.path.join(projectRootDir, appName)
+            if os.path.isdir(dir):
+                # check the the urls.py file is exists or not
+                urlsFile = Path(os.path.join(dir, 'urls.py'))
+                if urlsFile.is_file():
+                    urlModel = appName + '.urls'
+                    # check the lsit urlpatterns is exists or not
+                    try:
+                        data = []
+                        with open(urlsFile) as file:
+                            data = file.readlines()
+                        for line in data:
+                            if 'urlpatterns=[' in line.replace(' ', ''):
+                                urlFiles.append(urlModel)
+                                break
+                    except Exception as e:
+                        print('ERROR %s' % str(e))
+        urlFiles.sort()
     return urlFiles
 
 

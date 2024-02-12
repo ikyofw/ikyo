@@ -4,13 +4,12 @@ from django.urls import URLPattern, path, re_path
 
 import core.utils.db as dbUtils
 import core.utils.modelUtils as modelUtils
+import core.utils.djangoUtils as ikDjangoUtils
 from core.auth.index import AuthView
-from core.auth.views import AuthTest
 from core.menu.views import Menu, MenuBarView
 from core.utils.langUtils import isNullBlank
-
-from . import views
-from .help import ScreenHelpView
+from core import views
+from core.help import ScreenHelpView
 
 logger = logging.getLogger('ikyo')
 
@@ -26,14 +25,16 @@ def apiUrl(url) -> str:
 
 
 def apiScreenUrl(apiViewClass, url: str = None) -> URLPattern:
-    url2 = apiViewClass().getViewUrl() if url is None else url
-    url2 = apiUrl(url2 + '/<str:action>')
-    return path(url2, apiViewClass.as_view())
+    if ikDjangoUtils.isRunDjangoServer():
+        url2 = apiViewClass().getViewUrl() if url is None else url
+        url2 = apiUrl(url2 + '/<str:action>')
+        return path(url2, apiViewClass.as_view())
+    else:
+        return views.index
 
 
 urlpatterns = [
     re_path(apiUrl('auth$'), AuthView.as_view()),
-    re_path(apiUrl('authTest$'), AuthTest.as_view()),
 
     path(apiUrl('help/screen/<str:viewID>'), ScreenHelpView.as_view()),
 
@@ -73,5 +74,5 @@ def getScreenUrlFromDatabase() -> list[URLPattern]:
                 # logger.error(e,exc_info=True)
     return urlpatterns
 
-if 'runserver' in sys.argv: # makemigrations and migrate don'et need to parse screen files.
+if ikDjangoUtils.isRunDjangoServer():
     urlpatterns.extend(getScreenUrlFromDatabase())

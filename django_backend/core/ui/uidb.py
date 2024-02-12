@@ -4,14 +4,15 @@ import os
 from datetime import datetime as datetime_
 from pathlib import Path
 
+import django.core.files.uploadedfile as djangoUploadedfile
+
 import core.core.fs as ikfs
 import core.utils.modelUtils as ikModelUtils
 import core.utils.spreadsheet as ikSpreadsheet
-import django.core.files.uploadedfile as djangoUploadedfile
 from core.core.exception import IkValidateException
 from core.core.lang import Boolean2
+from core.db.db import executeSqlFiles, getSqlFileFile
 from core.db.transaction import IkTransaction
-from core.db.db import getSqlFileFile, executeSqlFiles
 from core.models import *
 from core.utils.langUtils import isNullBlank
 
@@ -20,8 +21,8 @@ from . import ui as ikui
 logger = logging.getLogger('ikyo')
 
 
-def syncScreenDefinitions(userID=None):
-    executeSqlFiles(getSqlFileFile('InitSDN.sql'))
+def syncScreenDefinitions(userID: int = None):
+    # executeSqlFiles(getSqlFileFile('InitSDN.sql'))
 
     # excel to database
     screenFileFolder = Path(os.path.join(ikfs.getVarFolder(), 'sys', 'views'))
@@ -121,7 +122,7 @@ def screenDbWriteToExcel(screenRc, templateFile, outputFile) -> Boolean2:
         rc.editable = 'yes' if rc.editable == True else ''
         rc.insertable = 'yes' if rc.insertable == True else ''
         rc.highlight_row = 'yes' if rc.highlight_row == True else ''
-        rc.sort_new_rows = 'yes' if rc.sort_new_rows == True else ''
+        # rc.sort_new_rows = 'yes' if rc.sort_new_rows == True else ''
         rc.selection_mode = rc.selection_mode if rc.selection_mode != 'none' else ''
 
     fgFieldRcs = ScreenField.objects.filter(screen=screenRc).order_by('field_group', 'seq', 'id')
@@ -170,8 +171,8 @@ def screenDbWriteToExcel(screenRc, templateFile, outputFile) -> Boolean2:
     expData['recordsetTable'] = ikModelUtils.redcordsets2List(
         rsRcs, ['recordset_nm', 'sql_fields', 'sql_models', 'sql_where', 'sql_order', 'sql_limit', 'rmk'])
     expData['fieldGroupTable'] = ikModelUtils.redcordsets2List(fgRcs, ['fg_nm', 'fg_type.type_nm', 'caption', 'recordset.recordset_nm', 'deletable', 'editable', 'insertable',
-                                                                       'highlight_row', 'selection_mode', 'cols', 'sort_new_rows', 'data_page_type', 'data_page_size',
-                                                                       'outer_layout_params', 'inner_layout_type', 'inner_layout_params', 'html', 'rmk'])
+                                                                       'highlight_row', 'selection_mode', 'cols', 'data_page_type', 'data_page_size', 'outer_layout_params', 
+                                                                       'inner_layout_type', 'inner_layout_params', 'html', 'additional_props', 'rmk'])
     expData['fieldTable'] = ikModelUtils.redcordsets2List(fgFieldRcs, ['field_group.fg_nm', 'field_nm', 'caption', 'tooltip', 'visible', 'editable',
                                                                        'widget.widget_nm', 'widget_parameters', 'db_field', 'md_format', 'md_validation', 'event_handler', 'styles', 'rmk'])
     expData['subScreenTable'] = ikModelUtils.redcordsets2List(dfnRcs, ['sub_screen_nm', 'field_group_nms', 'rmk'])
@@ -186,7 +187,7 @@ def screenDbWriteToExcel(screenRc, templateFile, outputFile) -> Boolean2:
     return b
 
 
-def _updateDatabaseWithExcelFiles(screenDefinition, userID):
+def _updateDatabaseWithExcelFiles(screenDefinition, userID) -> Boolean2:
     if screenDefinition is None:
         return Boolean2(False, 'screenDefinition is None')
     elif screenDefinition.definition is None:
@@ -200,62 +201,91 @@ def _updateDatabaseWithExcelFiles(screenDefinition, userID):
     # ik_screen
     latestScreen = Screen.objects.filter(screen_sn__iexact=__strip(dfn['viewID'])).order_by('-rev').first()
     if not isNullBlank(latestScreen) and not __excelHasModify(latestScreen.rev, screenDefinition.filePath):
-        # If the screen data already exists in the database and there are no changes compared to the Excel content, then exit the update method directly. 
+        # If the screen data already exists in the database and there are no changes compared to the Excel content, then exit the update method directly.
+        logger.debug('Screen definition [%s] no changed. File path is [%s].' % (screenDefinition.fullName, screenDefinition.filePath))
         return Boolean2(True)
     else:
-        filePath = __getImportScreenFilePath(dfn['viewName'])
-        # Otherwise, update all the corresponding database tables for that page.
-        __updateScreenDatabase(dfn, userID)
+        processResult = Boolean2(False)
+        lastScreenRev = None
+        try:
+            logger.info('Import screen definition [%s] from file [%s] ...' % (screenDefinition.fullName, screenDefinition.filePath))
+            filePath = __getImportScreenFilePath(dfn['viewName'])
+            # Otherwise, update all the corresponding database tables for that page.
+            __updateScreenDatabase(dfn, userID)
 
-        latestScreen = Screen.objects.filter(screen_sn__iexact=__strip(dfn['viewID'])).order_by('-rev').first()
-        filename = '%s-v%s.xlsx' % (latestScreen.screen_sn, latestScreen.rev)
-        outputFile = os.path.join(filePath, filename)
+            latestScreen = Screen.objects.filter(screen_sn__iexact=__strip(dfn['viewID'])).order_by('-rev').first()
+            filename = '%s-v%s.xlsx' % (latestScreen.screen_sn, latestScreen.rev)
+            outputFile = os.path.join(filePath, filename)
 
-        # If the name of the Excel file added by the user differs from the name of the next version of the Excel file generated automatically by the system, 
-        # then delete the user-added Excel file and use the file generated automatically by the system based on the revision number.
-        usrPath = Path(screenDefinition.filePath).resolve()
-        sysPath = Path(outputFile).resolve()
-        if usrPath != sysPath:
-            if os.path.isfile(usrPath):
-                os.remove(usrPath)
-            while True:
-                # If there are multiple Excel files with version numbers higher than that in the database, only the one with the highest version number will be updated to the database, 
-                # and the others will be ignored.
-                lastRevPath = ikfs.getLastRevisionFile(filePath, screenDefinition.name + ".xlsx")
-                if __excelHasModify(latestScreen.rev, str(lastRevPath)):
-                    os.remove(lastRevPath)
-                else:
-                    break
-            templateFileFolder = Path(os.path.join(ikfs.getVarFolder(), 'sys', 'views', '-Templates-'))
-            templateFile = ikfs.getLastRevisionFile(templateFileFolder, 'template.xlsx')
-            if isNullBlank(templateFile):
-                logger.error("Template file does not exist in folder [%s]." % templateFileFolder.absolute())
-                return Boolean2(False, 'Screen template file is not found. Please check.')
-            if os.path.isfile(sysPath):
-                os.remove(sysPath)
-            c = screenDbWriteToExcel(latestScreen, templateFile, sysPath)
-            if not c.value:
-                return c
+            # If the name of the Excel file added by the user differs from the name of the next version of the Excel file generated automatically by the system,
+            # then delete the user-added Excel file and use the file generated automatically by the system based on the revision number.
+            usrPath = Path(screenDefinition.filePath).resolve()
+            sysPath = Path(outputFile).resolve()
+            if usrPath != sysPath:
+                if os.path.isfile(usrPath):
+                    logger.info('Import screen definition [%s] from file [%s]: delete file (1) [%s]' %
+                                (screenDefinition.fullName, screenDefinition.filePath, usrPath))
+                    os.remove(usrPath)
+                while True:
+                    # If there are multiple Excel files with version numbers higher than that in the database, only the one with the highest version number will be updated to the database,
+                    # and the others will be ignored.
+                    lastRevPath = ikfs.getLastRevisionFile(filePath, screenDefinition.name + ".xlsx")
+                    if __excelHasModify(latestScreen.rev, str(lastRevPath)):
+                        logger.info('Import screen definition [%s] from file [%s]: delete file (2) [%s]' %
+                                    (screenDefinition.fullName, screenDefinition.filePath, lastRevPath))
+                        os.remove(lastRevPath)
+                    else:
+                        break
+                templateFileFolder = Path(os.path.join(ikfs.getVarFolder(), 'sys', 'views', '-Templates-'))
+                templateFile = ikfs.getLastRevisionFile(templateFileFolder, 'template.xlsx')
+                if isNullBlank(templateFile):
+                    logger.error("Template file does not exist in folder [%s]." % templateFileFolder.absolute())
+                    processResult = Boolean2(False, 'Screen template file is not found. Please check.')
+                    return processResult
+                if os.path.isfile(sysPath):
+                    logger.info('Import screen definition [%s] from file [%s]: delete file (3) [%s]' %
+                                (screenDefinition.fullName, screenDefinition.filePath, sysPath))
+                    os.remove(sysPath)
+                logger.info('Import screen definition [%s] from file [%s]: export data to file [%s] ...' %
+                            (screenDefinition.fullName, screenDefinition.filePath, sysPath))
+                processResult = screenDbWriteToExcel(latestScreen, templateFile, sysPath)
+                if not processResult.value:
+                    return processResult
+                logger.info('Import screen definition [%s] from file [%s]: export data to file [%s] success' %
+                            (screenDefinition.fullName, screenDefinition.filePath, sysPath))
 
-        # ik_screen_file
-        screenFileRc = ScreenFile()
-        if not isNullBlank(userID):
-            screenFileRc.cre_usr_id = userID
-            screenFileRc.rmk = 'Reload by Screen Definition'
-        else:
-            screenFileRc.rmk = 'Create by System'
-        screenFileRc.screen = latestScreen
-        screenFileRc.file_nm = os.path.basename(outputFile)
-        screenFileRc.file_size = os.path.getsize(outputFile)
-        screenFileRc.file_path = os.path.dirname(outputFile)
-        screenFileRc.file_dt = lastModifyDtExcel
-        screenFileRc.file_md5 = _getExcelMD5(outputFile)
-        ptrn = IkTransaction()
-        ptrn.add(screenFileRc)
-        b = ptrn.save()
-        if not b.value:
-            raise IkValidateException(b.dataStr)
-        return Boolean2(True)
+            # ik_screen_file
+            screenFileRc = ScreenFile()
+            if not isNullBlank(userID):
+                screenFileRc.cre_usr_id = userID
+                screenFileRc.rmk = 'Reload by Screen Definition'
+            else:
+                screenFileRc.rmk = 'Create by System'
+            screenFileRc.screen = latestScreen
+            screenFileRc.file_nm = os.path.basename(outputFile)
+            screenFileRc.file_size = os.path.getsize(outputFile)
+            screenFileRc.file_path = os.path.dirname(outputFile)
+            screenFileRc.file_dt = lastModifyDtExcel
+            screenFileRc.file_md5 = _getExcelMD5(outputFile)
+            ptrn = IkTransaction()
+            ptrn.add(screenFileRc)
+            b = ptrn.save()
+            if not b.value:
+                processResult = b
+                raise IkValidateException(b.dataStr)
+            lastScreenRev = screenFileRc.screen.rev
+            processResult = Boolean2(True, 'Success')
+            return processResult
+        except Exception as e:
+            logger.error('Save screen error! Excel file path: [%s] ' % (screenDefinition.filePath))
+            return Boolean2(False, e)
+        finally:
+            if processResult.value:
+                logger.info('Import screen definition [%s] from file [%s] success. Last Revision is %s.' %
+                            (screenDefinition.fullName, screenDefinition.filePath, lastScreenRev))
+            else:
+                logger.error('Import screen definition [%s] from file [%s] failed: %s' %
+                             (screenDefinition.fullName, screenDefinition.filePath, processResult.dataStr))
 
 
 def __createExcelWithDatabase(screenSN, userID):
@@ -357,7 +387,7 @@ def _getExcelMD5(file):
 
     md5 = hashlib.md5()
     while True:
-        data = excel.read(8192) 
+        data = excel.read(8192)
         if not data:
             break
         md5.update(data)
@@ -488,13 +518,14 @@ def __updateScreenDatabase(dfn, userID):
             screenFieldGroupRc.highlight_row = __toBool(j[7])
             screenFieldGroupRc.selection_mode = ikui.getScreenFieldGroupSelectionMode(j[8])
             screenFieldGroupRc.cols = j[9]
-            screenFieldGroupRc.sort_new_rows = __toBool(j[10])
-            screenFieldGroupRc.data_page_type = ikui.getScreenFieldGroupDataPageType(j[11])
-            screenFieldGroupRc.data_page_size = j[12]
-            screenFieldGroupRc.outer_layout_params = j[13]
-            screenFieldGroupRc.inner_layout_type = j[14]
-            screenFieldGroupRc.inner_layout_params = j[15]
-            screenFieldGroupRc.html = j[16]
+            # screenFieldGroupRc.sort_new_rows = __toBool(j[10])
+            screenFieldGroupRc.data_page_type = ikui.getScreenFieldGroupDataPageType(j[10])
+            screenFieldGroupRc.data_page_size = j[11]
+            screenFieldGroupRc.outer_layout_params = j[12]
+            screenFieldGroupRc.inner_layout_type = j[13]
+            screenFieldGroupRc.inner_layout_params = j[14]
+            screenFieldGroupRc.html = j[15]
+            screenFieldGroupRc.additional_props = j[16]
             screenFieldGroupRc.rmk = j[17]
             screenFieldGroupRcs.append(screenFieldGroupRc)
             seq += 1

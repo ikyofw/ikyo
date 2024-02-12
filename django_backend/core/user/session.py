@@ -55,7 +55,7 @@ class __SessionManager:
         '''
             return object
         '''
-        tokenRc = UsrToken.objects.filter(usr=user).first()
+        tokenRc = UsrToken.objects.filter(usr_id=user.id).first()
         if tokenRc is None:
             return None
         prmRc = UsrSessionPrm.objects.filter(token=tokenRc, key=name).first()
@@ -63,7 +63,7 @@ class __SessionManager:
         return defaultValue if v is None else loads(v)
 
     def updatePrms(self, user, name, value):
-        tokenRc = UsrToken.objects.filter(usr=user).first()
+        tokenRc = UsrToken.objects.filter(usr_id=user.id).first()
         if tokenRc is None:
             return None
         if isinstance(value, Path):
@@ -81,7 +81,7 @@ class __SessionManager:
         if type(nameFilters) == str:
             nameFilters = [nameFilters]
 
-        tokenRc = UsrToken.objects.filter(usr=user).first()
+        tokenRc = UsrToken.objects.filter(usr_id=user.id).first()
         if tokenRc is None:
             return True
         allRcs = []

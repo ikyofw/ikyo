@@ -6,11 +6,10 @@ import shutil
 import zipfile
 from pathlib import Path
 
+from core.core.lang import Boolean2
 from core.utils.langUtils import isNotNullBlank, isNullBlank
 
 from django_backend.settings import BASE_DIR
-
-from .lang import Boolean2
 
 logger = logging.getLogger('ikyo')
 
@@ -250,6 +249,29 @@ def deleteEmptyFolderAndParentFolder(p):
     # up loop to delete empty folders
     if folders is not None and len(os.listdir(folders)) == 0:
         os.removedirs(folders)
+
+
+def deleteFileAndFolder(file: Path, folder: str) -> None:
+    if file:
+        file = Path(file)
+        if file.is_file():
+            file.unlink()
+
+            # remote parent folder is it's empty
+            p = file.parent
+            while True:
+                if p.name == folder:
+                    break
+                if not os.listdir(p.absolute()):
+                    # empty folder, then delete it
+                    try:
+                        os.rmdir(p) 
+                        p = p.parent
+                    except:
+                        # the folder cannot be deleted or it's not empty
+                        break
+                else:
+                    break
 
 
 def zip(sourceFileList, outputFilePath) -> Boolean2:

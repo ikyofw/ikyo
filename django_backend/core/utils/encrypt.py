@@ -3,7 +3,7 @@ import logging
 import os
 from pathlib import Path
 
-import core.core.fs as fs
+import core.core.fs as ikfs
 from Crypto import Random
 from Crypto.Cipher import PKCS1_v1_5 as PKCS1_cipher
 from Crypto.PublicKey import RSA
@@ -24,7 +24,7 @@ def generateRsaKeys() -> None:
     public_key = rsa.publickey().exportKey()
     private_key = rsa.exportKey()
     if not os.path.exists(ENCRYPT_FORDER):
-        fs.mkdirs(ENCRYPT_FORDER)
+        ikfs.mkdirs(ENCRYPT_FORDER)
     # save keys
     with open(ENCRYPT_PUBLIC_PEM, 'wb')as f:
         f.write(public_key)

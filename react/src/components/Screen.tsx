@@ -1,6 +1,7 @@
 import transform from "css-to-react-native"
 import React, { Ref, forwardRef, useImperativeHandle, useRef, useState } from "react"
 import { createIconColumn } from "./TableFg"
+import GetSitePlan from "./sitePlan/GetSitePlan"
 import { useHttp } from "../utils/http"
 import pyiLogger from "../utils/log"
 import pyiLocalStorage from "../utils/pyiLocalStorage"
@@ -76,6 +77,7 @@ const Screen: React.FC<IScreenBox> = forwardRef((props, ref: Ref<any>) => {
     })
     return initialFlags
   })
+  const [sitePlanRefreshFlag, setSitePlanRefreshFlag] = useState(1)
 
   const [dialogOpen, setDialogOpen] = React.useState(false)
   const [dialogPrams, setDialogPrams] = React.useState({ onCancel: () => closeDialog() })
@@ -134,6 +136,7 @@ const Screen: React.FC<IScreenBox> = forwardRef((props, ref: Ref<any>) => {
 
   // set page data
   const refreshList = async () => {
+    setSitePlanRefreshFlag(sitePlanRefreshFlag + 1)
     Loading.show()
     // get table data
     try {
@@ -732,6 +735,10 @@ const Screen: React.FC<IScreenBox> = forwardRef((props, ref: Ref<any>) => {
                   {String(screenJson[fgName].type) === pyiGlobal.VIEWER ? (
                     <FileViewer key={index} params={screenJson[fgName]} screenID={props.screenID} />
                   ) : null}
+
+                  {String(screenJson[fgName].type) === pyiGlobal.SITE_PLAN ? (
+                    <GetSitePlan key={index} refreshFlag={sitePlanRefreshFlag} params={screenJson[fgName]} screenID={props.screenID} />
+                  ) : null}
                 </div>
               ) : null
             )}
@@ -747,6 +754,7 @@ const Screen: React.FC<IScreenBox> = forwardRef((props, ref: Ref<any>) => {
     screenEditable,
     screenPluginLists,
     resources,
+    sitePlanRefreshFlag,
   ])
 
   const subScreenNode = React.useMemo(() => {

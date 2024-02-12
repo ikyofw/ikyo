@@ -43,7 +43,7 @@ def convertStr2Json(jsonStr, defaultKey=None) -> dict:
                 return json5.loads(testStr)
             except:
                 pass
-    raise Exception('Covnert string [%s] to json failed.' % jsonStr)
+    raise Exception('Convert string [%s] to json failed.' % jsonStr)
 
 
 def validateEmail(email) -> bool:

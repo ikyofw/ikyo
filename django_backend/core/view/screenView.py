@@ -1,7 +1,5 @@
 import datetime
-import importlib
 import inspect
-import json
 import logging
 import os
 import pathlib
@@ -14,7 +12,6 @@ from urllib.parse import parse_qs, urlparse
 import sqlparse
 from django.core.handlers.wsgi import WSGIHandler
 from django.db import connection
-from django.db.models import Q
 from django.db.models.query import QuerySet
 from django.db.utils import DatabaseError, DataError, IntegrityError, ProgrammingError
 from django.http.response import HttpResponseBase, StreamingHttpResponse
@@ -29,6 +26,7 @@ import core.utils.spreadsheet as spreadsheet
 from core.core.code import MessageType
 from core.core.exception import IkException, IkMessageException, IkValidateException
 from core.core.lang import Boolean2
+from core.view.authView import AuthAPIView
 from core.db.model import DummyModel, Model
 from core.db.transaction import IkTransaction, IkTransactionForeignKey
 from core.menu.menuManager import MenuManager
@@ -36,7 +34,6 @@ from core.sys.accessLog import addAccessLog
 from core.utils.langUtils import isNotNullBlank, isNullBlank
 from iktools import IkConfig
 
-from .authView import AuthAPIView
 
 logger = logging.getLogger('ikyo')
 
@@ -112,32 +109,32 @@ class ScreenAPIView(AuthAPIView):
 
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
-        self.__menuName = None  # ik_menu.menu_nm
-        self.__menuID = None
-        self.__screen = None
-        self.__functionCategory = None
-        self.__functionCode = None
-        self.__httpMethod = None
-        self.__SUUID = None
+        self._menuName = None  # ik_menu.menu_nm
+        self._menuID = None
+        self._screen = None
+        self._functionCategory = None
+        self._functionCode = None
+        self._httpMethod = None
+        self._SUUID = None
         '''
             post/get/delete/put (lower case)
         '''
-        self.__requestAction = None
+        self._requestAction = None
         '''
             http request action
         '''
 
-        self.__isGetDataRequest = False
+        self._isGetDataRequest = False
         '''
             http get data request flag
         '''
 
-        self.__messages = []
+        self._messages = []
         '''
             response messages
         '''
 
-        self.__staticResources = []
+        self._staticResources = []
         '''
             static resource files. Reference to django_backend/core/core/http.py.IkResponseStaticResource
         '''
@@ -154,35 +151,35 @@ class ScreenAPIView(AuthAPIView):
             parameters: screenJson
         '''
 
-        self.__requestData = None
-        self.__lastRequestData = None  # dict, can be None
+        self._requestData = None
+        self._lastRequestData = None  # dict, can be None
 
-        self.__fieldGroupData = {}
+        self._fieldGroupData = {}
 
         for key, value in kwargs.items():
             if SCREEN_INIT_PRM_MENU_NAME == key:
-                self.__menuName = None
+                self._menuName = None
             elif SCREEN_INIT_PRM_FNC_CATEGORY == key:
-                self.__functionCategory = value
+                self._functionCategory = value
             elif SCREEN_INIT_PRM_FNC_CODE == key:
-                self.__functionCode = value
+                self._functionCode = value
 
-        if isNullBlank(self.__menuName):
+        if isNullBlank(self._menuName):
             queryMenuName = self.__class__.__name__.lower()
             menuInfoDict = MenuManager.getMenuInfoByMenuName(queryMenuName)
             if menuInfoDict is not None:
-                self.__menuID = menuInfoDict['id']
+                self._menuID = menuInfoDict['id']
                 self.setMenuName(queryMenuName)
             else:
                 queryMenuName = self.__class__.__name__
                 menuInfoDict = MenuManager.getMenuInfoByMenuName(queryMenuName)
                 if menuInfoDict is not None:
-                    self.__menuID = menuInfoDict['id']
+                    self._menuID = menuInfoDict['id']
                     self.setMenuName(queryMenuName)
         else:
-            self.__menuID = MenuManager.getMenuId(menuName=self.__menuName)
+            self._menuID = MenuManager.getMenuId(menuName=self._menuName)
 
-        if not isNullBlank(self.__menuName) and (isNullBlank(self.__functionCategory) or isNullBlank(self.__functionCode)):
+        if not isNullBlank(self._menuName) and (isNullBlank(self._functionCategory) or isNullBlank(self._functionCode)):
             self.__updateFunctionInfoFromMenu()
 
     def initial(self, request, *args, **kwargs):
@@ -202,62 +199,62 @@ class ScreenAPIView(AuthAPIView):
         return None if isNullBlank(idStr) else int(idStr)
 
     def __updateFunctionInfoFromMenu(self) -> None:
-        if not isNullBlank(self.__menuName) and (isNullBlank(self.__functionCategory) or isNullBlank(self.__functionCode)):
-            menuInfoDict = MenuManager.getMenuInfoByMenuName(self.__menuName)
+        if not isNullBlank(self._menuName) and (isNullBlank(self._functionCategory) or isNullBlank(self._functionCode)):
+            menuInfoDict = MenuManager.getMenuInfoByMenuName(self._menuName)
             if menuInfoDict is None:
-                raise IkMessageException('System error: menu [%s] does not exist.' % self.__menuName)
-            if isNullBlank(self.__functionCategory):
+                raise IkMessageException('System error: menu [%s] does not exist.' % self._menuName)
+            if isNullBlank(self._functionCategory):
                 ctg = menuInfoDict.get('ctg', None)
-                self.__functionCategory = None if ctg == '' else ctg
-            if isNullBlank(self.__functionCode):
+                self._functionCategory = None if ctg == '' else ctg
+            if isNullBlank(self._functionCode):
                 code = menuInfoDict.get('cd', None)
-                self.__functionCode = None if code == '' else code
+                self._functionCode = None if code == '' else code
 
     def setMenuName(self, menuName) -> None:
-        self.__menuName = menuName
+        self._menuName = menuName
         self.__updateFunctionInfoFromMenu()
 
     def getMenuName(self) -> str:
-        return self.__menuName
+        return self._menuName
 
     # YL.ikyo, 2023-06-20 get user menu acl - start
     def isACLWriteable(self) -> bool:
         menuID = MenuManager.getMenuId(self.getMenuName())
         userID = self.getCurrentUserId()
-        groups_ids = ikModels.UserGroup.objects.filter(usr_id=usrId).values_list('grp_id', flat=True)
-        acl_permissions = ikModels.GroupMenu.objects.filter(grp__in=groups_ids, menu=menuRc).values_list('acl', flat=True)
+        groups_ids = ikModels.UserGroup.objects.filter(usr_id=userID).values_list('grp_id', flat=True)
+        acl_permissions = ikModels.GroupMenu.objects.filter(grp__in=groups_ids, menu__id=menuID).values_list('acl', flat=True)
         return False if acl_permissions is None else 'W' in acl_permissions
 
     def isACLReadOnly(self) -> bool:
         menuID = MenuManager.getMenuId(self.getMenuName())
         userID = self.getCurrentUserId()
-        groups_ids = ikModels.UserGroup.objects.filter(usr_id=usrId).values_list('grp_id', flat=True)
-        acl_permissions = ikModels.GroupMenu.objects.filter(grp__in=groups_ids, menu=menuRc).values_list('acl', flat=True)
+        groups_ids = ikModels.UserGroup.objects.filter(usr_id=userID).values_list('grp_id', flat=True)
+        acl_permissions = ikModels.GroupMenu.objects.filter(grp__in=groups_ids, menu__id=menuID).values_list('acl', flat=True)
         return False if acl_permissions is None else 'R' in acl_permissions
 
     # YL.ikyo, 2023-06-20 - end
 
     def setFunctionCategory(self, category) -> None:
-        self.__functionCategory = category
+        self._functionCategory = category
 
     def getFunctionCategory(self) -> str:
         '''
             function category. E.g. GP/SC
         '''
-        return self.__functionCategory
+        return self._functionCategory
 
     def setFunctionCode(self, code) -> None:
-        self.__functionCode = code
+        self._functionCode = code
 
     def getFunctionCode(self) -> str:
         '''
             return function code. E.g. GP020. 
             If not set, then get it from 
         '''
-        return self.__functionCode
+        return self._functionCode
 
     def getScreen(self) -> ikui.Screen:
-        return self.__screen
+        return self._screen
 
     def beforeInitScreenData(self, screen) -> None:
         pass
@@ -267,7 +264,7 @@ class ScreenAPIView(AuthAPIView):
 
     def _getScreenResponse(self) -> ikhttp.IkSccJsonResponse:
         _startTime = datetime.datetime.now()
-        screen = self.__screen
+        screen = self._screen
         try:
             self.beforeInitScreenData(screen)
             ikui.IkUI.initScreenData(screen, initDataCallBack=self.initScreenData)
@@ -280,7 +277,7 @@ class ScreenAPIView(AuthAPIView):
             logger.debug(screenJson)
             return ikhttp.IkSccJsonResponse(data=screenJson)
         except Exception as e:
-            logger.error('_getScreenResponse error. screen=%s, error=%s' % (self.__menuID, str(e)))
+            logger.error('_getScreenResponse error. screen=%s, error=%s' % (self._menuID, str(e)))
             logger.error(e, exc_info=True)
             return ikhttp.IkErrJsonResponse(message='System error.')
         finally:
@@ -329,7 +326,7 @@ class ScreenAPIView(AuthAPIView):
                 else:
                     self.__updateDataCursor(fieldGroup, r)
                     data = ikhttp.IkSccJsonResponse(data=r).getJsonData()
-            self.__fieldGroupData[fieldGroup.name] = data
+            self._fieldGroupData[fieldGroup.name] = data
             if recordsetName is not None:
                 self.setSessionParameter(recordsetName, data)
             return getDataDone, data
@@ -346,7 +343,7 @@ class ScreenAPIView(AuthAPIView):
         return TableCursorInfo(self.getLastRequestData())
 
     def _getFieldGroupData(self, fieldGroupName) -> object:
-        return self.__fieldGroupData.get(fieldGroupName, None)
+        return self._fieldGroupData.get(fieldGroupName, None)
 
     def __updateDataCursor(self, fieldGroup, data) -> None:
         if data is not None and fieldGroup.groupType == ikui.SCREEN_FIELD_TYPE_RESULT_TABLE and fieldGroup.editable:
@@ -387,11 +384,11 @@ class ScreenAPIView(AuthAPIView):
             return tempate file. E.g. var/templates/ikyo/GP/GP020/xxxx-v99.xlsx
         '''
         templateFilename = filename
-        if templateFilename is None and self.__functionCode is not None:
-            templateFilename = self.__functionCode + "-Template.xlsx"
+        if templateFilename is None and self._functionCode is not None:
+            templateFilename = self._functionCode + "-Template.xlsx"
         f = self.__getLastTemplateRevisionFile(templateFilename, category, code)
-        if f is None and filename is None and self.__functionCode is not None:
-            templateFilename = self.__functionCode + ".xlsx"
+        if f is None and filename is None and self._functionCode is not None:
+            templateFilename = self._functionCode + ".xlsx"
             f = self.__getLastTemplateRevisionFile(templateFilename, category, code)
         return f
 
@@ -399,14 +396,20 @@ class ScreenAPIView(AuthAPIView):
         '''
             return tempate file. E.g. var/templates/ikyo/GP/GP020/xxxx-v99.xlsx
         '''
-        return self.__getLastTemplateRevisionFile2(filename, rootFolder='templates/ikyo', category=category, code=code)
+        return self.__getLastTemplateRevisionFile2(filename, rootFolder=self.getTemplateFolderName(), category=category, code=code)
+    
+    def getTemplateFolderName(self) -> str:
+        '''
+            return templates/ikyo
+        '''
+        return 'templates/ikyo'
 
     def __getLastTemplateRevisionFile2(self, filename, rootFolder, category=None, code=None) -> str:
         '''
             return tempate file. E.g. var/{rootFolder}/ikyo/GP/GP020/xxxx-v99.xlsx
         '''
-        category = self.__functionCategory if category is None else category
-        code = self.__functionCode if code is None else code
+        category = self._functionCategory if category is None else category
+        code = self._functionCode if code is None else code
         path = rootFolder
         if code is not None and category is None:
             raise IkValidateException('Parameter [category] is mandatory if the [code] is not null.')
@@ -419,7 +422,7 @@ class ScreenAPIView(AuthAPIView):
         templateFile = ikfs.getLastRevisionFile(ikfs.getVarFolder(path), filename)
         return templateFile
 
-    def downloadFile(self, file) -> HttpResponseBase:
+    def downloadFile(self, file, filename: str = None) -> HttpResponseBase:
         if file is None:
             msg = 'Download file cannot be empty. Please ask administrator to check.'
             logger.error(msg)
@@ -429,7 +432,7 @@ class ScreenAPIView(AuthAPIView):
             return ikhttp.IkErrJsonResponse(message="File does not exist.")
         else:
             try:
-                return ikhttp.responseFile(file)
+                return ikhttp.responseFile(file, filename=filename)
             except Exception as e:
                 return ikhttp.IkErrJsonResponse(message="Download file failed: %s" % str(e))
 
@@ -445,8 +448,8 @@ class ScreenAPIView(AuthAPIView):
             return var/upload/00001/GP/GP020/username/2022/08/02/093651543
         '''
         return ikfs.getVarFolder('upload/%s/%s/%s' %
-                                 ('NA' if self.__functionCategory is None else self.__functionCategory,
-                                  'NA' if self.__functionCode is None else self.__functionCode, user.usr_nm),
+                                 ('NA' if self._functionCategory is None else self._functionCategory,
+                                  'NA' if self._functionCode is None else self._functionCode, user.usr_nm),
                                  withTimeStampFolders=True)
 
     def downloadExampleFn(self, filename) -> ikhttp.IkJsonResponse:
@@ -525,17 +528,17 @@ class ScreenAPIView(AuthAPIView):
                 # StreamingHttpResponse: download file
                 r = ikhttp.IkSccJsonResponse(data=r)
             isUpdateContent = False
-            if self.__messages is not None and len(self.__messages) > 0 \
+            if self._messages is not None and len(self._messages) > 0 \
                     and r is not None and isinstance(r, ikhttp.IkJsonResponse):
-                for msgItem in self.__messages:
+                for msgItem in self._messages:
                     if type(msgItem) == list:  # self message
                         r.addMessage(msgItem[0], msgItem[1])
                     elif type(msgItem) == dict:  # IkJsonResponse message
                         r.addMessage(msgItem['type'], msgItem['message'])
                 isUpdateContent = True
-            if self.__staticResources is not None and len(self.__staticResources) > 0 \
+            if self._staticResources is not None and len(self._staticResources) > 0 \
                     and r is not None and isinstance(r, ikhttp.IkJsonResponse):
-                for s in self.__staticResources:
+                for s in self._staticResources:
                     r.addStaticResource(s)
                 isUpdateContent = True
             if isUpdateContent:
@@ -555,42 +558,42 @@ class ScreenAPIView(AuthAPIView):
         _startTime = datetime.datetime.now()
         _loggerDesc = None
 
-        self.__httpMethod = httpMethod
+        self._httpMethod = httpMethod
         className = self.__class__.__name__
         try:
             if not self.__permissionCheck():
                 _loggerDesc = 'Permission Deny'
                 return ikhttp.IkErrJsonResponse(message='Permission Deny')
 
-            if self.__screen is None:
+            if self._screen is None:
                 _getScreenStartTime = datetime.datetime.now()
 
                 parsedUrl = urlparse(self.request.get_full_path())
                 queryParams = parse_qs(parsedUrl.query)
                 subScreenNm = queryParams.get(PARAMETER_KEY_NAME_SUB_SCREEN_NAME, [None])[0]
 
-                self.__screen = MenuManager.getScreen2(self.request, self, menuName=self.__menuName, subScreenNm=subScreenNm)
+                self._screen = MenuManager.getScreen2(self.request, self, menuName=self._menuName, subScreenNm=subScreenNm)
                 self._logDuration(_getScreenStartTime, description='MenuManager.getScreen2, menuName=%s, screen=%s'
-                                  % (self.__menuName, None if self.__screen is None else self.__screen.id))
-            __getRequestDataStartTime = datetime.datetime.now()
-            self.__requestData = self.__getRequestData()
-            self._logDuration(_getScreenStartTime, description='__getRequestData, screen=%s' % (None if self.__screen is None else self.__screen.id))
-            self.__lastRequestData = self.getSessionParameter(PARAMETER_KEY_NAME_LAST_REQUEST_DATA, default=None)
+                                  % (self._menuName, None if self._screen is None else self._screen.id))
+            _getRequestDataStartTime = datetime.datetime.now()
+            self._requestData = self._getRequestData()
+            self._logDuration(_getScreenStartTime, description='_getRequestData, screen=%s' % (None if self._screen is None else self._screen.id))
+            self._lastRequestData = self.getSessionParameter(PARAMETER_KEY_NAME_LAST_REQUEST_DATA, default=None)
             action = self.getRequestAction(**kwargs)  # authorFg_EditIndexField_Click
             _loggerDesc = action
-            self.__requestAction = action
+            self._requestAction = action
             if not isNullBlank(action):
                 getDataFlag = kwargs.get(ikui.GET_DATA_URL_FLAG_PARAMETER_NAME, None)  # TODO: error, need to check and test
                 if not isNullBlank(getDataFlag):
-                    self.__isGetDataRequest = True
+                    self._isGetDataRequest = True
             # get uuid from request data or url
             suuid = self.getRequestData().get(PARAMETER_KEY_NAME_SCREEN_UUID, None)
             if suuid is None:
                 # parsedUrl = urlparse(self.request.get_full_path())
                 # queryParams = parse_qs(parsedUrl.query)
                 suuid = queryParams.get(PARAMETER_KEY_NAME_SCREEN_UUID, [None])[0]
-            self.__SUUID = suuid
-            self.__viewUUID = suuid
+            self._SUUID = suuid
+            self._viewUUID = suuid
             # get uuid end
             logger.debug('%s process %s action:[%s] suuid=[%s]' % (className, httpMethod, action, suuid))
 
@@ -621,10 +624,10 @@ class ScreenAPIView(AuthAPIView):
             # YL.ikyo, 2023-05-08 - end
 
             # check the edit button function for result table - end
-            self.__saveRequestData(additionParameterDict=additionalRequestParameters)
+            self._saveRequestData(additionParameterDict=additionalRequestParameters)
 
             if action != REQUEST_SYSTEM_ACTION_GET_SCREEN and action != REQUEST_SYSTEM_ACTION_LOAD_SCREEN_COMPLETED:
-                addAccessLog(self.request, menuID=self.__menuID, pageName=className, actionName=action, remarks='core.%s' % httpMethod)
+                addAccessLog(self.request, menuID=self._menuID, pageName=className, actionName=action, remarks='core.%s' % httpMethod)
             if action is not None and len(action) > 0 and action[0] == '_':
                 return ikhttp.IkErrJsonResponse(message='%s process %s action:[%s]: permission deny.' % (className, httpMethod, action))
             if httpMethod == 'get' and action == REQUEST_SYSTEM_ACTION_INIT_SCREEN:
@@ -632,8 +635,7 @@ class ScreenAPIView(AuthAPIView):
                 try:
                     return self._initScreen()
                 finally:
-                    self._logDuration(_initScreenStartTime, description='_initScreen screen=%s' %
-                                      (None if self.__screen is None else self.__screen.id))
+                    self._logDuration(_initScreenStartTime, description='_initScreen screen=%s' % (None if self._screen is None else self._screen.id))
             elif httpMethod == 'get' and action == REQUEST_SYSTEM_ACTION_GET_SCREEN:
                 return self._getScreenResponse()
             elif httpMethod == 'post' and action == REQUEST_SYSTEM_ACTION_UNLOADED_SCREEN:
@@ -667,9 +669,8 @@ class ScreenAPIView(AuthAPIView):
                             return ikhttp.IkErrJsonResponse(message='%s process %s action:[%s]: function is not found' % (className, httpMethod, action))
                         elif len(actionPrms) == 2:
                             # system default method
-                            logger.debug(
-                                '%s process %s action:[%s] - function is not found, then try system build-in function...', className, httpMethod, action)
-                            return self.__processBuildInFunction(actionPrms[0], actionPrms[1])
+                            logger.debug('%s process %s action:[%s] - function is not found, then try system build-in function...', className, httpMethod, action)
+                            return self._processBuildInFunction(actionPrms[0], actionPrms[1])
                 if callViewFn:
                     if actionFn is None and isResultTableClickColumnDefaultEvent:
                         # this method is optional for user's controller
@@ -678,8 +679,7 @@ class ScreenAPIView(AuthAPIView):
                     try:
                         return actionFn()
                     finally:
-                        self._logDuration(_callActionFnStartTime, actionName=actionFnName, description='Screen=%s' %
-                                          (None if self.__screen is None else self.__screen.id))
+                        self._logDuration(_callActionFnStartTime, actionName=actionFnName, description='Screen=%s' % (None if self._screen is None else self._screen.id))
         except DatabaseError as e:
             logger.error(e, exc_info=True)
             msg = str(e)
@@ -720,16 +720,16 @@ class ScreenAPIView(AuthAPIView):
         '''
             call this method after get/post/delete/put method 
         '''
-        self.__messages.clear()
-        self.__staticResources.clear()
+        self._messages.clear()
+        self._staticResources.clear()
 
     def getRequestData(self) -> ikhttp.IkRequestData:
-        return self.__requestData
+        return self._requestData
 
     def _getRequestValue(self, name: str, fgName: str = None, default: any = None) -> any:
         if fgName is None:
-            return self.__requestData.get(name, default)
-        fg = self.__requestData.get(fgName)
+            return self._requestData.get(name, default)
+        fg = self._requestData.get(fgName)
         return None if fg is None else fg.get(name, default)
 
     def _getRequestValueAsDate(self, name: str, fgName: str = None, default: datetime.date = None, format="%Y-%m-%d") -> datetime.date:
@@ -756,7 +756,7 @@ class ScreenAPIView(AuthAPIView):
             return value
         return datetime.datetime.strptime(str(value), format)
 
-    def __getRequestData(self) -> ikhttp.IkRequestData:
+    def _getRequestData(self) -> ikhttp.IkRequestData:
         '''
             2022-08-30, still in developing .... (Li)
         '''
@@ -770,13 +770,13 @@ class ScreenAPIView(AuthAPIView):
             if fg.isTable():
                 screenTableGroupNames.append(fg.name)
                 if not isNullBlank(screen.getRecordset(fg.recordSetName)) \
-                        and not isNullBlank(screen.getRecordset(fg.recordSetName).modelNames):
+                    and not isNullBlank(screen.getRecordset(fg.recordSetName).modelNames):
                     parameterModelMap[fg.name] = screen.getRecordset(fg.recordSetName).modelNames
             elif fg.isDetail():
                 screenFieldsGroupNames.append(fg.name)
                 if not isNullBlank(fg.recordSetName) \
-                        and not isNullBlank(screen.getRecordset(fg.recordSetName)) \
-                        and not isNullBlank(screen.getRecordset(fg.recordSetName).modelNames):
+                    and not isNullBlank(screen.getRecordset(fg.recordSetName)) \
+                    and not isNullBlank(screen.getRecordset(fg.recordSetName).modelNames):
                     parameterModelMap[fg.name] = screen.getRecordset(fg.recordSetName).modelNames
         for _fgName, recordName in parameterModelMap.items():
             if recordName is not None and ',' in recordName:
@@ -785,7 +785,7 @@ class ScreenAPIView(AuthAPIView):
         requestData = ikhttp.GetRequestData(self.request, parameterModelMap=parameterModelMap, screen=screen)
         return requestData
 
-    def __saveRequestData(self, additionParameterDict=None):
+    def _saveRequestData(self, additionParameterDict=None):
         data = self.getRequestData()
         if not data:
             return
@@ -799,7 +799,7 @@ class ScreenAPIView(AuthAPIView):
         self.setSessionParameter(PARAMETER_KEY_NAME_LAST_REQUEST_DATA, jData)
 
     def getLastRequestData(self) -> dict:
-        return {} if self.__requestData is None else self.__lastRequestData
+        return {} if self._requestData is None else self._lastRequestData
 
     def getLastRequestDataAsInt(self, name) -> int:
         v = self.getLastRequestData().get(name, None)
@@ -851,34 +851,34 @@ class ScreenAPIView(AuthAPIView):
         return False
 
     def _addDebugMessage(self, message) -> None:
-        self.__messages.append([MessageType.DEBUG, message])
+        self._messages.append([MessageType.DEBUG, message])
 
     def _addInfoMessage(self, message) -> None:
-        self.__messages.append([MessageType.INFO, message])
+        self._messages.append([MessageType.INFO, message])
 
     def _addWarnMessage(self, message) -> None:
-        self.__messages.append([MessageType.WARNING, message])
+        self._messages.append([MessageType.WARNING, message])
 
     def _addErrorMessage(self, message) -> None:
-        self.__messages.append([MessageType.ERROR, message])
+        self._messages.append([MessageType.ERROR, message])
 
     def _addFatalMessage(self, message) -> None:
-        self.__messages.append([MessageType.FATAL, message])
+        self._messages.append([MessageType.FATAL, message])
 
     def _addExceptionMessage(self, message) -> None:
-        self.__messages.append([MessageType.EXCEPTION, message])
+        self._messages.append([MessageType.EXCEPTION, message])
 
     def _addMessages(self, messages) -> None:
         if messages is not None:
             if type(messages) != list:
                 raise IkException('Parameter [messages] should be a list.')
-            self.__messages.extend(messages)
+            self._messages.extend(messages)
 
     def _getMessageCount(self, messageType: MessageType = None) -> int:
         if not messageType:
-            return len(self.__messages)
+            return len(self._messages)
         c = 0
-        for mt, _msg in self.__messages:
+        for mt, _msg in self._messages:
             if mt == messageType:
                 c += 1
         return c
@@ -900,7 +900,7 @@ class ScreenAPIView(AuthAPIView):
 
     def _addStaticResource(self, resource, properties=None) -> ikhttp.IkResponseStaticResource:
         r = ikhttp.IkResponseStaticResource(resource=resource, properties=properties)
-        self.__staticResources.append(r)
+        self._staticResources.append(r)
         return r
 
     def _returnQueryResult(self, name, data, style=None, message=None) -> ikhttp.IkSccJsonResponse:
@@ -957,7 +957,7 @@ class ScreenAPIView(AuthAPIView):
         '''
         rspData = {_OPEN_SCREEN_KEY_NAME: menuName}
         if parameters is not None:
-            self.setSessionParameter(name="%s_%s" % (_OPEN_SCREEN_PARAM_KEY_NAME, self.__viewUUID), value=parameters, isGlobal=True)
+            self.setSessionParameter(name="%s_%s" % (_OPEN_SCREEN_PARAM_KEY_NAME, self._viewUUID), value=parameters, isGlobal=True)
         return ikhttp.IkSccJsonResponse(data=rspData)
 
     def convert2DummyModelRcs(self, dataList, initStatus=None) -> list:
@@ -1036,8 +1036,7 @@ class ScreenAPIView(AuthAPIView):
         recordSetWhere += "%s='%s'" % (keyField, 'none' if value is None else (value.replace("'", "''") if type(value) == str else value))
         return modelUtils.queryModel(modelNames=recordset.modelNames,
                                      distinct=recordset.distinct,
-                                     queryFields=None if (isNullBlank(recordset.queryFields)
-                                                          or recordset.queryFields == '*') else recordset.queryFields,
+                                     queryFields=None if (isNullBlank(recordset.queryFields) or recordset.queryFields == '*') else recordset.queryFields,
                                      queryWhere=recordSetWhere,
                                      orderBy=recordset.queryOrder,
                                      limit=recordset.queryLimit,
@@ -1060,12 +1059,12 @@ class ScreenAPIView(AuthAPIView):
         try:
             isCursor = rc.ik_is_cursor()
         except:
-            from core.model import MODEL_RECORD_DATA_CURRENT_KEY_NAME
+            from core.db.model import MODEL_RECORD_DATA_CURRENT_KEY_NAME
             if type(rc) == dict:
                 isCursor = rc.get(MODEL_RECORD_DATA_CURRENT_KEY_NAME, False)
         return isCursor
 
-    def __processBuildInFunction(self, fieldGropName, functionName) -> ikhttp.IkJsonResponse:
+    def _processBuildInFunction(self, fieldGropName, functionName) -> ikhttp.IkJsonResponse:
         '''
             cancel/delete/save/new
         '''
@@ -1086,7 +1085,7 @@ class ScreenAPIView(AuthAPIView):
         '''
         if isNullBlank(fieldGropName):
             return ikhttp.IkErrJsonResponse(message='Fieldgroup Name is mandatory for build-in function [new].')
-        screen = self.__screen
+        screen = self._screen
         fg = screen.getFieldGroup(fieldGropName)
         if fg is None:
             return ikhttp.IkErrJsonResponse(message='Fieldgroup [%s] is not found for build-in function [new].' % fieldGropName)
@@ -1101,7 +1100,7 @@ class ScreenAPIView(AuthAPIView):
         '''
         if isNullBlank(fieldGropName):
             return ikhttp.IkErrJsonResponse(message='Fieldgroup Name is mandatory for build-in function [new].')
-        screen = self.__screen
+        screen = self._screen
         fg = screen.getFieldGroup(fieldGropName)
         if fg is None:
             return ikhttp.IkErrJsonResponse(message='Fieldgroup [%s] is not found for build-in function [new].' % fieldGropName)
@@ -1117,7 +1116,7 @@ class ScreenAPIView(AuthAPIView):
         # 1. get editable field groups
         fgTableNames = []
         fgDetailNames = []
-        for fg in self.__screen.fieldGroups:
+        for fg in self._screen.fieldGroups:
             if fg.visible:
                 if fg.groupType == ikui.SCREEN_FIELD_TYPE_TABLE:
                     fgTableNames.append(fg.name)
@@ -1150,7 +1149,7 @@ class ScreenAPIView(AuthAPIView):
         if b.value:
             # update the master table's current record id if exists (locate to its current record)
             for fgName, rc in detailDataList.items():
-                fgl = self.__screen.getFieldGroupLink(fgName)
+                fgl = self._screen.getFieldGroupLink(fgName)
                 if fgl is not None:
                     self._removeTableDataIndex(fgl.parentFieldGroup.name)
         return b
@@ -1162,7 +1161,7 @@ class ScreenAPIView(AuthAPIView):
         # 1. get editable field groups
         fgTableNames = []
         fgDetailNames = []
-        for fg in self.__screen.fieldGroups:
+        for fg in self._screen.fieldGroups:
             if fg.editable and fg.visible:
                 if fg.groupType == ikui.SCREEN_FIELD_TYPE_TABLE:
                     fgTableNames.append(fg.name)
@@ -1187,12 +1186,12 @@ class ScreenAPIView(AuthAPIView):
         # 3. get table links
         masterFieldGroupNameDict = {}
         for fgName in tableDataList.keys():
-            fgl = self.__screen.getFieldGroupLink(fgName)
+            fgl = self._screen.getFieldGroupLink(fgName)
             if fgl is not None:
                 if fgl.parentFieldGroup.name in tableDataList.keys() or fgl.parentFieldGroup.name in detailDataList.keys():
                     masterFieldGroupNameDict[fgName] = fgl
         for fgName in detailDataList.keys():
-            fgl = self.__screen.getFieldGroupLink(fgName)
+            fgl = self._screen.getFieldGroupLink(fgName)
             if fgl is not None:
                 if fgl.parentFieldGroup.name in tableDataList.keys() or fgl.parentFieldGroup.name in detailDataList.keys():
                     if fgl.parentFieldGroup.name in masterFieldGroupNameDict.keys():
@@ -1219,8 +1218,7 @@ class ScreenAPIView(AuthAPIView):
                         # get current record
                         masterRc = self.__getDataCursor(rcs)
                         if masterRc is not None:
-                            trn.add(rcs, foreignKeys=IkTransactionForeignKey(modelFieldName=fgl.localKey,
-                                    foreignModelRecord=masterRc, foreignField=fgl.parentKey))
+                            trn.add(rcs, foreignKeys=IkTransactionForeignKey(modelFieldName=fgl.localKey, foreignModelRecord=masterRc, foreignField=fgl.parentKey))
                         break
                 for name, rc in detailDataList.items():
                     if name == fgl.parentFieldGroup.name:
@@ -1230,7 +1228,7 @@ class ScreenAPIView(AuthAPIView):
         if b.value:
             # update the master table's current record id if exists (locate to its current record)
             for fgName, rc in detailDataList.items():
-                fgl = self.__screen.getFieldGroupLink(fgName)
+                fgl = self._screen.getFieldGroupLink(fgName)
                 if fgl is not None:
                     keyValue = None
                     if rc is not None:
@@ -1265,7 +1263,7 @@ class ScreenAPIView(AuthAPIView):
 
     # YL.ikyo, 2023-06-06 for table pagination - start
     def _getPaginatorPageSize(self, tableName: str) -> int:
-        screen = self.__screen
+        screen = self._screen
         if screen.getFieldGroup(tableName) is None:
             logger.error('Field group: %s does not exist.' % tableName)
             raise IkValidateException('Field group: %s does not exist.' % tableName)

@@ -80,10 +80,12 @@ const SimpleFg: React.FC<ISimpleFg> = forwardRef((props, ref: Ref<any>) => {
             value = refs[field.name].current?.value
           }
 
-          if (field.dataField) {
-            formData.append(field.dataField, value)
-          } else if (field.name) {
-            formData.append(field.name, value)
+          if (value != null) {
+            if (field.dataField) {
+              formData.append(field.dataField, value)
+            } else if (field.name) {
+              formData.append(field.name, value)
+            }
           }
         })
 
@@ -283,6 +285,7 @@ const SimpleFg: React.FC<ISimpleFg> = forwardRef((props, ref: Ref<any>) => {
                           editable={editable && field.editable}
                           clickPrams={[field.eventHandler, field.eventHandlerParameter]}
                           widgetParameter={field.widgetParameter}
+                          style={field.style}
                         />
                       ) : String(field.widget).trim().toLocaleLowerCase() === "checkbox" ? (
                         <CheckBox

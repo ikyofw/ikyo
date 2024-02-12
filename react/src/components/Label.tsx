@@ -14,7 +14,7 @@ const Label: React.FC<ILabel> = forwardRef((props, ref: Ref<any>) => {
   const [value, setValue] = React.useState(props.labelValue)
 
   React.useEffect(() => {
-    if (props.labelValue || props.labelValue === 0 || props.labelValue === false) {
+    if (props.labelValue || props.labelValue === 0 || props.labelValue === false || props.labelValue === '') {
       if (props.widgetParameter["format"]) {
         let format = getDateFormatStr(props.widgetParameter["format"])
         setValue(formatDate(props.labelValue, format))

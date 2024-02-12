@@ -6,6 +6,7 @@ INSERT INTO ik_screen_fg_type (version_no, type_nm, rmk) VALUEs(0, 'search', 'A 
 INSERT INTO ik_screen_fg_type (version_no, type_nm, rmk) VALUEs(0, 'html', 'A html field.');
 INSERT INTO ik_screen_fg_type (version_no, type_nm, rmk) VALUEs(0, 'iframe', 'A html field but only IT use.');
 INSERT INTO ik_screen_fg_type (version_no, type_nm, rmk) VALUEs(0, 'viewer', 'Display image or PDF');
+INSERT INTO ik_screen_fg_type (version_no, type_nm, rmk) VALUES(0, 'sitePlan', 'Display Site Plan And Soil Chart.');
 
 
 INSERT INTO ik_screen_field_widget (version_no, widget_nm, rmk) VALUES(0, 'Label', 'If this field is empty, admin will use Label instead.');

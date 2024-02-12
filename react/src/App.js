@@ -76,9 +76,11 @@ function App() {
       ) : (
         <>
           <div className="App" id="App">
-            <TopBar />
-            <div className="main_screen" id="main_screen">
+            <div className="top_screen" id="top_screen">
+              <TopBar />
               <TopTitle />
+            </div>
+            <div className="main_screen" id="main_screen">
               <BrowserRouter>
                 <Routes>
                   <Route path="/" element={<BeforeLogin />} />

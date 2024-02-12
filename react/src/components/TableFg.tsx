@@ -162,7 +162,11 @@ const TableFg = forwardRef(<CellType extends Types.CellBase>(props: Props<CellTy
     let attrArr = []
     for (let index = 0; index < fields.length; index++) {
       const element = fields[index]
-      if (element && element !== "__STT_" && element !== "__SLT_") {
+      if (
+        element &&
+        element !== pyiLocalStorage.globalParams.TABLE_ROW_STATUS &&
+        element !== pyiLocalStorage.globalParams.SELECTABLE_TABLE_ROW_STATUS
+      ) {
         attrArr.push(element)
       }
     }
@@ -194,9 +198,12 @@ const TableFg = forwardRef(<CellType extends Types.CellBase>(props: Props<CellTy
   const TABLE = pyiLocalStorage.globalParams.TABLE_TYPE
   const RESULT_TABLE = pyiLocalStorage.globalParams.TABLE_TYPE_RESULT
 
+  const sortNewRows = tableParams.additionalProps?.sortNewRows
+  const tableScrollHeight = tableParams.additionalProps?.tableHeight ? parseInt(tableParams.additionalProps.tableHeight, 10) : null
+
   //init page
   const [tableData, setTableData] = useState([])
-  const [pluginParams, setPluginParams] = useState([])
+  const [pluginParams, setPluginParams] = useState([0])
   const [pageNation, setPageNation] = React.useState(1) // Actual page number
   const [pageSelect, setPageSelect] = React.useState(1) // Selected page number
   const [totalPageNm, setTotalPageNm] = React.useState(0) // Total page numbers
@@ -207,17 +214,19 @@ const TableFg = forwardRef(<CellType extends Types.CellBase>(props: Props<CellTy
   const [showTopIcon, setShowTopIcon] = React.useState(false) // Whether or not to display the icon to the right of the headerRow
   const [showBottomIcon, setShowBottomIcon] = React.useState(false) // Whether or not to display the icon to the right of the lastRow
   const [showColumns, setShowColumns] = React.useState([]) // ColumnNumber of the visible column
-  const [scrollMode, setScrollMode] = React.useState(false) // Whether to enter scrolling mode
-  const [scrollWidth, setScrollWidth] = React.useState(0) // Width of the scrollbar
   const [scrollTimes, setScrollTimes] = React.useState(0) // Scrollbar scrolling times
   const [tableParamsData, setTableParamsData] = React.useState([]) // Raw data passed to the table from the backend
   const [tbodyStylePrams, setTbodyStylePrams] = React.useState([]) // The table body style settings that are processed for use by the cell component.
   const [pluginActiveRows, setPluginActiveRows] = React.useState([]) // The id of the active row of the table plugin column
+  const [scrollPrams, setScrollPrams] = useState({
+    tableHeight: tableScrollHeight,
+    handleScroll: null,
+  }) // Parameters of the scrollbar
 
   const type = tableParams.type
   const name = tableParams.name
   const caption = tableParams.caption
-  const sortNewRows = tableParams.sortNewRows
+
   const showRowNo = tableParams.showRowNo ? tableParams.showRowNo : true
   const insertable = type === RESULT_TABLE ? false : screenEditable && tableParams.insertable
   const deletable = screenEditable && tableParams.deletable
@@ -802,23 +811,6 @@ const TableFg = forwardRef(<CellType extends Types.CellBase>(props: Props<CellTy
     }
   }, [tableParams]) // Clear the search when the page is refreshed; if there is a pagination you need to re-fetch the current pagination's data
 
-  // The following nine lines need to be commented out when jest test, jest test does not support the monitoring of dom changes
-  const observer = new ResizeObserver((entries) => {
-    alignColumns()
-  })
-  React.useEffect(() => {
-    if (scrollMode && state.showRange) {
-      const headerRow = document.getElementById("row_-2 " + name)
-      const firstRow = document.getElementById("row_" + state.showRange[0] + " " + name)
-      if (headerRow) {
-        observer.observe(headerRow) // Aligning the head and body when monitoring changes in the length of the head
-      }
-      if (firstRow) {
-        observer.observe(firstRow) // Aligning the head and tbody when monitoring tbody length changes
-      }
-    }
-  }, [state.data, state.columnStatus])
-
   const filterData = () => {
     // Filter current page
     let preShowRange = []
@@ -910,113 +902,45 @@ const TableFg = forwardRef(<CellType extends Types.CellBase>(props: Props<CellTy
     }
   }, [state.active])
 
-  const alignColumns = () => {
-    const columnWidth = {}
-    const pluginColNm = pluginList ? pluginList.length : 0
-    const showRowNoColNm = showRowNo ? 1 : 0
-    for (let columnIndex = 0; columnIndex < size.columns + pluginColNm + showRowNoColNm; columnIndex++) {
-      const header = getLastHeader(headerPrams.headerLines, columnIndex - 2 - showRowNoColNm)
-      const cell = document.getElementById("cell_" + state.showRange[0] + "_" + (columnIndex - 2 - showRowNoColNm) + " " + name)
-      const footer = document.getElementById("cell_" + state.data.length + "_" + (columnIndex - 2 - showRowNoColNm) + " " + name) as any
-      if (!(footer?.colSpan > 1)) {
-        columnWidth[columnIndex] = Math.max(
-          header ? parseFloat(window.getComputedStyle(header).width) : 0,
-          cell ? parseFloat(window.getComputedStyle(cell).width) : 0,
-          footer ? parseFloat(window.getComputedStyle(footer).width) : 0
-        ) // Save the wider of the cell widths in the head, body, foot and filter as the width of the overall column of the table.
-      }
-    }
-
-    for (let columnIndex = -1; columnIndex < size.columns + pluginColNm + showRowNoColNm; columnIndex++) {
-      const header = getLastHeader(headerPrams.headerLines, columnIndex - 2 - showRowNoColNm)
-      const cell = document.getElementById("cell_" + state.showRange[0] + "_" + (columnIndex - 2 - showRowNoColNm) + " " + name)
-      const footer = document.getElementById("cell_" + state.data.length + "_" + (columnIndex - 2 - showRowNoColNm) + " " + name) as any
-      if (header) {
-        header.style.width = columnWidth[columnIndex] + "px"
-      }
-      if (cell) {
-        cell.style.width = columnWidth[columnIndex] + "px"
-      }
-      if (footer) {
-        footer.style.width = columnWidth[columnIndex] + "px" // Set the widths of the corresponding columns of the head, body and foot to be the same, i.e. aligned.
-      }
-
-      if (!columnWidth[columnIndex] && footer && footer.colSpan) {
-        let length = 0
-        for (let i = 0; i < footer.colSpan; i++) {
-          let header1 = getLastHeader(headerPrams.headerLines, columnIndex - 2 - showRowNoColNm + i)
-          let cell1 = document.getElementById("cell_" + state.showRange[0] + "_" + (columnIndex - 2 - showRowNoColNm + i) + " " + name)
-          const maxWidth = Math.max(header1 ? header1.offsetWidth : 0, cell1 ? cell1.offsetWidth : 0)
-          header1.style.width = maxWidth + "px"
-          cell1.style.width = maxWidth + "px"
-          length += maxWidth // tfoot the existence of cells merged first align the head and tbody, and then calculate the merger of multiple cells in the head and tbody length length
-        }
-        if (length > footer.offsetWidth) {
-          footer.style.width = length + "px" // When the initial width of the merged cell is smaller than that of multiple cells, just stretch the merged cell directly.
-        } else if (length < footer.offsetWidth) {
-          const addWidth = (footer.offsetWidth - length) / footer.colSpan
-          for (let i = 0; i < footer.colSpan; i++) {
-            let header1 = getLastHeader(headerPrams.headerLines, columnIndex - 2 - showRowNoColNm + i)
-            let cell1 = document.getElementById("cell_" + state.showRange[0] + "_" + (columnIndex - 2 - showRowNoColNm + i) + " " + name)
-            header1.style.width = header1.offsetWidth + addWidth + "px"
-            cell1.style.width = cell1.offsetWidth + addWidth + "px" // The initial width of the merged cell is wider than that of the multiple cells, and the extra width will be distributed equally to the multiple cells.
-          }
-        }
-      }
-    }
-  }
-
+  const handleScroll = React.useCallback(() => {
+    setScrollTimes((prevScrollTimes) => prevScrollTimes + 1)
+  }, [])
   const enterScrollingMode = () => {
-    if (state.showRange.length <= 10 || scrollMode) {
-      return
-    }
-    setScrollMode(true)
-
-    const top = document.getElementById("cell_" + state.showRange[0] + "_0 " + name).getBoundingClientRect().top
-    const bottom = document.getElementById("cell_" + state.showRange[9] + "_0 " + name).getBoundingClientRect().bottom
     let tbody = document.getElementById("tbody " + name) as HTMLElement
-
-    tbody.style.display = "block"
-    tbody.style.height = bottom - top + 1 + "px" // Set the height when scrolling to the height of the first ten rows
-    tbody.style.overflowY = "scroll" // Set tbody content scrolling
-
-    alignColumns()
-
-    const tbodyWidth = document.getElementById("tbody " + name).getBoundingClientRect().width
-    const rowWidth = document.getElementById("row_" + state.showRange[0] + " " + name).getBoundingClientRect().width
-    setScrollWidth(tbodyWidth - rowWidth) // Save scrollbar width
+    const newTableHeight = tableScrollHeight ? tableScrollHeight : 400
+    if (tbody) {
+      const tbodyHeight = tbody.getBoundingClientRect().height;
+      if (tbodyHeight < newTableHeight ) {
+        return
+      }
+    }
+    setScrollPrams({
+      tableHeight: newTableHeight,
+      handleScroll: handleScroll,
+    })
   }
   const exitScrollingMode = () => {
-    setScrollMode(false)
-    hideHeaderRowIcon()
+    setScrollPrams({
+      tableHeight: null,
+      handleScroll: handleScroll,
+    })
+  }
+
+  React.useEffect(() => {
+    let newTableHeight = tableScrollHeight
     let tbody = document.getElementById("tbody " + name) as HTMLElement
-    tbody.style.overflowY = ""
-    tbody.style.height = "" // Exit scroll mode
-  }
-
-  React.useEffect(() => {
-    if (scrollMode && state.showRange.length <= 10) {
-      exitScrollingMode() // Exit scroll mode when the number of displayed lines is less than the set scroll height (currently 10 lines).
-    }
-
-    const tbody = document.getElementById("tbody " + name) as HTMLElement
-    if (tbody.style.display === "block") {
-      alignColumns() // If you have already entered scroll mode and the table integrity has been destroyed, re-align the table each time the number of rows displayed changes
-    }
-  }, [state.showRange])
-
-  const handleScroll = () => {
-    setScrollTimes(scrollTimes + 1)
-  }
-  React.useEffect(() => {
-    const tbody = document.getElementById("tbody " + name)
-    if (scrollMode) {
-      tbody.addEventListener("scroll", handleScroll) // Trigger the scroll counter +1 when scrolling, and reset the position of the checkbox in Cell.tsx according to the change of this counter
-      return () => {
-        tbody.removeEventListener("scroll", handleScroll)
+    
+    if (tbody && newTableHeight) {
+      const tbodyHeight = tbody.getBoundingClientRect().height;
+      if (tbodyHeight < newTableHeight ) {
+        newTableHeight = null
       }
     }
-  }, [scrollMode, state.active, state.mode, state.selected, scrollTimes])
+    setScrollPrams({
+      tableHeight: newTableHeight,
+      handleScroll: handleScroll,
+    })
+  }, [state.showRange, name, handleScroll, tableScrollHeight])
 
   const getInputWidth = (column: number) => {
     let width = 0
@@ -1166,7 +1090,7 @@ const TableFg = forwardRef(<CellType extends Types.CellBase>(props: Props<CellTy
       return null
     } else {
       return (
-        <Table columns={size.columns} hideColumnIndicators={hideColumnIndicators} tableName={name}>
+        <Table columns={size.columns} hideColumnIndicators={hideColumnIndicators} tableName={name} scrollPrams={scrollPrams}>
           {/* HeaderRow */}
           {headerPrams.headerLines.map((rowNumber) => (
             <HeaderRow id={"row_-" + rowNumber + " " + name}>
@@ -1263,18 +1187,6 @@ const TableFg = forwardRef(<CellType extends Types.CellBase>(props: Props<CellTy
                     />
                   ))
                 : null}
-              {rowNumber === 2 && scrollMode ? (
-                <th
-                  id={"cell_-2_" + (size.columns + (pluginList ? pluginList.length : 0) - 2) + " " + name}
-                  key={size.columns + (pluginList ? pluginList.length : 0) - 2}
-                  className="Spreadsheet__header Spreadsheet__header__column"
-                  style={{ width: scrollWidth + "px", color: "#F5FF00", cursor: "pointer" }}
-                  onClick={exitScrollingMode}
-                  rowSpan={headerPrams.headerLines.length}
-                >
-                  X
-                </th>
-              ) : null}
             </HeaderRow>
           ))}
 
@@ -1299,13 +1211,6 @@ const TableFg = forwardRef(<CellType extends Types.CellBase>(props: Props<CellTy
                   </td>
                 ))}
               {pluginList && pluginList.map((index: number) => <th key={index} className="Spreadsheet__cell-filter" />)}
-              {scrollMode ? (
-                <th
-                  id={"cell_-1_" + (size.columns + (pluginList ? pluginList.length : 0) - 2) + " " + name}
-                  key={size.columns + (pluginList ? pluginList.length : 0) - 2}
-                  className="Spreadsheet__cell-filter"
-                />
-              ) : null}
             </Row>
           ) : null}
 
@@ -1360,6 +1265,7 @@ const TableFg = forwardRef(<CellType extends Types.CellBase>(props: Props<CellTy
                             columnStatus={state.columnStatus[columnNumber]} // XH 2022-07-04 column sort
                             scrollTimes={scrollTimes}
                             initialData={tableData}
+                            tableHeight={scrollPrams.tableHeight}
                           />
                         )
                       ) : null
@@ -1399,6 +1305,7 @@ const TableFg = forwardRef(<CellType extends Types.CellBase>(props: Props<CellTy
                             columnStatus={state.columnStatus[columnNumber]} // XH 2022-07-04 column sort
                             scrollTimes={scrollTimes}
                             initialData={tableData}
+                            tableHeight={scrollPrams.tableHeight}
                           />
                         )
                       ) : null
@@ -1471,14 +1378,6 @@ const TableFg = forwardRef(<CellType extends Types.CellBase>(props: Props<CellTy
                     className="Spreadsheet__header Spreadsheet__header__column"
                   />
                 ))}
-              {scrollMode ? (
-                <th
-                  id={"cell_" + state.data.length + "_" + (size.columns + (pluginList ? pluginList.length : 0) - 2) + " " + name}
-                  key={size.columns + (pluginList ? pluginList.length : 0) - 2}
-                  className="Spreadsheet__header Spreadsheet__header__column"
-                  style={{ width: scrollWidth + "px", color: "#F5FF00", cursor: "pointer" }}
-                />
-              ) : null}
             </FooterRow>
           ) : null}
         </Table>
@@ -1486,6 +1385,7 @@ const TableFg = forwardRef(<CellType extends Types.CellBase>(props: Props<CellTy
     }
   }, [
     Table,
+    scrollTimes,
     size.rows,
     size.columns,
     hideColumnIndicators,
@@ -1518,7 +1418,7 @@ const TableFg = forwardRef(<CellType extends Types.CellBase>(props: Props<CellTy
         formatPrams={formatPrams}
       />
     ),
-    [DataEditor, comboPrams, dateBoxCols, textareaCols, disableCols] // LHH.ikyo 2022-04-29
+    [DataEditor, comboPrams, dateBoxCols, textareaCols, disableCols] // LHH 2022-04-29
   )
 
   const pageNode = React.useMemo(() => {
@@ -1587,7 +1487,11 @@ const TableFg = forwardRef(<CellType extends Types.CellBase>(props: Props<CellTy
                 filename={(caption ? caption.replace(/\ /g, "_") : name) + "-" + moment().format("YYYYMMDDHHmmss")}
                 sheet="Sheet1"
               />
-              <img src={img_showAllButton} alt="enter scrolling mode" onClick={enterScrollingMode} title="Scroll" className="outOfTableIcon"></img>
+              {scrollPrams.tableHeight ? (
+                <img src={img_cancel} alt="exit scrolling mode" onClick={exitScrollingMode} title="Exit Scroll Mode" className="outOfTableIcon"></img>
+              ) : (
+                <img src={img_showAllButton} alt="enter scrolling mode" onClick={enterScrollingMode} title="Enter Scroll Mode" className="outOfTableIcon"></img>
+              )}
             </>
           ) : null}
         </div>
@@ -1597,7 +1501,7 @@ const TableFg = forwardRef(<CellType extends Types.CellBase>(props: Props<CellTy
         </div>
       </div>
     )
-  }, [filterRow, state.showRange, preShowRange, showTopIcon, scrollMode])
+  }, [filterRow, state.showRange, preShowRange, showTopIcon, scrollPrams])
 
   const bottomIconNode = React.useMemo(
     () => (

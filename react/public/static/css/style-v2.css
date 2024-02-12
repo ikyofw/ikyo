@@ -38,12 +38,17 @@ h6 {
   line-height: 1.2;
 }
 
+.top_screen {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
 .main_screen {
-  position: absolute;
-  z-index: -1;
+  position: sticky;
+  z-index: 10;
   width: 100%;
   height: auto;
-  text-align: left;
 }
 #sys_topbar {
   display: block;
@@ -143,6 +148,7 @@ input[type="radio"] {
 }
 
 form {
+  text-align: left;
   margin: 2px;
 }
 

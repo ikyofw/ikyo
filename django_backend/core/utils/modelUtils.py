@@ -13,30 +13,6 @@ from .langUtils import isNullBlank
 
 logger = logging.getLogger('ikyo')
 
-
-def updateSystemFields(modelRc, usrId, date=None):
-    if date is None:
-        date = datetime.now()
-    if type(modelRc) is list:
-        for rc in modelRc:
-            __updateSystemFields(rc, usrId, date)
-    else:
-        __updateSystemFields(modelRc, usrId, date)
-
-
-def __updateSystemFields(modelRc, usrId, date=None):
-    # if date is None:
-    #     date = datetime.now()
-    if modelRc.cre_usr_id is None:  # new
-        # modelRc.cre_usr_id = usrId
-        # modelRc.cre_dt = date
-        pass
-    else:  # update
-        # modelRc.mod_usr_id = usrId
-        # modelRc.mod_dt = date
-        modelRc.version_no += 1
-
-
 def model2Fields(modelRc):
     if type(modelRc) == list:
         rs = []

@@ -18,8 +18,12 @@
     background-color: #386B9E;;
 }
 .sys-top-menu-bar--L1 {
-    background-color: #4380be;
+    background-color: #6ca0d8;
 }
+.sys-top-menu-bar--L2 {
+    background-color: #6ca0d8;
+}
+
 
 .sys-top-menu-bar .menu {
     position:absolute;
@@ -55,6 +59,9 @@
     background-color: #386B9E;
 }
 .sys-top-menu-bar li.L1 {
+    background-color: #63A0DE;
+}
+.sys-top-menu-bar li.L2 {
     background-color: #63A0DE;
 }
 #sys-top-menu-bar-L1 li.currentMenu {

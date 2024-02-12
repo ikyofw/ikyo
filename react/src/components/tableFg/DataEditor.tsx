@@ -139,12 +139,6 @@ const DataEditor: React.FC<Types.DataEditorProps> = ({
           value={key}
           onChange={handleDropdownList}
           messages={{ emptyFilter: "", emptyList: "" }}
-          renderListItem={({ item }) => (
-            <span>
-              {item.display}
-              <strong style={{ visibility: 'hidden' }}>{item.value[0]}</strong>
-            </span>
-          )}
         />
       ) : isCalendar ? (
         <DatePicker

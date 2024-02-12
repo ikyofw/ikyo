@@ -306,6 +306,12 @@ class Model(models.Model):
             jData[MODEL_RECORD_DATA_CURRENT_KEY_NAME] = True
         return jData
 
+    def updateCommonFields(self, values: dict) -> None:
+        '''
+            values: {'operatorID': operatorId2, 'updateTime': updateDate}
+        '''
+        pass
+
     class Meta:
         abstract = True
 

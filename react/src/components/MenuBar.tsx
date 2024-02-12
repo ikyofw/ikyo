@@ -25,8 +25,10 @@ const MenuBar = () => {
 
   const [selectedL0MenuId, setSelectedL0MenuId] = useState(lastSelectedMenuId)
   const [selectedL1MenuId, setSelectedL1MenuId] = useState(lastSelectedMenuId)
+  const [selectedL2MenuId, setSelectedL2MenuId] = useState(lastSelectedMenuId)
   const [menu0Data, setMenu0Data] = useState([])
   const [menu1Data, setMenu1Data] = useState([])
+  const [menu2Data, setMenu2Data] = useState({})
 
   useEffect(() => {
     refreshMenu()
@@ -43,6 +45,7 @@ const MenuBar = () => {
           if (sysUtil.validateResponse(result, true)) {
             let menu0s: any[] = []
             let menu1s: any[] = []
+            let menu2s: {} = {}
             if (result.data) {
               for (let menu of result.data) {
                 menu0s.push(menu)
@@ -50,10 +53,19 @@ const MenuBar = () => {
                   setSelectedL0MenuId(menu.id)
                 }
                 if (menu.subMenus) {
-                  for (let subMenu of menu.subMenus) {
-                    menu1s.push(subMenu)
-                    if (subMenu.isCurrentMenu) {
-                      setSelectedL1MenuId(subMenu.id)
+                  for (let subMenu1 of menu.subMenus) {
+                    menu1s.push(subMenu1)
+                    if (subMenu1.isCurrentMenu) {
+                      setSelectedL1MenuId(subMenu1.id)
+                    }
+                    if (subMenu1.subMenus) {
+                      menu2s[subMenu1.id] = subMenu1.subMenus
+                      for (let subMenu2 of subMenu1.subMenus) {
+                        if (subMenu2.isCurrentMenu) {
+                          setSelectedL1MenuId(subMenu1.id)
+                          setSelectedL2MenuId(subMenu2.id)
+                        }
+                      }
                     }
                   }
                 }
@@ -61,11 +73,16 @@ const MenuBar = () => {
             }
             setMenu0Data(menu0s)
             setMenu1Data(menu1s)
+            setMenu2Data(menu2s)
           }
         })
     } catch (error) {
       pyiLogger.error("Load screen failed: " + error, true)
     }
+  }
+
+  const handleMouseMove = (menu) => (event: React.MouseEvent<HTMLLIElement>) => {
+    setSelectedL1MenuId(menu.id)
   }
 
   function updateCurrentMenu(menu) {
@@ -92,8 +109,12 @@ const MenuBar = () => {
     const menus = props.menus
     const selectedMenuId = props.selectedMenuId
 
-    const menuItems = menus.map((menu) => (
-      <li key={menu.id} className={selectedMenuId && String(selectedMenuId) === String(menu.id) ? "currentMenu" : level}>
+    const menuItems = menus && menus.map((menu) => (
+      <li
+        key={menu.id}
+        className={selectedMenuId && String(selectedMenuId) === String(menu.id) ? "currentMenu" : level}
+        onMouseMove={props.onMouseMove ? props.onMouseMove(menu) : null}
+      >
         <a
           href={"/" + menu.action}
           onClick={(e) => {
@@ -111,10 +132,21 @@ const MenuBar = () => {
       </div>
     )
   }
+
   return (
     <div className="sys-menu">
       <SubMenuBar level={"L0"} menus={menu0Data} selectedMenuId={selectedL0MenuId} />
-      {menu1Data.length > 0 ? <SubMenuBar level={"L1"} menus={menu1Data} selectedMenuId={selectedL1MenuId} /> : null}
+      {menu1Data.length > 0 ? (
+        <SubMenuBar
+          level={"L1"}
+          menus={menu1Data}
+          selectedMenuId={selectedL1MenuId}
+          onMouseMove={Object.keys(menu2Data).length > 0 ? (menu) => handleMouseMove(menu) : null}
+        />
+      ) : null}
+      {Object.keys(menu2Data).length > 0 ? (
+        <SubMenuBar level={"L2"} menus={menu2Data[selectedL1MenuId]} selectedMenuId={selectedL2MenuId} />
+      ) : null}
     </div>
   )
 }

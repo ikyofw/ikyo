@@ -20,6 +20,7 @@ from django.urls import path, re_path
 from django.views.generic import TemplateView
 from iktools import getAppUrlFiles
 
+
 urlpatterns = [
     path('admin/', admin.site.urls),
 ]

@@ -5,6 +5,7 @@ from django.db.models import Q
 
 import core.models as ikModels
 import core.utils.db as dbUtils
+from core.utils.langUtils import isNotNullBlank
 from core.core.exception import IkValidateException
 from core.ui.ui import IkUI, Screen
 
@@ -19,7 +20,7 @@ ACL_WRITE = 'W'
 ACL_DENY = 'D'
 
 
-class __MenuManager():
+class _MenuManager():
 
     def __init__(self) -> None:
         pass
@@ -36,12 +37,14 @@ class __MenuManager():
         menu_ids = []
         if usrID is not None:
             usr_groups_ids = ikModels.UserGroup.objects.filter(usr_id=usrID).values_list('grp_id', flat=True)
-            menu_ids = ikModels.GroupMenu.objects.filter(grp__in=menu_ids).values_list('menu_id', flat=True)
+            menu_ids = ikModels.GroupMenu.objects.filter(grp__in=usr_groups_ids).exclude(acl=ACL_DENY).values_list('menu_id', flat=True)
 
-        usrAclMenusQs = ikModels.Menu.objects.filter(Q(is_free_access=True) | Q(
-            id__in=menu_ids)).exclude(menu_nm__iexact='Menu').order_by('order_no', 'caption')
+        NodeMenus = self.getNodeMenus()
+
+        usrAclMenusQs = ikModels.Menu.objects.filter(Q(is_free_access=True) | Q(id__in=menu_ids)
+                                                     | Q(id__in=NodeMenus)).exclude(enable=False).exclude(menu_nm__iexact='Menu').order_by('order_no', 'menu_caption')
         if parentMenuID is not None:
-            usrAclMenusQs = usrAclMenusQs.filter(parent_menu_id=parentMenuID)
+            usrAclMenusQs = usrAclMenusQs.filter(parent_menu_id=parentMenuID).order_by('order_no', 'menu_caption')
         return usrAclMenusQs
 
     def getUserMenuAcl(self, usrID, menuID) -> str:
@@ -112,6 +115,22 @@ class __MenuManager():
         menuName = menuRcs[0][0]
         return menuName
 
+    def getParentMenuByMenuNm(self, menuName: str):
+        parentMenuRc = None
+        menuRc = ikModels.Menu.objects.filter(menu_nm=menuName).first()
+        if isNotNullBlank(menuRc):
+            parentMenuID = menuRc.parent_menu_id
+            parentMenuRc = ikModels.Menu.objects.filter(id=parentMenuID).first()
+        return parentMenuRc
+
+    def getParentMenuByMenuId(self, menuID: int):
+        parentMenuRc = None
+        menuRc = ikModels.Menu.objects.filter(id=menuID).first()
+        if isNotNullBlank(menuRc):
+            parentMenuID = menuRc.parent_menu_id
+            parentMenuRc = ikModels.Menu.objects.filter(id=parentMenuID).first()
+        return parentMenuRc
+
     def getParentMenuIdByMenuNm(self, menuName: str) -> int:
         menuRcs = None
         with connection.cursor() as cursor:
@@ -122,7 +141,7 @@ class __MenuManager():
         parentMenuId = menuRcs[0][0]
         return parentMenuId
 
-    def getParentMenuId(self, menuID: int) -> int:
+    def getParentMenuIdByMenuId(self, menuID: int) -> int:
         menuRcs = None
         with connection.cursor() as cursor:
             cursor.execute('SELECT parent_menu_id FROM ik_menu WHERE id=%s' % menuID)
@@ -138,8 +157,8 @@ class __MenuManager():
         usrAclMenuIDs = []
         # 1. get all user have permission menus (remove offline menus,  remove parent menus(will add later if sub menus has permission))
         groups_ids = ikModels.UserGroup.objects.filter(usr_id=usrId).values_list('grp_id', flat=True)
-        menu_ids = ikModels.GroupMenu.objects.filter(grp__in=groups_ids).values_list('menu_id', flat=True)
-        usrAclMenusQs = ikModels.Menu.objects.filter(Q(is_free_access=True) | Q(id__in=menu_ids)).exclude(menu_nm__iexact='Menu').order_by('order_no')
+        menu_ids = ikModels.GroupMenu.objects.filter(grp__in=groups_ids).exclude(acl=ACL_DENY).values_list('menu_id', flat=True)
+        usrAclMenusQs = ikModels.Menu.objects.filter(Q(is_free_access=True) | Q(id__in=menu_ids)).exclude(enable=False).exclude(menu_nm__iexact='Menu').order_by('order_no')
         # If specified Top Menu should just get all Top Menu's sub menu(loop to level3 menus)
         if parentMenuId is not None:
             allSubMenuIDs = []
@@ -193,8 +212,7 @@ class __MenuManager():
     def getMenuIdByScreenName(self, screenName) -> int:
         menuRcs = None
         with connection.cursor() as cursor:
-            cursor.execute('SELECT id FROM ik_menu WHERE screen_nm=' +
-                           dbUtils.toSqlField(screenName))
+            cursor.execute('SELECT id FROM ik_menu WHERE screen_nm=' + dbUtils.toSqlField(screenName))
             menuRcs = cursor.fetchall()
         if dbUtils.isEmpty(menuRcs):
             raise IkValidateException('Screen [%s] is not found.' % str(screenName))
@@ -244,7 +262,7 @@ class __MenuManager():
         '''
             return ik_menu.screen_nm
         '''
-        sql = "select distinct screen_nm from ik_menu where screen_nm is not null order by screen_nm"
+        sql = "select distinct screen_nm from ik_menu where screen_nm is not null and enable=true order by screen_nm"
         rcs = None
         with connection.cursor() as cursor:
             cursor.execute(sql)
@@ -281,40 +299,76 @@ class __MenuManager():
             if menu and menu.parent_menu_id == menuID2:
                 return subLevel
             if subLevel > max_loop:
-                raise IkValidateException(
-                    'Detected circular reference in menu hierarchy. A menu cannot be a sub-menu of its own indirect/direct sub-menus.')
+                raise IkValidateException('Detected circular reference in menu hierarchy. A menu cannot be a sub-menu of its own indirect/direct sub-menus.')
 
     def getFullMenuName(self, menuID: int, withAcl: bool) -> str:
         menu_nm = self.getMenuCaption(menuId=menuID)
         full_menu_nm = menu_nm
-        parent_menu_id = self.getParentMenuId(menuID)
+        parent_menu_id = self.getParentMenuIdByMenuId(menuID)
         while (parent_menu_id is not None):
             menu_nm = self.getMenuCaption(parent_menu_id)
             full_menu_nm = menu_nm + " -> " + full_menu_nm
-            parent_menu_id = self.getParentMenuId(parent_menu_id)
+            parent_menu_id = self.getParentMenuIdByMenuId(parent_menu_id)
         return full_menu_nm
 
     # YL.ikyo 2023-11-28 get all menu full menu list - start
     def getAllFullName(self) -> list:
         data = []
-        top_menus = ikModels.Menu.objects.filter(parent_menu_id__isnull=True).exclude(enable=False).exclude(
-            Q(menu_nm__iexact='home') | Q(menu_nm__iexact='menu')).order_by('order_no')
+        top_menus = ikModels.Menu.objects.filter(parent_menu_id__isnull=True).exclude(enable=False).exclude(Q(menu_nm__iexact='home')
+                                                                                                            | Q(menu_nm__iexact='menu')).order_by('order_no')
         for top_menu in top_menus:
-            data.extend(self.get_menu_hierarchy(top_menu, []))
+            data.extend(self.getMenuHierarchy(top_menu, []))
         return data
 
-    def get_menu_hierarchy(self, menu_item, hierarchy=[]):
+    def getMenuHierarchy(self, menu_item, hierarchy=[]):
         menu_full_nm = menu_item.menu_nm
         tmp_menu_item = menu_item
         while tmp_menu_item.parent_menu_id:
             tmp_menu_item = ikModels.Menu.objects.get(id=tmp_menu_item.parent_menu_id)
             menu_full_nm = tmp_menu_item.menu_caption + " -> " + menu_full_nm
         hierarchy.append({'id': menu_item.id, 'menu_nm': menu_full_nm})
-        sub_menus = ikModels.Menu.objects.filter(parent_menu_id=menu_item.id).order_by('order_no')
+        sub_menus = ikModels.Menu.objects.filter(parent_menu_id=menu_item.id).exclude(enable=False).order_by('order_no')
         for sub_menu in sub_menus:
-            self.get_menu_hierarchy(sub_menu, hierarchy)
+            self.getMenuHierarchy(sub_menu, hierarchy)
         return hierarchy
+
     # YL.ikyo 2023-11-28 - end
 
+    def getFirstValidSubMenu(self, usrID: int, menuID: int):
+        subMenus1 = self.getUserMenus(usrID, menuID)
+        for i in subMenus1:
+            if isNotNullBlank(i.screen_nm):
+                return i.screen_nm
 
-MenuManager = __MenuManager()
+        for i in subMenus1:
+            subMenus2 = self.getUserMenus(usrID, i.id)
+            for j in subMenus2:
+                if isNotNullBlank(j.screen_nm):
+                    return j.screen_nm
+        
+        menuRc = ikModels.Menu.objects.filter(id=menuID).first()
+        if isNotNullBlank(menuRc):
+            raise 'No valid sub-menu found for the parent menu: %s.' % menuRc.menu_caption
+        else:
+            raise 'No valid menu found for the menu id: %s.' % menuID
+
+    def getNodeMenus(self):
+        sql = 'SELECT m1.* FROM ik_menu m1 WHERE EXISTS (SELECT 1 FROM ik_menu m2 WHERE m2.parent_menu_id = m1.id)'
+        rcs = None
+        with connection.cursor() as cursor:
+            cursor.execute(sql)
+            rcs = dbUtils.dictfetchall(cursor)
+        screenIDs = []
+        for r in rcs:
+            screenIDs.append(r['id'])
+        return screenIDs
+
+    def getAllSubMenus(self, parentMenuID):
+        childMenus = ikModels.Menu.objects.filter(parent_menu_id=parentMenuID).exclude(enable=False)
+        allSubMenus = list(childMenus)
+        for childMenu in childMenus:
+            allSubMenus.extend(self.getAllSubMenus(childMenu.id))
+        return allSubMenus
+
+
+MenuManager = _MenuManager()

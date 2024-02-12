@@ -289,7 +289,7 @@ class UsrGrpMnt(ScreenAPIView):
         return IkJsonResponse(data=data)
 
     def getAcls(self):
-        data = [{'acl': 'N', 'display_acl': 'None'}, {'acl': 'R', 'display_acl': 'Read'}, {'acl': 'W', 'display_acl': 'Write'}]
+        data = [{'acl': 'D', 'display_acl': 'Deny'}, {'acl': 'R', 'display_acl': 'Read'}, {'acl': 'W', 'display_acl': 'Write'}]
         return IkJsonResponse(data=data)
 
     def getMenuRcs(self):
@@ -300,7 +300,12 @@ class UsrGrpMnt(ScreenAPIView):
         return IkJsonResponse(data=data)
 
     def getMenus(self):
-        return IkJsonResponse(data=MenuManager.getAllFullName())
+        nodeMenus = MenuManager.getNodeMenus()
+        data = []
+        for i in MenuManager.getAllFullName():
+            if i['id'] not in nodeMenus:
+                data.append(i)
+        return IkJsonResponse(data=data)
 
     def save(self):
         saveUsrID = self.getCurrentUserId()
@@ -340,13 +345,7 @@ class UsrGrpMnt(ScreenAPIView):
                         else:
                             rc.ik_set_status_delete()
                     else:
-                        if tableNm == 'scrFg':
-                            if rc.acl not in ['W', 'R']:
-                                rc.ik_set_status_delete()
-                            else:
-                                ids.append(id)
-                        else:
-                            ids.append(id)
+                        ids.append(id)
 
         for rc in records:
             if not rc.ik_is_status_delete():

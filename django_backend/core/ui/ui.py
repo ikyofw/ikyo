@@ -2,7 +2,6 @@ import copy
 import json
 import logging
 import os
-import sys
 import re
 from datetime import datetime
 from pathlib import Path
@@ -13,6 +12,7 @@ import core.db.model as ikModels
 import core.models as ikModel
 import core.utils.httpUtils as ikHttpUtils
 import core.utils.modelUtils as modelUtils
+import core.utils.djangoUtils as ikDjangoUtils
 from core.core.exception import IkValidateException
 from core.utils.langUtils import convertStr2Json, isNotNullBlank, isNullBlank
 from core.models import ScreenFgType, ScreenFieldWidget
@@ -295,13 +295,13 @@ class ScreenFieldGroup:
         # self.selectable = None
         self.selectionMode = None
         self.cols = None
-        self.sortNewRows = False
         self.pageType = None  # client/server/None
         self.pageSize = None
         self.beforeDisplayAdapter = None  # javascript function for react
         self.fields = []  # [ScreenField, ...]
         self.data = None  # Used for HtmlFieldGroup
         self.style = []
+        self.additionalProps = None
         self.rmk = None  # YL.ikyo, 2023-04-20
         self.outerLayoutParams = None
         self.innerLayoutType = None
@@ -404,10 +404,10 @@ class ScreenFieldGroup:
                    'insertable': self.insertable,
                    'highlightRow': self.highlightRow,
                    'cols': self.cols,  # YL.ikyo, 2022-09-27 add field group columns define
-                   'sortNewRows': self.sortNewRows,
                    'fields': jTableColumns,
                    'pageType': self.pageType,
                    'pageSize': self.pageSize,
+                   'additionalProps': self.additionalProps,
                    'rmk': self.rmk,  # YL.ikyo, 2023-04-20
                    'beforeDisplayAdapter': self.beforeDisplayAdapter
                    }
@@ -940,7 +940,7 @@ class __ScreenManager:
         self.__screenDefinitions = {}  # {screen name: screen definition}
         self.__screenFileFolder = self.getScreenFileFolder()
         self.__readLock = Lock()
-        if 'runserver' in sys.argv: # makemigrations and migrate don'et need to parse screen files.
+        if ikDjangoUtils.isRunDjangoServer():
             self.__parseScreenFiles()
 
     def getScreenFileFolder(self) -> Path:
@@ -1023,13 +1023,14 @@ class __ScreenManager:
                 data.append(rc.highlight_row)
                 data.append(rc.selection_mode)
                 data.append(rc.cols)
-                data.append(rc.sort_new_rows)
+                # data.append(rc.sort_new_rows)
                 data.append(rc.data_page_type)
                 data.append(rc.data_page_size)
                 data.append(rc.outer_layout_params)
                 data.append(rc.inner_layout_type)
                 data.append(rc.inner_layout_params)
                 data.append(rc.html)
+                data.append(rc.additional_props)
                 data.append(rc.rmk)
                 dfn['fieldGroupTable'].append(data)
 
@@ -1150,7 +1151,7 @@ class __ScreenManager:
             screen.recordsets.append(srs)
 
         # 3. FieldGroups
-        # for fgName, fgType,	caption, recordsetName, deletable, editable, insertable, selectable, cols, sortNewRows, pageType, pageSize in dfn['fieldGroupTable']: # old from excel
+        # for fgName, fgType, caption, recordsetName, deletable, editable, insertable, selectable, cols, pageType, pageSize in dfn['fieldGroupTable']: # old from excel
         subScreenTable = dfn['subScreenTable']
         displayFgs = None  # None:  default display all field group, []: have not subScreen, [xxx]: the field group display in sub screen
         if subScreenNm is None:
@@ -1162,8 +1163,8 @@ class __ScreenManager:
             displayFgs = []
         screen.subScreenName = subScreenNm
 
-        for fgName, fgType,	caption, recordsetName, deletable, editable, insertable, highlightRow, selectionMode, cols, sortNewRows, \
-                pageType, pageSize, outerLayoutParams, innerLayoutType, innerLayoutParams, html, rmk in dfn['fieldGroupTable']:  # from database
+        for fgName, fgType,	caption, recordsetName, deletable, editable, insertable, highlightRow, selectionMode, cols, pageType, \
+            pageSize, outerLayoutParams, innerLayoutType, innerLayoutParams, html, additionalProps, rmk in dfn['fieldGroupTable']:  # from database
             if displayFgs is not None and fgName not in displayFgs:
                 continue
             sfg = ScreenFieldGroup(parent=screen)
@@ -1177,13 +1178,13 @@ class __ScreenManager:
             sfg.highlightRow = self.__toBool(highlightRow)
             sfg.selectionMode = getScreenFieldGroupSelectionMode(selectionMode)
             sfg.cols = None if cols is None else int(cols)
-            sfg.sortNewRows = self.__toBool(sortNewRows)  # YL.ikyo, 2022-07-18 Add
             sfg.pageType = getScreenFieldGroupDataPageType(pageType)
             sfg.pageSize = None if isNullBlank(pageSize) else pageSize
             sfg.outerLayoutParams = outerLayoutParams
             sfg.innerLayoutType = innerLayoutType
             sfg.innerLayoutParams = innerLayoutParams
             sfg.html = html
+            sfg.additionalProps = None if isNullBlank(additionalProps) else self.parseWidgetPrams(additionalProps)
             sfg.beforeDisplayAdapter = None  # a javascript function for react
 
             DNF_Summary.addGroupType(screenName, sfg.groupType)
@@ -1670,6 +1671,20 @@ class __ScreenManager:
                     else:
                         # combox data is a list. E.g. ['aa', 'bb']
                         pass
+                elif fieldDefine is None:
+                    if type(comboxData) == list:
+                        comboxData2 = []
+                        for dataItem in comboxData:
+                            if type(dataItem) == dict and len(dataItem) == 2 and 'value' in dataItem.keys() and 'display' in dataItem.keys():
+                                comboxData2.append(dataItem)
+                            elif type(dataItem) == dict and len(dataItem) == 1: # {'name': 'abc'}
+                                for _key,value in dataItem.items():
+                                    comboxData2.append({'value': value, 'display': value})
+                            elif type(dataItem) == int or type(dataItem) == float or type(dataItem) == str:
+                                comboxData2.append({'value': dataItem, 'display': dataItem})
+                            elif type(dataItem) == tuple and len(dataItem) == 1:
+                                comboxData2.append({'value': dataItem[0], 'display': dataItem[0]})
+                        comboxData = comboxData2
                 comboxPrms['data'] = comboxData
                 comboxPrms['dataUrl'] = ikHttpUtils.setQueryParameter(comboxDataUrl, globalRequestUrlParameters)
                 if isNullBlank(comboxDataUrl):

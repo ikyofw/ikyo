@@ -70,7 +70,7 @@ export function showMessage(messages: Array<Object>) {
   }
   if (messageArr && messageArr.length > 0 && document.getElementById("sysMsgTitle")) {
     let msgComponent: any = (
-      <div style={{ padding: "2px 20px 2px 20px " }}>
+      <div style={{ padding: "2px 10px " }}>
         {messageArr.map((msgObj, index) => {
           return msgObj["type"] && msgObj["message"] ? (
             <SysMsgBox
@@ -298,6 +298,9 @@ export function getDateFormatStr(format: number | string) {
 }
 
 export function formatDate(dateStr: string, format: string) {
+  if (!dateStr) {
+    return ''
+  }
   if (format === timeStringFormat) {
     return verifyIsTime(dateStr) ? dateStr : ""
   } else {

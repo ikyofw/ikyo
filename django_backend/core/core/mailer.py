@@ -10,15 +10,9 @@ from django.template import loader
 
 from core.core.exception import IkException
 from core.sys.systemSetting import SystemSetting
-from core.utils import strUtils
-from django.template import loader
-from iktools import IkConfig
-
-from core.utils import templateManager
+from core.utils import strUtils, templateManager
 from core.utils.langUtils import validateEmail
-import core.user.userManager as UserManager
-from core.utils import strUtils
-
+from iktools import IkConfig
 
 logger = logging.getLogger('ikyo')
 
@@ -58,6 +52,7 @@ def toEmailAddressList(addrsStr) -> list:
             email = addr[addr.index("<") + 1:len(addr) - 1].strip()
             addressList.append(convert2EmailAddress(email) if strUtils.isEmpty(name) else EmailAddress(email, name))
     return addressList
+
 
 class EmailAddress:
     '''
@@ -105,7 +100,8 @@ def standardEmailAddress(emailAddress) -> str:
         emailAddress = convert2EmailAddress(emailAddress)
     return str(emailAddress)
 
-class Mailer():
+
+class _Mailer():
 
     def __init__(self) -> None:
         self.smtpHost = SystemSetting.get(name='SMTP Host', default=IkConfig.get("Email", "mail.smtp"))
@@ -195,8 +191,7 @@ class Mailer():
         # attachments - end
 
         # message receivers
-        msg['From'] = standardEmailAddress(
-            sendFrom) if sendFrom is not None else self.sender if self.sender is not None else self.getDefaultMailSender()
+        msg['From'] = standardEmailAddress(sendFrom) if sendFrom is not None else self.sender if self.sender is not None else self.getDefaultMailSender()
         msg['To'] = ','.join(sendTo)
         if ccTo and len(ccTo) > 0:
             msg['Cc'] = ','.join(ccTo)
@@ -229,6 +224,9 @@ class Mailer():
         return self.send(subject=subject, content=content, contentType=contentType, sendFrom=sendFrom, to=to, cc=cc, attachments=attachments)
 
 
+Mailer = _Mailer()
+
+
 class _MailQueueData:
     """mail data class.
 
@@ -240,12 +238,14 @@ class _MailQueueData:
         parameters (:obj:`dict`): Mail content template file parameters.
 
     """
+
     def __init__(self, subject, toUserIDs, ccUserIDs, templateFilename, parameters):
         self.subject = subject
         self._toUserIDs = toUserIDs
         self._ccUserIDs = ccUserIDs
         self._templateFilename = templateFilename
         self._parameters = parameters
+        self.__bcc2Self = [EmailAddress(email=SystemSetting.get('mail.username'), name='Ikyo')]
 
         # get email to address
         errorMessage, send2EmailList = self.__getEmailAddresses(toUserIDs)
@@ -259,7 +259,7 @@ class _MailQueueData:
             if errorMessage == '' or errorMessage is None:
                 errorMessage = errorMessage2
             else:
-                errorMessage += errorMessage2    
+                errorMessage += errorMessage2
         if cc2EmailList is not None:
             cc2EmailList.extend(self.__bcc2Self)
         else:
@@ -308,7 +308,7 @@ class __MailQueue:
 
     def __init__(self) -> None:
         self.__mailFrom = SystemSetting.get(name='SMTP Sender Address', default=IkConfig.get("Email", "mail.from"))
-        self.__bcc2Self = [EmailAddress(email = SystemSetting.get(name='SMTP Account', default=IkConfig.get("Email", "mail.username")), name = 'Ikyo')]
+        self.__bcc2Self = [EmailAddress(email=SystemSetting.get(name='SMTP Account', default=IkConfig.get("Email", "mail.username")), name='Ikyo')]
         self.__mailQueues = []
         self.__queueLock = Lock()
         self.__senderThread = threading.Thread(target=self.__sendMailFromPool, args=())
@@ -332,14 +332,14 @@ class __MailQueue:
             self.__queueLock.release()
 
     @property
-    def queueSize(self) -> int:    
+    def queueSize(self) -> int:
         """Get mail queue size.
 
         Returns:
             Return Mail queue's size.
         """
         return len(self.__mailQueues)
-    
+
     @property
     def queue(self) -> list:
         """Get mail queue.
@@ -416,7 +416,7 @@ class __MailQueue:
                                     else:
                                         logger.error('send mail [%s] to [%s] failed. Then add it to queue and try again later (tried %s of %s).' \
                                                      % (mailData.subject, mailData.send2EmailList, retryTimes, __MailQueue.SEND_FAILED_RETRY_TIMES))
-                                        self.__mailQueues.append(mailData) # TODO: if tried too many times, then ignore ?
+                                        self.__mailQueues.append(mailData)  # TODO: if tried too many times, then ignore ?
                                 finally:
                                     self.__queueLock.release()
                                 pass

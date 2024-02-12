@@ -136,6 +136,7 @@ export type CellComponentProps<Cell extends CellBase = CellBase> = {
   /** The column number of the html */
   htmlCols?: number[]
   checkBoxPrams?: any[]
+  tableHeight?: number
 }
 
 /** Type of the Spreadsheet Cell component */
@@ -189,7 +190,7 @@ export type DataEditorProps<Cell extends CellBase = CellBase> = DataComponentPro
     comboData: { [key: string]: any }[]
   }
   /** Define which column is a calendar */
-  dateBoxCols?: Array<{ colIndex: number; formatFlag?: 1 | 2 | 3 }> // LHH.ikyo 2022-05-09
+  dateBoxCols?: Array<{ colIndex: number; formatFlag?: 1 | 2 | 3 }> // LHH 2022-05-09
   /** Define which column use textarea input value*/
   textareaCols?: number[]
   /** Define the style of textarea */
@@ -207,6 +208,8 @@ export type TableProps = React.PropsWithChildren<{
   hideColumnIndicators?: boolean | null
   /** Name of the table */
   tableName: string
+  /** Pramaters of scrolling */
+  scrollPrams?: { [key: string]: any };
 }>
 
 /** Type of the Spreadsheet Table component */

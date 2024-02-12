@@ -38,10 +38,7 @@ def dictfetchall(cursor) -> list:
         Return all rows from a cursor as a dict
     '''
     columns = [col[0] for col in cursor.description]
-    return [
-        dict(zip(columns, row))
-        for row in cursor.fetchall()
-    ]
+    return [dict(zip(columns, row)) for row in cursor.fetchall()]
 
 
 def getFieldValues(records, fields) -> list:
@@ -58,7 +55,7 @@ def getFieldValues(records, fields) -> list:
 
 
 # YL.ikyo, 2023-11-23 Update add support sqlite3 - start
-def getNextSequence(sequenceName, engine: None) -> int:
+def getNextSequence(sequenceName, engine=None) -> int:
     if engine and engine == 'sqlite3':
         with connection.cursor() as cursor:
             cursor.execute("SELECT (seq + 1) AS seq FROM sqlite_sequence WHERE name=" + toSqlField(sequenceName))

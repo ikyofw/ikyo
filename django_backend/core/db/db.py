@@ -3,18 +3,24 @@ from threading import Lock
 from datetime import datetime
 from pathlib import Path
 from django.db import connection
-import core.core.fs as pyifs
+import core.core.fs as ikfs
 from core.core.exception import IkException
 
 logger = logging.getLogger('pyi')
 
+NEW_SQL_FILE_FOLDER = 'new'
+PROCESSED_SQL_FILE_FOLDER = 'processed'
+
 __EXECUTE_SQL_FILE_LOCK = Lock()
 
+
 def getSqlFileFolder() -> Path:
-    return Path(pyifs.getVarFolder('sql'))
+    return Path(ikfs.getVarFolder('sql'))
+
 
 def getSqlFileFile(filePath: str) -> Path:
     return Path(os.path.join(getSqlFileFolder(), filePath))
+
 
 def executeSqlFiles(specifiedSqlFile: object = None) -> None:
     '''
@@ -31,11 +37,11 @@ def executeSqlFiles(specifiedSqlFile: object = None) -> None:
         if not sqlDir.is_dir():
             return
         # 1. get sql files
-        allSqlFiles = [specifiedSqlFile ] if specifiedSqlFile else __getSqlFiles(sqlDir)
+        allSqlFiles = [specifiedSqlFile] if specifiedSqlFile else __getSqlFiles(sqlDir)
         if len(allSqlFiles) == 0:
             return
 
-        # 2. read processed files 
+        # 2. read processed files
         sqlFileData = {}
         processFile = Path(os.path.join(sqlDir.absolute(), 'sql.json'))
         if processFile.is_file():
@@ -51,12 +57,16 @@ def executeSqlFiles(specifiedSqlFile: object = None) -> None:
         for pf in executedSqlFiles:
             processedFileMD5s[pf['name']] = pf['md5']
         for f in allSqlFiles:
-            if Path(f).name not in processedFileMD5s.keys():
-                newSqlFiles.append(Path(f))
-            else:
+            fp = Path(f)
+            if fp.name.startswith('_'):  # ignore the file starts with "_"
+                logger.info('Ignore sql file [%s]' % fp)
+                continue
+            if fp.name not in processedFileMD5s.keys():
+                newSqlFiles.append(fp)
+            elif fp.is_file():
                 fileMD5 = __fileMD5(f)
-                if fileMD5 != processedFileMD5s[Path(f).name]: # file changed
-                    newSqlFiles.append(Path(f))
+                if fileMD5 != processedFileMD5s[fp.name]:  # file changed
+                    logger.info("File [%s] changed. Please DON'T updated the executed file.")
 
         # 4. process each new sql file
         if len(newSqlFiles) == 0:
@@ -94,13 +104,14 @@ def executeSqlFiles(specifiedSqlFile: object = None) -> None:
                     fileData = {'name': newSqlFile.name, 'path': executedFilePath, 'filemtime': modifyTime, 
                                 'executetime': datetime.now().strftime('%Y-%m-%d %H:%M:%S'), 'md5': fileMD5}
                     executedSqlFiles.append(fileData)
+                    
+                    # overwrite the json file
+                    sqlFileData['executed'] = executedSqlFiles
+                    with open(processFile, "w") as jsonFile:
+                        json.dump(sqlFileData, jsonFile, indent=4)
             except Exception as e:
                 logger.error(e, exc_info=True)
-                raise IkException('Init file [%s] failed: %s' % (newSqlFile, str(e)))
-        # overwrite the json file
-        sqlFileData['executed'] = executedSqlFiles
-        with open(processFile, "w") as jsonFile:
-            json.dump(sqlFileData, jsonFile)
+                raise IkException('Process sql file [%s] failed: %s' % (newSqlFile, str(e)))
         logger.info('Processed [%s] sql file(s).' % len(newSqlFiles))
     finally:
         __EXECUTE_SQL_FILE_LOCK.release()
@@ -116,6 +127,7 @@ def __getSqlFiles(sqlFilePath):
                 fileList.append(os.path.join(root, filename))
     sortedFiles = sorted(fileList, key=lambda x: (os.path.getmtime(x), os.path.basename(x)))
     return sortedFiles
+
 
 def __fileMD5(file: Path) -> str:
     with open(file, 'rb') as f:

@@ -3,10 +3,10 @@ import logging
 import time
 import traceback
 
+import core.utils.strUtils as strUtils
 from core.core.code import IkCode
 from core.core.exception import IkException
-from core.core.http import (IkErrJsonResponse, IkSccJsonResponse,
-                            IkSysErrJsonResponse, isSupportSession)
+from core.core.http import IkErrJsonResponse, IkSccJsonResponse, IkSysErrJsonResponse, isSupportSession
 from core.core.lang import Boolean2
 from core.utils.encrypt import decryptData, generateRsaKeys, getPublicKey
 from core.utils.langUtils import isNullBlank
@@ -15,8 +15,7 @@ from rest_framework import exceptions
 from rest_framework.authentication import BaseAuthentication
 from rest_framework.views import APIView
 
-from ..models import User, UsrToken
-from ..utils import strUtils
+from core.models import User, UsrToken
 
 logger = logging.getLogger('ikyo')
 
@@ -156,7 +155,7 @@ class AuthView(APIView):
                 oldRc = UsrToken.objects.filter(token=tokenStr).first()
                 if oldRc is not None:
                     oldRc.delete()
-                UsrToken.objects.update_or_create(usr=usrRc, defaults={"token": tokenStr})
+                UsrToken.objects.update_or_create(usr_id=usrRc.id, defaults={"token": tokenStr})
 
                 if useSession:
                     request.session[SESSION_KEY_USER_NAME] = username

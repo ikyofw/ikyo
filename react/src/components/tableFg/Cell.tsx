@@ -9,7 +9,7 @@ import { isActive, getOffsetRect } from "./util"
 import useDispatch from "./use-dispatch"
 import useSelector from "./use-selector"
 import * as Selection from "./selection" // XH 2022-04-28
-import transform, { StyleTuple } from "css-to-react-native"
+import transform, {StyleTuple} from 'css-to-react-native';
 
 export const Cell: React.FC<Types.CellComponentProps> = ({
   row,
@@ -35,6 +35,7 @@ export const Cell: React.FC<Types.CellComponentProps> = ({
   advancedSelectionBoxPrams,
   htmlCols,
   checkBoxPrams,
+  tableHeight,
 }): React.ReactElement => {
   const rootRef = React.useRef<HTMLTableCellElement | null>(null)
   const point = React.useMemo(
@@ -48,7 +49,7 @@ export const Cell: React.FC<Types.CellComponentProps> = ({
   const handleMouseDown = React.useCallback(
     (event: React.MouseEvent<HTMLTableCellElement>) => {
       if (mode === "view") {
-        setCellDimensions(point, getOffsetRect(event.currentTarget, tableName))
+        setCellDimensions(point, getOffsetRect(event.currentTarget, tableName, tableHeight))
         if (event.shiftKey) {
           select(point)
         } else {
@@ -62,7 +63,7 @@ export const Cell: React.FC<Types.CellComponentProps> = ({
   const handleMouseOver = React.useCallback(
     (event: React.MouseEvent<HTMLTableCellElement>) => {
       if (dragging) {
-        setCellDimensions(point, getOffsetRect(event.currentTarget, tableName))
+        setCellDimensions(point, getOffsetRect(event.currentTarget, tableName, tableHeight))
         select(point)
       }
     },
@@ -72,7 +73,7 @@ export const Cell: React.FC<Types.CellComponentProps> = ({
   React.useEffect(() => {
     const root = rootRef.current
     if (selected && root) {
-      setCellDimensions(point, getOffsetRect(root, tableName))
+      setCellDimensions(point, getOffsetRect(root, tableName, tableHeight))
     }
     if (root && active && mode === "view") {
       root.focus()

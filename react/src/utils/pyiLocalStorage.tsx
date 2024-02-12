@@ -25,6 +25,7 @@ const pyiLocalStorage = {
     VIEWER: "viewer",
     IFRAME: "iframe",
     HTML: "html",
+    SITE_PLAN: "sitePlan",
     TABLE_PRIMARY_KEY: "__PK_",
     TABLE_ROW_ID: "__KEY_",
     TABLE_ROW_STATUS: "__STT_",

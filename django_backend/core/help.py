@@ -41,7 +41,7 @@ class ScreenHelpView(AuthAPIView):
 
         # check menu permission
         acl = MenuManager.getUserMenuAcl(menuRc=menuRc, usrID=userID)
-        if aclMenuRc == MenuManager.ACL_DENY:
+        if acl == ACL_DENY:
             logger.error('User have no permission for %s' % viewID)
             return HttpResponse('Permission Deny.')
         # get file path

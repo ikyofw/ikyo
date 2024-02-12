@@ -59,6 +59,8 @@ class ScreenDfn(ScreenAPIView):
                 elif widgetNm == ikui.SCREEN_FIELD_WIDGET_FILE:
                     screen.setFieldsVisible(fieldGroupName='dialogWidgetPramsFg', fieldNames=['multipleField'], visible=True)
                 return
+            if screen.subScreenName == 'additionalPropsDialog':
+                return
 
             isNewScreen = True if self.getSessionParameterBool("isNewScreen") else False
             selectedScreenSn = self.getSessionParameter("screenSN")
@@ -325,7 +327,7 @@ class ScreenDfn(ScreenAPIView):
                 d['insertable'] = "yes" if d['insertable'] else None
                 d['highlight_row'] = "yes" if d['highlight_row'] else None
                 d['selection_mode'] = d['selection_mode'] if d['selection_mode'] != 'none' else None
-                d['sort_new_rows'] = "yes" if d['sort_new_rows'] else None
+                # d['sort_new_rows'] = "yes" if d['sort_new_rows'] else None
         return IkSccJsonResponse(data=data)
 
     # open field group detail
@@ -867,6 +869,28 @@ class ScreenDfn(ScreenAPIView):
             if 'recordset' in cleanedDict and isNotNullBlank(cleanedDict['recordset']):
                 recordsetRc = ikModels.ScreenRecordset.objects.filter(id=cleanedDict['recordset']).first()
                 cleanedDict['recordset'] = recordsetRc.recordset_nm
+            if 'values' in cleanedDict and isNotNullBlank(cleanedDict['values']) and cleanedDict['values'] == '{"value": "value", "display": "display"}':
+                cleanedDict.pop('values')
+            newWidgetPrams = '\n'.join(f"{k}: {v}" for k, v in cleanedDict.items())
+            data = {'value': newWidgetPrams, 'display': newWidgetPrams}
+        return IkSccJsonResponse(data=data)
+
+    def postPreAdditionalProps(self):
+        preAdditionalProps = self.getRequestData().get('dtlFgAdditionalPropsField', '')
+        return self.setSessionParameter('additionalProps', preAdditionalProps)
+
+    def getDialogAdditionalPropsRc(self):
+        additionalProps = self.getSessionParameter("additionalProps", delete=True)
+        if isNotNullBlank(additionalProps):
+            additionalProps = ikui.IkUI.parseWidgetPrams(additionalProps)
+        return IkSccJsonResponse(data=additionalProps)
+
+    def uploadAdditionalProps(self):
+        resData = self.getRequestData()
+        additionalProps = resData.get('dialogAdditionalPropsFg', '')
+        data = ''
+        if isNotNullBlank(additionalProps):
+            cleanedDict = {k: v for k, v in additionalProps.items() if isNotNullBlank(v) and (k != 'sortNewRows' or v != 'false')}
             newWidgetPrams = '\n'.join(f"{k}: {v}" for k, v in cleanedDict.items())
             data = {'value': newWidgetPrams, 'display': newWidgetPrams}
         return IkSccJsonResponse(data=data)

@@ -13,7 +13,7 @@ const FileUpload: React.FC<IFileUpload> = forwardRef((props, ref: Ref<any>) => {
       <th className="property_key">{props.fileBoxLabel}</th>
       <td className="property_value">
         <input
-          multiple={multiple && multiple === "yes" ? true : false}
+          multiple={multiple && multiple === "true" ? true : false}
           ref={ref}
           type="file"
           name={props.name}

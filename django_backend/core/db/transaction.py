@@ -81,10 +81,11 @@ class IkTransaction():
             return
         if type(modelData) == list or type(modelData) == QuerySet:
             for r in modelData:
-                if isinstance(r, Model):
+                if isinstance(r, Model) and not r.ik_is_status_new():
                     r.ik_set_status_modified()
         elif isinstance(modelData, Model):
-            modelData.ik_set_status_modified()
+            if not modelData.ik_is_status_new():
+                modelData.ik_set_status_modified()
         else:
             raise IkException('unsupport data type: %s' % type(modelData))
         return self.add(modelData, updateFields=updateFields, validateExclude=validateExclude, validateUnique=validateUnique)
@@ -142,11 +143,15 @@ class IkTransaction():
             for ikTransactionModel in self.__modelDataList:
                 data = ikTransactionModel.modelData
                 if isinstance(data, Model):
+                    if data.ik_is_status_modified() or data.ik_is_status_new():
+                        data.updateCommonFields({'operatorID': operatorId2, 'updateTime': updateDate})
                     if not hasUpdateRecords and not data.ik_is_status_retrieve():
                         hasUpdateRecords = True
                 elif type(data) == list or type(data) == QuerySet:
                     for r in data:
                         if isinstance(r, Model):
+                            if r.ik_is_status_modified() or r.ik_is_status_new():
+                                r.updateCommonFields({'operatorID': operatorId2, 'updateTime': updateDate})
                             if not hasUpdateRecords and not r.ik_is_status_retrieve():
                                 hasUpdateRecords = True
                         else:

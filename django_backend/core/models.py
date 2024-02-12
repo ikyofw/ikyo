@@ -81,7 +81,7 @@ class UsrToken(IDModel):
 class UsrSessionPrm(IDModel):
     token = models.ForeignKey(UsrToken, models.CASCADE, verbose_name='Iky User Token')
     key = models.CharField(max_length=255, verbose_name='Key')
-    value = models.TextField(verbose_name='Value')
+    value = models.TextField(blank=True, null=True, verbose_name='Value')
 
     class Meta:
         managed = True
@@ -192,7 +192,7 @@ class ScreenFieldGroup(IDModel):
     selection_mode = models.CharField(max_length=50, choices=[('single', 'Single'),
                                       ('multiple', 'Multiple')], blank=True, null=True, verbose_name='Selection Mode')
     cols = models.IntegerField(blank=True, null=True, verbose_name='Columns')
-    sort_new_rows = models.BooleanField(blank=True, null=True, verbose_name='Whether to Sort New Rows')
+    # sort_new_rows = models.BooleanField(blank=True, null=True, verbose_name='Whether to Sort New Rows')
     data_page_type = models.CharField(max_length=50, choices=[('client', 'Client'),
                                       ('server', 'Server')], blank=True, null=True, verbose_name='Data Page Type')
     data_page_size = models.IntegerField(blank=True, null=True, verbose_name='Data Page Size')
@@ -200,6 +200,7 @@ class ScreenFieldGroup(IDModel):
     inner_layout_type = models.TextField(blank=True, null=True, verbose_name="Inner Layout Type")
     inner_layout_params = models.TextField(blank=True, null=True, verbose_name="Inner Layout Parameters")
     html = models.TextField(blank=True, null=True, verbose_name='Html')
+    additional_props = models.TextField(blank=True, null=True, verbose_name='Additional Properties')
     rmk = models.CharField(max_length=255, blank=True, null=True, verbose_name='Remark')
 
     class Meta:

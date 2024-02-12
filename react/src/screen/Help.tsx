@@ -10,41 +10,39 @@ const Help = () => {
   const HttpDownload = useHttp(pyiLocalStorage.globalParams.HTTP_TYPE_DOWNLOAD)
 
   const { width, height } = useWindowSize()
+  const [textData, setTextData] = useState(null)
   const [htmlData, setHtmlData] = useState(null)
   const [fileData, setFileData] = useState(null)
 
   var helpUrl
-  var helpDocType
+  var helpDocType = "pdf"
   useEffect(() => {
-    var urlSuffix = window.location.search
-    if (urlSuffix.indexOf("&")) {
-      helpUrl = urlSuffix.substring(urlSuffix.indexOf("url=") + 4, urlSuffix.indexOf("&"))
+    var urlSuffix = window.location.search.substring(1)
+    document.title = "WCI 2 - " + urlSuffix.split("=")[urlSuffix.split("=").length - 1] + " Help"
+    urlSuffix = urlSuffix.replace("=", "/")
+    if (urlSuffix.indexOf("&") > -1) {
+      helpUrl = urlSuffix.substring(0, urlSuffix.indexOf("&"))
       helpDocType = urlSuffix.substring(urlSuffix.indexOf("docType=") + 8)
     } else {
-      helpUrl = urlSuffix.substring(urlSuffix.indexOf("url=") + 4)
+      helpUrl = urlSuffix
     }
     getData()
   }, [])
 
   const getData = async () => {
     if (helpUrl) {
+      helpUrl = "/api/help/" + helpUrl
       if (helpDocType.trim().toLocaleLowerCase() === "html") {
         await HttpGet(helpUrl)
           .then((response) => response.text())
           .then((result) => {
-            setHtmlData(result)
+            setTextData(result)
           })
       } else if (helpDocType.trim().toLocaleLowerCase() === "pdf") {
         await HttpDownload(helpUrl).then((response) => {
           let respType = response.headers?.["content-type"]
           var reader = new FileReader()
-          if (respType.trim().toLocaleLowerCase() === "application/json") {
-            reader.onload = (e) => {
-              let data = JSON.parse(e.target.result as string)
-              validateResponse(data, true)
-            }
-            reader.readAsText(response.data)
-          } else {
+          if (respType.trim().toLocaleLowerCase() === "application/pdf") {
             const blob = new Blob([response.data])
             reader.readAsDataURL(blob)
             reader.onload = (e) => {
@@ -54,11 +52,49 @@ const Help = () => {
               let newpdfblob = "data:" + (fileType == "pdf" ? "application" : "image") + "/" + fileType + ";base64," + base64
               setFileData(newpdfblob)
             }
+          } else if (respType.trim().toLocaleLowerCase() === "application/json") {
+            reader.onload = (e) => {
+              let data = JSON.parse(e.target.result as string)
+              validateResponse(data, true)
+            }
+            reader.readAsText(response.data)
+          } else if (respType.trim().toLocaleLowerCase() === "application/html") {
+            reader.onload = (e) => {
+              try {
+                let content: string = e.target.result as string // 显式类型转换为 string
+                setHtmlData(content)
+                const cont = document.getElementById("htmlContainer")
+                if (cont) {
+                  cont.innerHTML = content
+                } else {
+                  console.error('Element with ID "htmlContainer" not found.')
+                }
+              } catch (error) {
+                console.error("Error processing HTML:", error)
+                setTextData("Error processing HTML: " + error)
+              }
+            }
+            reader.readAsText(response.data)
+          } else {
+            reader.onload = (e) => {
+              setTextData(e.target.result)
+            }
+            reader.readAsText(response.data)
           }
         })
       }
     }
   }
-  return htmlData ? <>{htmlData}</> : fileData ? <FileViewer params={{ dataUrl: fileData, disHeight: height, disWidth: width }} /> : null
+  return (
+    <>
+      {textData ? (
+        <div style={{ fontSize: "12pt" }}>{textData}</div>
+      ) : htmlData ? (
+        <div id="htmlContainer"></div>
+      ) : fileData ? (
+        <FileViewer params={{ dataUrl: fileData, disHeight: height, disWidth: width }} isOperate={false} />
+      ) : null}
+    </>
+  )
 }
 export default Help
