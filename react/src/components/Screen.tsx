@@ -1,7 +1,5 @@
 import transform from "css-to-react-native"
-import React, { Ref, forwardRef, useImperativeHandle, useRef, useState } from "react"
-import { createIconColumn } from "./TableFg"
-import GetSitePlan from "./sitePlan/GetSitePlan"
+import React, { Ref, forwardRef, useImperativeHandle, useState } from "react"
 import { useHttp } from "../utils/http"
 import pyiLogger from "../utils/log"
 import pyiLocalStorage from "../utils/pyiLocalStorage"
@@ -12,10 +10,11 @@ import FileViewer from "./FileViewer"
 import * as Loading from "./Loading"
 import SearchFg from "./SearchFg"
 import SimpleFg from "./SimpleFg"
-import TableFg from "./TableFg"
+import TableFg, { createIconColumn } from "./TableFg"
 import ToolBar from "./ToolBar"
 import Html from "./html/Html"
 import IFrame from "./html/IFrame"
+import GetSitePlan from "./sitePlan/GetSitePlan"
 
 const pyiGlobal = pyiLocalStorage.globalParams
 
@@ -38,7 +37,7 @@ const Screen: React.FC<IScreenBox> = forwardRef((props, ref: Ref<any>) => {
       refs,
       getData: (dialogType) => {
         let data = {}
-        if (dialogType === pyiGlobal.UPLOAD_BTN_TYPE) {
+        if (dialogType === pyiGlobal.DIALOG_TYPE_UPLOAD) {
           props.fgNames.forEach((fgName: string) => {
             data = refs[fgName].current.formData()
           })
@@ -92,7 +91,6 @@ const Screen: React.FC<IScreenBox> = forwardRef((props, ref: Ref<any>) => {
     setRefs(newRefs)
   }, [props.fgNames])
 
-  
   const createEventData = (eventHandlerParameter: any) => {
     let eventData = {}
     if (!eventHandlerParameter || eventHandlerParameter.length <= 0) {
@@ -368,7 +366,7 @@ const Screen: React.FC<IScreenBox> = forwardRef((props, ref: Ref<any>) => {
 
     try {
       let buttonData = {}
-      if (btnType === pyiGlobal.UPLOAD_BTN_TYPE) {
+      if (btnType === pyiGlobal.BTN_TYPE_UPLOAD) {
         eventHandlerParameter.forEach((fgName: string) => {
           buttonData = refs[fgName].current.formData()
         })
@@ -423,7 +421,7 @@ const Screen: React.FC<IScreenBox> = forwardRef((props, ref: Ref<any>) => {
     let removeLoadingDiv = true
     Loading.show()
     try {
-      if (btnType === pyiGlobal.NORMAL_BTN_TYPE) {
+      if (btnType === pyiGlobal.BTN_TYPE_NORMAL) {
         await HttpPost(eventHandler, JSON.stringify(data)).then((response) => {
           response.blob().then((blob) => {
             try {
@@ -443,7 +441,7 @@ const Screen: React.FC<IScreenBox> = forwardRef((props, ref: Ref<any>) => {
                 let fileName = response.headers.get("Content-Disposition")?.split("filename=")[1]
                 domDownload(fileName, blob, eventHandler)
                 refreshList()
-                saveMessage([{type: 'info', message: 'download success.'}])
+                saveMessage([{ type: "info", message: "download success." }])
               } else {
                 showErrorMessage("System error, please ask administrator to check: unknown content-type: " + blob.type)
               }
@@ -453,7 +451,7 @@ const Screen: React.FC<IScreenBox> = forwardRef((props, ref: Ref<any>) => {
           })
         })
         removeLoadingDiv = false
-      } else if (btnType === pyiGlobal.UPLOAD_BTN_TYPE) {
+      } else if (btnType === pyiGlobal.BTN_TYPE_UPLOAD) {
         // upload button event
         await HttpPostNoHeader(eventHandler, data).then((response) => {
           response.blob().then((blob) => {
@@ -471,7 +469,7 @@ const Screen: React.FC<IScreenBox> = forwardRef((props, ref: Ref<any>) => {
                 let fileName = response.headers.get("Content-Disposition")?.split("filename=")[1]
                 domDownload(fileName, blob, eventHandler)
                 refreshList()
-                saveMessage([{type: 'info', message: 'download success.'}])
+                saveMessage([{ type: "info", message: "download success." }])
               }
             } finally {
               Loading.remove()
@@ -479,7 +477,7 @@ const Screen: React.FC<IScreenBox> = forwardRef((props, ref: Ref<any>) => {
           })
         })
         removeLoadingDiv = false
-      } else if (btnType === pyiGlobal.DOWNLOAD_BTN_TYPE) {
+      } else if (btnType === pyiGlobal.BTN_TYPE_DOWNLOAD) {
         // download button event
         await HttpDownload(eventHandler, data).then((response) => {
           try {
@@ -488,7 +486,7 @@ const Screen: React.FC<IScreenBox> = forwardRef((props, ref: Ref<any>) => {
               var reader = new FileReader()
               reader.onload = (e) => {
                 let resultData = JSON.parse(e.target.result as string)
-                if (validateResponse(resultData, false) && data.constructor === Object &&  Object.keys(data).length > 0) {
+                if (validateResponse(resultData, false) && data.constructor === Object && Object.keys(data).length > 0) {
                   refreshList()
                 }
               }
@@ -498,12 +496,11 @@ const Screen: React.FC<IScreenBox> = forwardRef((props, ref: Ref<any>) => {
               let fileName = response?.headers?.["content-disposition"]?.split("filename=")[1]
               domDownload(fileName, blob, eventHandler)
               if (data.constructor === Object && Object.keys(data).length > 0) {
-                saveMessage([{type: 'info', message: 'download success.'}])
+                saveMessage([{ type: "info", message: "download success." }])
                 refreshList()
               } else {
                 showInfoMessage("download success.")
               }
-              
             }
           } finally {
             Loading.remove()
@@ -561,7 +558,7 @@ const Screen: React.FC<IScreenBox> = forwardRef((props, ref: Ref<any>) => {
                 dialogName: dialogName,
                 onCancel: () => closeDialog(),
                 onContinue: (dialogData) => {
-                  if (btnType === pyiGlobal.UPLOAD_BTN_TYPE) {
+                  if (btnType === pyiGlobal.BTN_TYPE_UPLOAD) {
                     onClickEvent(btnType, eventHandler, getFormData(dialogData, buttonData))
                   } else {
                     onClickEvent(btnType, eventHandler, { ...buttonData, ...dialogData })
@@ -570,7 +567,7 @@ const Screen: React.FC<IScreenBox> = forwardRef((props, ref: Ref<any>) => {
                 continueNm: continueNm,
                 cancelNm: cancelNm,
                 dialogWidth: dialogWidth,
-                dialogHeight: dialogHeight
+                dialogHeight: dialogHeight,
               }
               openDialog(params)
             }
@@ -584,7 +581,7 @@ const Screen: React.FC<IScreenBox> = forwardRef((props, ref: Ref<any>) => {
           dialogName: dialogName,
           onCancel: () => closeDialog(),
           onContinue: (dialogData) => {
-            if (btnType === pyiGlobal.UPLOAD_BTN_TYPE) {
+            if (btnType === pyiGlobal.BTN_TYPE_UPLOAD) {
               onClickEvent(btnType, eventHandler, getFormData(dialogData, buttonData))
             } else {
               onClickEvent(btnType, eventHandler, { ...buttonData, ...dialogData })
@@ -593,7 +590,7 @@ const Screen: React.FC<IScreenBox> = forwardRef((props, ref: Ref<any>) => {
           continueNm: continueNm,
           cancelNm: cancelNm,
           dialogWidth: dialogWidth,
-          dialogHeight: dialogHeight
+          dialogHeight: dialogHeight,
         }
         openDialog(params)
       }
@@ -842,13 +839,13 @@ export function parseLayoutParams(layoutParams) {
 }
 
 export function getFormData(data1, data2) {
-  const isFormData1 = data1 instanceof FormData;
-  const isFormData2 = data2 instanceof FormData;
+  const isFormData1 = data1 instanceof FormData
+  const isFormData2 = data2 instanceof FormData
 
   if (isFormData1) {
-    return data1;
+    return data1
   } else if (isFormData2) {
-    return data2;
+    return data2
   }
-  return null; 
+  return null
 }

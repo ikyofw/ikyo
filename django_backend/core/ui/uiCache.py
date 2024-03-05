@@ -6,7 +6,7 @@ def clearAllCache():
     cache.clear()
 
 
-def updatePageDefinitionCache(screenSN, screenDfn):
+def setPageDefinitionCache(screenSN, screenDfn):
     if isNullBlank(screenSN) or isNullBlank(screenDfn):
         return None
     cache.set(screenSN, screenDfn)
@@ -17,3 +17,9 @@ def getPageDefinitionFromCache(screenSN):
         return None
     screenDfn = cache.get(screenSN)
     return screenDfn
+
+
+def deletePageDefinitionFromCache(screenSN):
+    if isNullBlank(screenSN):
+        return None
+    cache.delete(screenSN)

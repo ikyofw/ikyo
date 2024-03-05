@@ -1,8 +1,11 @@
 '''
-Description: IKYO Screen Definition
+Description: PYI Screen Definition
+version: 
+Author: YL
+Date: 2023-04-18 15:36:52
 '''
 import logging
-import datetime
+import os
 
 from django.db.models import Case, Q, When
 from django.forms import model_to_dict
@@ -10,23 +13,21 @@ from django.forms import model_to_dict
 import core.core.fs as ikfs
 import core.ui.ui as ikui
 import core.ui.uidb as ikuidb
+import core.utils.strUtils as strUtils
 from core.core.http import *
+from core.core.exception import IkException
 from core.core.lang import Boolean2
-from core.manager import sdm
+from core.models import *
+from core.utils.langUtils import isNotNullBlank, isNullBlank
+from core.screen import ScreenDfnManager
 from core.view.screenView import ScreenAPIView
-from core.utils import strUtils
-from core.utils.langUtils import isNullBlank, isNotNullBlank
 
-import core.models as ikModels
+logger = logging.getLogger('pyi')
 
-logger = logging.getLogger('ikyo')
-
-NO_PARAMETERS_WIDGET = [
-    ikui.SCREEN_FIELD_WIDGET_TEXT_AREA, ikui.SCREEN_FIELD_WIDGET_PLUGIN, ikui.SCREEN_FIELD_WIDGET_HTML, ikui.SCREEN_FIELD_WIDGET_PASSWORD
-]
+NO_PARAMETERS_WIDGET = [ikui.SCREEN_FIELD_WIDGET_TEXT_AREA, ikui.SCREEN_FIELD_WIDGET_PLUGIN, ikui.SCREEN_FIELD_WIDGET_HTML, ikui.SCREEN_FIELD_WIDGET_PASSWORD]
 
 
-class ScreenDfn(ScreenAPIView):
+class ScreenDfnView(ScreenAPIView):
 
     def __init__(self) -> None:
         super().__init__()
@@ -36,8 +37,8 @@ class ScreenDfn(ScreenAPIView):
                 widgetNm = self.getSessionParameter('widgetNm')
                 screen.setFieldsVisible(fieldGroupName='dialogWidgetPramsFg',
                                         fieldNames=[
-                                            'formatField1', 'formatField2', 'stateNumField', 'multipleField', 'dataField', 'recordsetField', 'dataUrlField', 'valuesField', 'onChangeField', 'dialogField',
-                                            'iconField', 'typeField'
+                                            'formatField1', 'formatField2', 'stateNumField', 'multipleField', 'dataField', 'recordsetField', 'dataUrlField', 'valuesField',
+                                            'onChangeField', 'dialogField', 'iconField', 'typeField'
                                         ],
                                         visible=False)
                 if widgetNm in NO_PARAMETERS_WIDGET:
@@ -47,10 +48,12 @@ class ScreenDfn(ScreenAPIView):
                 elif widgetNm == ikui.SCREEN_FIELD_WIDGET_DATE_BOX:
                     screen.setFieldsVisible(fieldGroupName='dialogWidgetPramsFg', fieldNames=['formatField2'], visible=True)
                 elif widgetNm == ikui.SCREEN_FIELD_WIDGET_COMBO_BOX or widgetNm == ikui.SCREEN_FIELD_WIDGET_LIST_BOX or widgetNm == ikui.SCREEN_FIELD_WIDGET_ADVANCED_COMBOBOX:
-                    screen.setFieldsVisible(fieldGroupName='dialogWidgetPramsFg', fieldNames=['dataField', 'recordsetField', 'dataUrlField', 'valuesField', 'onChangeField'], visible=True)
+                    screen.setFieldsVisible(fieldGroupName='dialogWidgetPramsFg',
+                                            fieldNames=['dataField', 'recordsetField', 'dataUrlField', 'valuesField', 'onChangeField'],
+                                            visible=True)
                 elif widgetNm == ikui.SCREEN_FIELD_WIDGET_ADVANCED_SELECTION:
-                    screen.setFieldsVisible(fieldGroupName='dialogWidgetPramsFg', 
-                                            fieldNames=['iconField', 'dataField', 'recordsetField', 'dataUrlField', 'valuesField', 'dialogField'], 
+                    screen.setFieldsVisible(fieldGroupName='dialogWidgetPramsFg',
+                                            fieldNames=['iconField', 'recordsetField', 'dataField', 'dataUrlField', 'valuesField', 'dialogField'],
                                             visible=True)
                 elif widgetNm == ikui.SCREEN_FIELD_WIDGET_CHECK_BOX:
                     screen.setFieldsVisible(fieldGroupName='dialogWidgetPramsFg', fieldNames=['stateNumField'], visible=True)
@@ -80,12 +83,12 @@ class ScreenDfn(ScreenAPIView):
                 fieldGroupNames=['recordsetListFg', 'recordsetToolbar', 'fieldGroupListFg', 'fgLinkListFg', 'fgHeaderFooterListFg', 'subScreenFg', 'subScreenToolbar'],
                 visible=isSelectedScreenSn)
 
-            ## XH 2023-05-04 START
+            # XH 2023-05-04 START
             # import and export
             # screen.setFieldGroupsVisible(fieldGroupNames=['importFg'], visible= not isSelectedScreenSn)
             screen.setFieldsVisible(fieldGroupName='screenToolbar2', fieldNames=['bttExportScreen', 'bttDeleteScreen', 'bttCopyScreen'], visible=isSelectedScreenSn)
             # screen.setFieldsVisible(fieldGroupName='screenToolbar', fieldNames=['bttImportScreen'], visible=not isSelectedScreenSn)
-            ## XH 2023-05-04 END
+            # XH 2023-05-04 END
 
             # field group page
             screen.setFieldGroupsVisible(fieldGroupNames=['fieldGroupDtlFg', 'fieldListFg'], visible=isSelectedScreenSn and (currentFgId is not None or isNewFg))
@@ -110,7 +113,7 @@ class ScreenDfn(ScreenAPIView):
 
         self.beforeDisplayAdapter = beforeDisplayAdapter
 
-    ### Screen
+    # Screen
     def newScreen(self):
         self.deleteSessionParameters(
             nameFilters=['isNewScreen', 'screenSN', 'isNewFg', 'currentFgID', 'isNewFgLink', 'currentFgLinkID', 'isNewFgHeaderFooter', 'currentFgHeaderFooterID'])
@@ -134,18 +137,21 @@ class ScreenDfn(ScreenAPIView):
     def syncScreenDefinitions(self):
         return ikuidb.syncScreenDefinitions(self.getCurrentUserId())
 
+    def createCSVFile(self):
+        return ikuidb.createCSVFileWithDatabase()
+
         # get all screens combobox
     def getScreens(self):
         data = []
-        qs = ikModels.Screen.objects.values('screen_sn').distinct().order_by('screen_sn')
+        qs = Screen.objects.values('screen_sn').distinct().order_by('screen_sn')
         snFlag = ''
         for q in qs:
             if snFlag.lower() == q['screen_sn'].lower():
                 continue
             snFlag = q['screen_sn']
             sn = q['screen_sn']
-            screenRc = ikModels.Screen.objects.filter(screen_sn__iexact=sn).order_by('-rev').first()
-            screenFileRc = ikModels.ScreenFile.objects.filter(screen=screenRc).first()
+            screenRc = Screen.objects.filter(screen_sn__iexact=sn).order_by('-rev').first()
+            screenFileRc = ScreenFile.objects.filter(screen=screenRc).first()
             if isNullBlank(screenFileRc):
                 dt = ''
             else:
@@ -155,7 +161,7 @@ class ScreenDfn(ScreenAPIView):
 
     # get selected screen
     def getScreenSelectRc(self):
-        data = {}
+        data = None
         if not strUtils.isEmpty(self.getSessionParameter("screenSN")):
             data = {'screenField': self.getSessionParameter("screenSN")}
         return IkSccJsonResponse(data=data)
@@ -174,14 +180,14 @@ class ScreenDfn(ScreenAPIView):
         screenSn = self.getSessionParameter("screenSN")
         isNewScreen = self.getSessionParameterBool("isNewScreen")
         if not strUtils.isEmpty(screenSn) and not isNewScreen:
-            data = ikModels.Screen.objects.filter(screen_sn__iexact=screenSn).order_by("-rev").first()
+            data = Screen.objects.filter(screen_sn__iexact=screenSn).order_by("-rev").first()
         else:
             data['api_version'] = 1
             data['editable'] = True
         return data
 
     def getScreenLayoutType(self):
-        layoutType = ikModels.Screen._meta.get_field('layout_type')
+        layoutType = Screen._meta.get_field('layout_type')
         layoutTypeChoices = layoutType.choices
         data = []
         for choice in layoutTypeChoices:
@@ -193,7 +199,7 @@ class ScreenDfn(ScreenAPIView):
         isNewScreen = self.getSessionParameterBool("isNewScreen")
         if strUtils.isEmpty(screenSn) and not isNewScreen:
             return IkErrJsonResponse(message="Please select a Screen first.")
-        boo = sdm.saveScreen(self, screenSn, isNewScreen, True)
+        boo = ScreenDfnManager.saveScreen(self, screenSn, isNewScreen, True)
         if boo.value and isNewScreen:
             self.deleteSessionParameters("isNewScreen")
         return boo.toIkJsonResponse1()
@@ -203,7 +209,7 @@ class ScreenDfn(ScreenAPIView):
         isNewScreen = self.getSessionParameterBool("isNewScreen")
         if strUtils.isEmpty(screenSn) and not isNewScreen:
             return IkErrJsonResponse(message="Please select a Screen first.")
-        boo = sdm.deleteScreen(self, screenSn)
+        boo = ScreenDfnManager.deleteScreen(self, screenSn)
         if boo.value:
             self.deleteSessionParameters(
                 nameFilters=['isNewScreen', 'screenSN', 'isNewFg', 'currentFgID', 'isNewFgLink', 'currentFgLinkID', 'isNewFgHeaderFooter', 'currentFgHeaderFooterID'])
@@ -222,7 +228,7 @@ class ScreenDfn(ScreenAPIView):
         isNewScreen = self.getSessionParameterBool("isNewScreen")
         if strUtils.isEmpty(screenSn) and not isNewScreen:
             return IkErrJsonResponse(message="Please select a Screen first.")
-        boo = sdm.deleteLastScreen(self, screenSn)
+        boo = ScreenDfnManager.deleteLastScreen(self, screenSn)
         if boo.value:
             self.deleteSessionParameters(nameFilters=['isNewScreen', 'isNewFg', 'currentFgID', 'isNewFgLink', 'currentFgLinkID', 'isNewFgHeaderFooter', 'currentFgHeaderFooterID'])
         return boo.toIkJsonResponse1()
@@ -239,7 +245,7 @@ class ScreenDfn(ScreenAPIView):
         screenSn = self.getSessionParameter("screenSN")
         if strUtils.isEmpty(screenSn):
             return IkErrJsonResponse(message="Please select a Screen first.")
-        boo = sdm.copyScreen(self, userID, screenSn)
+        boo = ScreenDfnManager.copyScreen(self, userID, screenSn)
         return boo.toIkJsonResponse1()
 
     def exportScreen(self):
@@ -249,16 +255,15 @@ class ScreenDfn(ScreenAPIView):
         screenSn = self.getSessionParameter("screenSN")
         if isNullBlank(screenSn):
             return Boolean2(False, 'Not yet saved, please save and then export.')
-        screenRc = ikModels.Screen.objects.filter(screen_sn__iexact=screenSn).order_by('-rev').first()
+        screenRc = Screen.objects.filter(screen_sn__iexact=screenSn).order_by('-rev').first()
         if screenRc is None:
             return Boolean2(False, 'Screen does not exist. Please check. SN=[%s]' % screenSn)
         templateFileFolder = ikui.IkUI.getScreenFileTemplateFolder()
         templateFile = ikfs.getLastRevisionFile(templateFileFolder, 'template.xlsx')
         if isNullBlank(templateFile):
-            logger.error("Template file does not exist in folder [%s]." % templateFileFolder.absolute())
-            return Boolean2(False, 'Screen template file is not found. Please check.')
+            raise IkException("Template file does not exist in folder [%s]." % templateFileFolder.absolute())
         exportFolder = ikfs.getVarTempFolder(subPath='sys/%s/export' % self.getMenuName())
-        filename = '%s-v%s-%s.xlsx' % (screenSn, screenRc.rev, datetime.datetime.now().strftime('%Y%m%d%H%M%S'))
+        filename = '%s.xlsx' % screenSn
         outputFile = os.path.join(exportFolder, filename)
 
         b = ikuidb.screenDbWriteToExcel(screenRc, templateFile, outputFile)
@@ -268,15 +273,15 @@ class ScreenDfn(ScreenAPIView):
 
     # end of exportScreen()
 
-    ## XH 2023-05-04 END
+    # XH 2023-05-04 END
 
-    ### Recordset
+    # Recordset
     def getRecordsetRcs(self):
         data = []
         screenSn = self.getSessionParameter("screenSN")
         if not strUtils.isEmpty(screenSn):
-            screenRc = ikModels.Screen.objects.filter(screen_sn__iexact=screenSn).order_by("-rev").first()
-            data = ikModels.ScreenRecordset.objects.filter(screen=screenRc)
+            screenRc = Screen.objects.filter(screen_sn__iexact=screenSn).order_by("-rev").first()
+            data = ScreenRecordset.objects.filter(screen=screenRc)
         return data
 
     # # check delete status records was be used.
@@ -285,13 +290,13 @@ class ScreenDfn(ScreenAPIView):
     #     screenSn = self.getSessionParameter("screenSN")
     #     if strUtils.isEmpty(screenSn):
     #         return IkErrJsonResponse(message="Please select a Screen first.")
-    #     screenRc = ikModels.Screen.objects.filter(screen_sn__iexact=screenSn).order_by("-rev").first()
+    #     screenRc = Screen.objects.filter(screen_sn__iexact=screenSn).order_by("-rev").first()
     #     if screenRc is None:
     #         return IkErrJsonResponse(message=screenSn + " does not exist, please ask administrator to check.")
     #     recordsetLists = self.getRequestData().get("recordsetListFg", None)
     #     for rc in recordsetLists:
-    #         if rc.pyi_is_status_delete():
-    #             relateFgRc = ikModels.ScreenFieldGroup.objects.filter(screen=screenRc, recordset__id=rc.id).first()
+    #         if rc.ik_is_status_delete():
+    #             relateFgRc = ScreenFieldGroup.objects.filter(screen=screenRc, recordset__id=rc.id).first()
     #             if relateFgRc:
     #                 return IkErrJsonResponse(message=rc.recordset_nm + " was used by field group: " + relateFgRc.fg_nm + ", please delete " + relateFgRc.fg_nm + " first.")
     #     return IkSccJsonResponse()
@@ -300,10 +305,10 @@ class ScreenDfn(ScreenAPIView):
         screenSn = self.getSessionParameter("screenSN")
         if strUtils.isEmpty(screenSn):
             return IkErrJsonResponse(message="Please select a Screen first.")
-        boo = sdm.saveScreenRecordsets(self, screenSn, True)
+        boo = ScreenDfnManager.saveScreenRecordsets(self, screenSn, True)
         return boo.toIkJsonResponse1()
 
-    ### Field Group
+    # Field Group
     # list screen's field group
     def getYesNoArr(self):
         return [{"value": True, "display": "Yes"}, {"value": False, "display": "No"}]
@@ -312,22 +317,21 @@ class ScreenDfn(ScreenAPIView):
         screenSn = self.getSessionParameter("screenSN")
         data = []
         if not strUtils.isEmpty(screenSn):
-            screenRc = ikModels.Screen.objects.filter(screen_sn__iexact=screenSn).order_by("-rev").first()
-            data = ikModels.ScreenFieldGroup.objects.filter(screen=screenRc).order_by("seq")
+            screenRc = Screen.objects.filter(screen_sn__iexact=screenSn).order_by("-rev").first()
+            data = ScreenFieldGroup.objects.filter(screen=screenRc).order_by("seq")
             data = [model_to_dict(instance) for instance in data]
             # set cursor
             fieldGroupId = self.getSessionParameterInt("currentFgID")
             for d in data:
                 if fieldGroupId and int(fieldGroupId) == int(d['id']):
                     d['__CRR_'] = True
-                d['fg_type_nm'] = ikModels.ScreenFgType.objects.filter(id=d['fg_type']).first().type_nm if d['fg_type'] else None
-                d['recordset_nm'] = ikModels.ScreenRecordset.objects.filter(id=d['recordset']).first().recordset_nm if d['recordset'] else None
+                d['fg_type_nm'] = ScreenFgType.objects.filter(id=d['fg_type']).first().type_nm if d['fg_type'] else None
+                d['recordset_nm'] = ScreenRecordset.objects.filter(id=d['recordset']).first().recordset_nm if d['recordset'] else None
                 d['deletable'] = "yes" if d['deletable'] else None
                 d['editable'] = "yes" if d['editable'] else None
                 d['insertable'] = "yes" if d['insertable'] else None
                 d['highlight_row'] = "yes" if d['highlight_row'] else None
                 d['selection_mode'] = d['selection_mode'] if d['selection_mode'] != 'none' else None
-                # d['sort_new_rows'] = "yes" if d['sort_new_rows'] else None
         return IkSccJsonResponse(data=data)
 
     # open field group detail
@@ -348,21 +352,20 @@ class ScreenDfn(ScreenAPIView):
         isNewFg = self.getSessionParameterBool("isNewFg")
         data = {}
         if fieldGroupId and not isNewFg:
-            data = ikModels.ScreenFieldGroup.objects.filter(id=fieldGroupId).first()
+            data = ScreenFieldGroup.objects.filter(id=fieldGroupId).first()
         else:
             data['editable'] = True
         return IkSccJsonResponse(data=data)
 
     # field group types
     def getFgTypes(self):
-        typeRcs = ikModels.ScreenFgType.objects.all().order_by('type_nm')
+        typeRcs = ScreenFgType.objects.all().order_by('type_nm')
         sysTypeList, usrTypeList = [], []
         for i in typeRcs:
             if i.type_nm in ikui.SCREEN_FIELD_NORMAL_GROUP_TYPES:
                 sysTypeList.append({'id': i.id, 'type_nm': i.type_nm})
             else:
                 usrTypeList.append({'id': i.id, 'type_nm': "Custom - " + i.type_nm})
-        
         return IkSccJsonResponse(data=[*sysTypeList, *usrTypeList])
 
     # get screen recordsets
@@ -370,20 +373,20 @@ class ScreenDfn(ScreenAPIView):
         screenSn = self.getSessionParameter("screenSN")
         data = []
         if not strUtils.isEmpty(screenSn):
-            screenRc = ikModels.Screen.objects.filter(screen_sn__iexact=screenSn).order_by("-rev").first()
-            data = ikModels.ScreenRecordset.objects.filter(screen=screenRc).order_by("id")
+            screenRc = Screen.objects.filter(screen_sn__iexact=screenSn).order_by("-rev").first()
+            data = ScreenRecordset.objects.filter(screen=screenRc).order_by("id")
         return IkSccJsonResponse(data=data)
 
     # get field group page type
     def getSelectionModes(self):
-        selectionMode = ikModels.ScreenFieldGroup._meta.get_field('selection_mode')
+        selectionMode = ScreenFieldGroup._meta.get_field('selection_mode')
         selectionModeChoices = selectionMode.choices
         data = [{"value": choice[0], "display": choice[1]} for choice in selectionModeChoices]
         return data
 
     # get field group page type
     def getFgPageTypes(self):
-        pageType = ikModels.ScreenFieldGroup._meta.get_field('data_page_type')
+        pageType = ScreenFieldGroup._meta.get_field('data_page_type')
         pageTypeChoices = pageType.choices
         data = [{"value": choice[0], "display": choice[1]} for choice in pageTypeChoices]
         return data
@@ -394,7 +397,7 @@ class ScreenDfn(ScreenAPIView):
         isNewFg = self.getSessionParameterBool("isNewFg")
         data = []
         if fieldGroupId and not isNewFg:
-            data = ikModels.ScreenField.objects.filter(field_group__id=fieldGroupId).order_by("seq")
+            data = ScreenField.objects.filter(field_group__id=fieldGroupId).order_by("seq")
             # for d in data:
             #     d.visible = not d.visible  # just show in page table
             #     d.editable = not d.editable  # just show in page table
@@ -402,7 +405,7 @@ class ScreenDfn(ScreenAPIView):
 
     # get field all widget
     def getWidgets(self):
-        widgetRcs = ikModels.ScreenFieldWidget.objects.all().order_by('widget_nm')
+        widgetRcs = ScreenFieldWidget.objects.all().order_by('widget_nm')
         sysWidgetList, usrWidgetList = [], []
         for i in widgetRcs:
             if i.widget_nm in ikui.SCREEN_FIELD_NORMAL_WIDGETS:
@@ -417,13 +420,13 @@ class ScreenDfn(ScreenAPIView):
         self.setSessionParameters({"isNewFg": True})
         return IkSccJsonResponse()
 
-    ## XH 2023-04-24 START
+    # XH 2023-04-24 START
     def checkFieldIsRelated(self):
         screenSn = self.getSessionParameter("screenSN")
         fieldGroupId = self.getSessionParameterInt("currentFgID")
         if strUtils.isEmpty(screenSn):
             return IkErrJsonResponse(message="Please select a Screen first.")
-        screenRc = ikModels.Screen.objects.filter(screen_sn__iexact=screenSn).order_by("-rev").first()
+        screenRc = Screen.objects.filter(screen_sn__iexact=screenSn).order_by("-rev").first()
         if screenRc is None:
             return IkErrJsonResponse(message=screenSn + " does not exist, please ask administrator to check.")
 
@@ -432,7 +435,7 @@ class ScreenDfn(ScreenAPIView):
         delNum = 0
         for i in fieldListFg:
             if i.ik_is_status_delete():
-                relatedFgHeaderFooterRc =ikModels.ScreenFgHeaderFooter.objects.filter(screen=screenRc, field_group__id=fieldGroupId, field__id=i.id).first()
+                relatedFgHeaderFooterRc = ScreenFgHeaderFooter.objects.filter(screen=screenRc, field_group__id=fieldGroupId, field__id=i.id).first()
                 if relatedFgHeaderFooterRc:
                     delNum += 1
                     message += "\nField name: " + i.field_nm + "  will be deleted"
@@ -444,14 +447,14 @@ class ScreenDfn(ScreenAPIView):
             message += "\nAre you sure to delete?"
         return ikui.DialogMessage.getSuccessResponse(message=message)
 
-    ## XH 2023-04-24 END
+    # XH 2023-04-24 END
 
     def saveFieldGroup(self):
         screenSn = self.getSessionParameter("screenSN")
         isNewFg = self.getSessionParameterBool("isNewFg")
         if strUtils.isEmpty(screenSn):
             return IkErrJsonResponse(message="Please select a Screen first.")
-        boo = sdm.saveFieldGroup(self, screenSn, isNewFg, True)
+        boo = ScreenDfnManager.saveFieldGroup(self, screenSn, isNewFg, True)
         if boo.value:
             self.openFieldGroup()
             self.deleteSessionParameters("isNewFg")
@@ -462,7 +465,7 @@ class ScreenDfn(ScreenAPIView):
         screenSn = self.getSessionParameter("screenSN")
         if strUtils.isEmpty(screenSn):
             return IkErrJsonResponse(message="Please select a Screen first.")
-        screenRc = ikModels.Screen.objects.filter(screen_sn__iexact=screenSn).order_by("-rev").first()
+        screenRc = Screen.objects.filter(screen_sn__iexact=screenSn).order_by("-rev").first()
         if screenRc is None:
             return IkErrJsonResponse(message=screenSn + " does not exist, please ask administrator to check.")
 
@@ -470,8 +473,8 @@ class ScreenDfn(ScreenAPIView):
         message = "Are you sure delete this field group and all fields under this field group?"
         if fieldGroupId:
             # check field group link and header footer table
-            relatedFgLinkRc = ikModels.ScreenFgLink.objects.filter(screen=screenRc).filter((Q(field_group__id=fieldGroupId) | Q(parent_field_group__id=fieldGroupId))).first()
-            relatedFgHeaderFooterRc = ikModels.ScreenFgHeaderFooter.objects.filter(screen=screenRc, field_group__id=fieldGroupId).first()
+            relatedFgLinkRc = ScreenFgLink.objects.filter(screen=screenRc).filter((Q(field_group__id=fieldGroupId) | Q(parent_field_group__id=fieldGroupId))).first()
+            relatedFgHeaderFooterRc = ScreenFgHeaderFooter.objects.filter(screen=screenRc, field_group__id=fieldGroupId).first()
             if relatedFgLinkRc or relatedFgHeaderFooterRc:
                 message = "This field group has been used for field group links or header and footer table, are you sure to delete?"
         return ikui.DialogMessage.getSuccessResponse(message=message)
@@ -486,7 +489,7 @@ class ScreenDfn(ScreenAPIView):
             logger.error("Delete Field Group function get field group Id failed.")
             return IkSysErrJsonResponse()
         self.setSessionParameters({"isDeleteFieldGroup": True})
-        boo = sdm.deleteFieldGroup(self, screenSn, fieldGroupId)
+        boo = ScreenDfnManager.deleteFieldGroup(self, screenSn, fieldGroupId)
         self.deleteSessionParameters("isDeleteFieldGroup")
         if boo.value:
             self.deleteSessionParameters("currentFgID")
@@ -497,37 +500,35 @@ class ScreenDfn(ScreenAPIView):
         screenSn = self.getSessionParameter("screenSN")
         data = []
         if isNotNullBlank(screenSn):
-            screenRc = ikModels.Screen.objects.filter(screen_sn__iexact=screenSn).order_by("-rev").first()
-            data = ikModels.ScreenDfn.objects.filter(screen=screenRc).order_by('sub_screen_nm')
+            screenRc = Screen.objects.filter(screen_sn__iexact=screenSn).order_by("-rev").first()
+            data = ScreenDfn.objects.filter(screen=screenRc).order_by('sub_screen_nm')
             if len(data) == 0:
-                data = [ikModels.ScreenDfn(sub_screen_nm=ikui.MAIN_SCREEN_NAME)]
+                data = [ScreenDfn(sub_screen_nm=ikui.MAIN_SCREEN_NAME)]
         return IkSccJsonResponse(data=data)
 
     def saveSubScreen(self):
         screenSn = self.getSessionParameter("screenSN")
-        screenDfn: list[ikModels.ScreenDfn] = self.getRequestData().get('subScreenFg')
         if strUtils.isEmpty(screenSn):
             return IkErrJsonResponse(message="Please select a Screen first.")
-
-        boo = sdm.saveSubScreen(self, screenSn, screenDfn)
+        boo = ScreenDfnManager.saveSubScreen(self, screenSn, True)
         return boo.toIkJsonResponse1()
 
-    ### Field Group Links
+    # Field Group Links
     # get field group's field group links
     def getFgLinkRcs(self):
         screenSn = self.getSessionParameter("screenSN")
         data = []
         if not strUtils.isEmpty(screenSn):
-            screenRc = ikModels.Screen.objects.filter(screen_sn__iexact=screenSn).order_by("-rev").first()
-            data = ikModels.ScreenFgLink.objects.filter(screen=screenRc).select_related('field_group', 'parent_field_group').order_by("field_group__seq")
+            screenRc = Screen.objects.filter(screen_sn__iexact=screenSn).order_by("-rev").first()
+            data = ScreenFgLink.objects.filter(screen=screenRc).select_related('field_group', 'parent_field_group').order_by("field_group__seq")
             data = [model_to_dict(instance) for instance in data]
             # set cursor
             fgLinkId = self.getSessionParameterInt("currentFgLinkID")
             for d in data:
                 if fgLinkId and int(fgLinkId) == int(d['id']):
                     d['__CRR_'] = True
-                d['field_group_nm'] = ikModels.ScreenFieldGroup.objects.filter(id=d['field_group']).first().fg_nm
-                d['parent_field_group_nm'] = ikModels.ScreenFieldGroup.objects.filter(id=d['parent_field_group']).first().fg_nm
+                d['field_group_nm'] = ScreenFieldGroup.objects.filter(id=d['field_group']).first().fg_nm
+                d['parent_field_group_nm'] = ScreenFieldGroup.objects.filter(id=d['parent_field_group']).first().fg_nm
         return IkSccJsonResponse(data=data)
 
     # open field group link detail
@@ -543,14 +544,14 @@ class ScreenDfn(ScreenAPIView):
         return IkSccJsonResponse()
 
     # field group link detail
-    ## XH 2023-04-24 START
-    ## XH 2023-04-25 START
+    # XH 2023-04-24 START
+    # XH 2023-04-25 START
     def getFgLinkRc(self):
         fgLinkId = self.getSessionParameterInt("currentFgLinkID")
         isNewFgLink = self.getSessionParameterBool("isNewFgLink")
-        data = {}
+        data = None
         if fgLinkId and not isNewFgLink:
-            data = ikModels.ScreenFgLink.objects.filter(id=fgLinkId).first()
+            data = ScreenFgLink.objects.filter(id=fgLinkId).first()
         return IkSccJsonResponse(data=data)
 
     # all type field group for field group link
@@ -558,8 +559,8 @@ class ScreenDfn(ScreenAPIView):
         screenSn = self.getSessionParameter("screenSN")
         data = []
         if screenSn:
-            screenRc = ikModels.Screen.objects.filter(screen_sn__iexact=screenSn).order_by("-rev").first()
-            querySet = ikModels.ScreenFieldGroup.objects.filter(screen=screenRc).exclude(recordset=None).exclude(recordset__sql_models__icontains="DummyModel").order_by("seq")
+            screenRc = Screen.objects.filter(screen_sn__iexact=screenSn).order_by("-rev").first()
+            querySet = ScreenFieldGroup.objects.filter(screen=screenRc).exclude(recordset=None).exclude(recordset__sql_models__icontains="DummyModel").order_by("seq")
             # TODO DummyModel should preferably also support getting the fields we set
             data = [{'field_group_id': i.id, 'fg_nm': i.fg_nm} for i in querySet]
         return IkSccJsonResponse(data=data)
@@ -568,8 +569,8 @@ class ScreenDfn(ScreenAPIView):
         screenSn = self.getSessionParameter("screenSN")
         data = []
         if screenSn:
-            screenRc = ikModels.Screen.objects.filter(screen_sn__iexact=screenSn).order_by("-rev").first()
-            querySet = ikModels.ScreenFieldGroup.objects.filter(screen=screenRc).exclude(recordset=None).exclude(recordset__sql_models__icontains="DummyModel").order_by("seq")
+            screenRc = Screen.objects.filter(screen_sn__iexact=screenSn).order_by("-rev").first()
+            querySet = ScreenFieldGroup.objects.filter(screen=screenRc).exclude(recordset=None).exclude(recordset__sql_models__icontains="DummyModel").order_by("seq")
             data = [{'parent_field_group_id': i.id, 'fg_nm': i.fg_nm} for i in querySet]
         return IkSccJsonResponse(data=data)
 
@@ -578,15 +579,15 @@ class ScreenDfn(ScreenAPIView):
         screenSn = self.getSessionParameter("screenSN")
         if strUtils.isEmpty(screenSn):
             return IkErrJsonResponse(message="Please select a Screen first.")
-        screenRc = ikModels.Screen.objects.filter(screen_sn__iexact=screenSn).order_by("-rev").first()
+        screenRc = Screen.objects.filter(screen_sn__iexact=screenSn).order_by("-rev").first()
         fgLinkDtlFg = self.getRequestData().get("fgLinkDtlFg")
         fgId = fgLinkDtlFg.field_group_id
         # parent field groups
-        pFgQuerySet = ikModels.ScreenFieldGroup.objects.filter(screen=screenRc).exclude(recordset=None).exclude(recordset__sql_models__icontains="DummyModel").exclude(
+        pFgQuerySet = ScreenFieldGroup.objects.filter(screen=screenRc).exclude(recordset=None).exclude(recordset__sql_models__icontains="DummyModel").exclude(
             id=fgId).order_by("seq")
         pFgData = [{'parent_field_group_id': i.id, 'fg_nm': i.fg_nm} for i in pFgQuerySet]
         # db keys
-        dbKeyData = sdm.getFieldDBKeys(screenRc, ikModels.ScreenFieldGroup.objects.filter(id=fgId).first())
+        dbKeyData = ScreenDfnManager.getFieldDBKeys(screenRc, ScreenFieldGroup.objects.filter(id=fgId).first())
         return self._returnComboboxQueryResult(fgName='fgLinkDtlFg', fgData=None, resultDict={'dtlFgLinkLocalKeyField': dbKeyData, 'dtlFgLinkParentFgNmField': pFgData})
 
     # onChange: field group change will change db keys
@@ -594,47 +595,47 @@ class ScreenDfn(ScreenAPIView):
         screenSn = self.getSessionParameter("screenSN")
         if strUtils.isEmpty(screenSn):
             return IkErrJsonResponse(message="Please select a Screen first.")
-        screenRc = ikModels.Screen.objects.filter(screen_sn__iexact=screenSn).order_by("-rev").first()
+        screenRc = Screen.objects.filter(screen_sn__iexact=screenSn).order_by("-rev").first()
         fgLinkDtlFg = self.getRequestData().get("fgLinkDtlFg")
         fgId = fgLinkDtlFg.parent_field_group_id
-        dbKeyData = sdm.getFieldDBKeys(screenRc, ikModels.ScreenFieldGroup.objects.filter(id=fgId).first())
+        dbKeyData = ScreenDfnManager.getFieldDBKeys(screenRc, ScreenFieldGroup.objects.filter(id=fgId).first())
         return self._returnComboboxQueryResult(fgName='fgLinkDtlFg', fgData=None, resultDict={'dtlFgLinkParentKeyField': dbKeyData})
 
     # get field group's field db keys
     def getFgFieldDbKeys(self):
         screenSn = self.getSessionParameter("screenSN")
-        screenRc = ikModels.Screen.objects.filter(screen_sn__iexact=screenSn).order_by("-rev").first()
+        screenRc = Screen.objects.filter(screen_sn__iexact=screenSn).order_by("-rev").first()
         fgLinkId = self.getSessionParameterInt("currentFgLinkID")
         isNewFgLink = self.getSessionParameterBool("isNewFgLink")
         data = []
         if fgLinkId:
             if isNewFgLink:
-                field_group = ikModels.ScreenFieldGroup.objects.filter(screen=screenRc).exclude(recordset=None).exclude(
+                field_group = ScreenFieldGroup.objects.filter(screen=screenRc).exclude(recordset=None).exclude(
                     recordset__sql_models__icontains="DummyModel").order_by("seq").first()
-                data = sdm.getFieldDBKeys(screenRc, field_group)
+                data = ScreenDfnManager.getFieldDBKeys(screenRc, field_group)
             else:
-                field_group = ikModels.ScreenFgLink.objects.filter(id=fgLinkId).first().field_group
-                data = sdm.getFieldDBKeys(screenRc, field_group)
+                field_group = ScreenFgLink.objects.filter(id=fgLinkId).first().field_group
+                data = ScreenDfnManager.getFieldDBKeys(screenRc, field_group)
         return data
 
     def getParentFgFieldDbKeys(self):
         screenSn = self.getSessionParameter("screenSN")
-        screenRc = ikModels.Screen.objects.filter(screen_sn__iexact=screenSn).order_by("-rev").first()
+        screenRc = Screen.objects.filter(screen_sn__iexact=screenSn).order_by("-rev").first()
         fgLinkId = self.getSessionParameterInt("currentFgLinkID")
         isNewFgLink = self.getSessionParameterBool("isNewFgLink")
         data = []
         if fgLinkId:
             if isNewFgLink:
-                field_group = ikModels.ScreenFieldGroup.objects.filter(screen=screenRc).exclude(recordset=None).exclude(
+                field_group = ScreenFieldGroup.objects.filter(screen=screenRc).exclude(recordset=None).exclude(
                     recordset__sql_models__icontains="DummyModel").order_by("seq").first()
-                data = sdm.getFieldDBKeys(screenRc, field_group)
+                data = ScreenDfnManager.getFieldDBKeys(screenRc, field_group)
             else:
-                parent_field_group = ikModels.ScreenFgLink.objects.filter(id=fgLinkId).first().parent_field_group
-                data = sdm.getFieldDBKeys(screenRc, parent_field_group)
+                parent_field_group = ScreenFgLink.objects.filter(id=fgLinkId).first().parent_field_group
+                data = ScreenDfnManager.getFieldDBKeys(screenRc, parent_field_group)
         return data
 
-    ## XH 2023-04-25 END
-    ## XH 2023-04-24 END
+    # XH 2023-04-25 END
+    # XH 2023-04-24 END
 
     # events
     def newFgLink(self):
@@ -647,7 +648,7 @@ class ScreenDfn(ScreenAPIView):
         isNewFgLink = self.getSessionParameterBool("isNewFgLink")
         if strUtils.isEmpty(screenSn):
             return IkErrJsonResponse(message="Please select a Screen first.")
-        boo = sdm.saveFgLink(self, screenSn, isNewFgLink, True)
+        boo = ScreenDfnManager.saveFgLink(self, screenSn, isNewFgLink, True)
         if boo.value and isNewFgLink:
             self.deleteSessionParameters("isNewFgLink")
         return boo.toIkJsonResponse1()
@@ -661,29 +662,29 @@ class ScreenDfn(ScreenAPIView):
             logger.error("Delete Field Group Link function get field group link Id failed.")
             return IkSysErrJsonResponse()
         self.setSessionParameters({"isDeleteFgLink": True})
-        boo = sdm.deleteFgLink(self, screenSn, fgLinkId)
+        boo = ScreenDfnManager.deleteFgLink(self, screenSn, fgLinkId)
         self.deleteSessionParameters("isDeleteFgLink")
         if boo.value:
             self.deleteSessionParameters("currentFgLinkID")
             return IkSccJsonResponse(message="Deleted field group link.")
         return boo.toIkJsonResponse1()
 
-    ### Header And Footer
+    # Header And Footer
     # get field group's header and footer
     def getFgHeaderFooterRcs(self):
         screenSn = self.getSessionParameter("screenSN")
         data = []
         if not strUtils.isEmpty(screenSn):
-            screenRc = ikModels.Screen.objects.filter(screen_sn__iexact=screenSn).order_by("-rev").first()
-            data = ikModels.ScreenFgHeaderFooter.objects.filter(screen=screenRc).order_by("field_group__seq", "field__seq")
+            screenRc = Screen.objects.filter(screen_sn__iexact=screenSn).order_by("-rev").first()
+            data = ScreenFgHeaderFooter.objects.filter(screen=screenRc).order_by("field_group__seq", "field__seq")
             data = [model_to_dict(instance) for instance in data]
             # set cursor
             fgHeaderFooterId = self.getSessionParameterInt("currentFgHeaderFooterID")
             for d in data:
                 if fgHeaderFooterId and int(fgHeaderFooterId) == int(d['id']):
                     d['__CRR_'] = True
-                d['field_group_nm'] = ikModels.ScreenFieldGroup.objects.filter(id=d['field_group']).first().fg_nm
-                d['field_nm'] = ikModels.ScreenField.objects.filter(id=d['field']).first().field_nm
+                d['field_group_nm'] = ScreenFieldGroup.objects.filter(id=d['field_group']).first().fg_nm
+                d['field_nm'] = ScreenField.objects.filter(id=d['field']).first().field_nm
         return IkSccJsonResponse(data=data)
 
     # open header and footer detail
@@ -699,29 +700,29 @@ class ScreenDfn(ScreenAPIView):
         return IkSccJsonResponse()
 
     # header and footer detail
-    ## XH 2023-04-25 START
+    # XH 2023-04-25 START
     def getFgHeaderFooterRc(self):
         fgHeaderFooterId = self.getSessionParameterInt("currentFgHeaderFooterID")
         isNewFgHeaderFooter = self.getSessionParameterBool("isNewFgHeaderFooter")
         screenSn = self.getSessionParameter("screenSN")
         data = {}
         if fgHeaderFooterId and not isNewFgHeaderFooter:
-            data = ikModels.ScreenFgHeaderFooter.objects.filter(id=fgHeaderFooterId).first()
+            data = ScreenFgHeaderFooter.objects.filter(id=fgHeaderFooterId).first()
             if data:
                 data = model_to_dict(data)
                 data['field_group_id'] = data['field_group']
                 data['field_id'] = data['field']
         return IkSccJsonResponse(data=data)
 
-    ## XH 2023-04-25 END
+    # XH 2023-04-25 END
 
     # just get table type field group for header and footer table
     def getTableFieldGroups(self):
         screenSn = self.getSessionParameter("screenSN")
         data = []
         if screenSn:
-            screenRc = ikModels.Screen.objects.filter(screen_sn__iexact=screenSn).order_by("-rev").first()
-            data = ikModels.ScreenFieldGroup.objects.filter(screen=screenRc, fg_type__type_nm__icontains="table").order_by("seq")
+            screenRc = Screen.objects.filter(screen_sn__iexact=screenSn).order_by("-rev").first()
+            data = ScreenFieldGroup.objects.filter(screen=screenRc, fg_type__type_nm__icontains="table").order_by("seq")
         return IkSccJsonResponse(data=data)
 
     # onChange
@@ -731,10 +732,10 @@ class ScreenDfn(ScreenAPIView):
         fgId = fgHeaderFooterDtlFg['field_group_id']
         data = []
         if fgId:
-            data = ikModels.ScreenField.objects.filter(field_group__id=fgId).order_by("seq")  #.values_list('id', flat=True))
+            data = ScreenField.objects.filter(field_group__id=fgId).order_by("seq")  # .values_list('id', flat=True))
         return self._returnComboboxQueryResult(fgName='fgHeaderFooterDtlFg', fgData=None, resultDict={'dtlFgHfFieldNmField': data})
 
-    ## XH 2023-04-25 START
+    # XH 2023-04-25 START
     def getFgFields(self):
         fgHeaderFooterId = self.getSessionParameterInt("currentFgHeaderFooterID")
         isNewFgHeaderFooter = self.getSessionParameterBool("isNewFgHeaderFooter")
@@ -742,17 +743,17 @@ class ScreenDfn(ScreenAPIView):
         data = []
         if fgHeaderFooterId:
             if isNewFgHeaderFooter:
-                screenRc = ikModels.Screen.objects.filter(screen_sn__iexact=screenSn).order_by("-rev").first()
-                field_group = ikModels.ScreenFieldGroup.objects.filter(screen=screenRc).filter(fg_type__type_nm__icontains="table").order_by("seq").first()
+                screenRc = Screen.objects.filter(screen_sn__iexact=screenSn).order_by("-rev").first()
+                field_group = ScreenFieldGroup.objects.filter(screen=screenRc).filter(fg_type__type_nm__icontains="table").order_by("seq").first()
                 if field_group:
-                    data = ikModels.ScreenField.objects.filter(screen=screenRc, field_group=field_group).order_by("seq")
+                    data = ScreenField.objects.filter(screen=screenRc, field_group=field_group).order_by("seq")
             else:
-                field_group = ikModels.ScreenFgHeaderFooter.objects.filter(id=fgHeaderFooterId).first().field_group
+                field_group = ScreenFgHeaderFooter.objects.filter(id=fgHeaderFooterId).first().field_group
                 if field_group:
-                    data = ikModels.ScreenField.objects.filter(field_group=field_group)
+                    data = ScreenField.objects.filter(field_group=field_group)
         return IkSccJsonResponse(data=data)
 
-    ## XH 2023-04-25 END
+    # XH 2023-04-25 END
 
     # events
     def newFgHeaderFooter(self):
@@ -765,7 +766,7 @@ class ScreenDfn(ScreenAPIView):
         isNewFgHeaderFooter = self.getSessionParameterBool("isNewFgHeaderFooter")
         if strUtils.isEmpty(screenSn):
             return IkErrJsonResponse(message="Please select a Screen first.")
-        boo = sdm.saveFgHeaderFooter(self, screenSn, isNewFgHeaderFooter, True)
+        boo = ScreenDfnManager.saveFgHeaderFooter(self, screenSn, isNewFgHeaderFooter, True)
         if boo.value and isNewFgHeaderFooter:
             self.deleteSessionParameters("isNewFgHeaderFooter")
         return boo.toIkJsonResponse1()
@@ -779,7 +780,7 @@ class ScreenDfn(ScreenAPIView):
             logger.error("Delete Field Group Header And Footer function get field group link Id failed.")
             return IkSysErrJsonResponse()
         self.setSessionParameters({"isDeleteFgHeaderFooter": True})
-        boo = sdm.deleteFgHeaderFooter(self, screenSn, fgHeaderFooterId)
+        boo = ScreenDfnManager.deleteFgHeaderFooter(self, screenSn, fgHeaderFooterId)
         self.deleteSessionParameters("isDeleteFgHeaderFooter")
         if boo.value:
             self.deleteSessionParameters("currentFgHeaderFooterID")
@@ -802,14 +803,14 @@ class ScreenDfn(ScreenAPIView):
             widgetPrams = {'format': 'yyyy-MM-dd'}
         elif widgetNm == ikui.SCREEN_FIELD_WIDGET_CHECK_BOX and widgetPrams == {}:
             widgetPrams = {'stateNumber': '2'}
-        elif widgetNm in ikui.SCREEN_FIELD_SELECT_WIDGETS and 'values' not in widgetPrams:
-            widgetPrams['values'] = '{"value": "value", "display": "display"}'
         elif widgetNm == ikui.SCREEN_FIELD_WIDGET_ICON_AND_TEXT and 'type' not in widgetPrams:
             widgetPrams['type'] = 'normal'
-        elif (widgetNm in ikui.SCREEN_FIELD_SELECT_WIDGETS or widgetNm == ikui.SCREEN_FIELD_WIDGET_ADVANCED_SELECTION) and 'recordset' in widgetPrams:
+        elif widgetNm in ikui.SCREEN_FIELD_SELECT_WIDGETS and 'values' not in widgetPrams:
+            widgetPrams['values'] = '{"value": "value", "display": "display"}'
+        elif widgetNm in ikui.SCREEN_FIELD_SELECT_WIDGETS and 'recordset' in widgetPrams:
             screenSn = self.getSessionParameter("screenSN")
-            screenRc = ikModels.Screen.objects.filter(screen_sn__iexact=screenSn).order_by("-rev").first()
-            recordsetRc = ikModels.ScreenRecordset.objects.filter(screen=screenRc, recordset_nm=widgetPrams['recordset']).first()
+            screenRc = Screen.objects.filter(screen_sn__iexact=screenSn).order_by("-rev").first()
+            recordsetRc = ScreenRecordset.objects.filter(screen=screenRc, recordset_nm=widgetPrams['recordset']).first()
             if isNotNullBlank(recordsetRc):
                 widgetPrams['recordset'] = recordsetRc.id
         return IkSccJsonResponse(data=widgetPrams)
@@ -832,7 +833,7 @@ class ScreenDfn(ScreenAPIView):
             self.setSessionParameters({'widgetNm': ''})
             message = 'Please select a Widget first.'
         else:
-            widgetRc = ikModels.ScreenFieldWidget.objects.filter(id=widgetID).first()
+            widgetRc = ScreenFieldWidget.objects.filter(id=widgetID).first()
             if isNotNullBlank(widgetRc):
                 self.setSessionParameters({'widgetNm': widgetRc.widget_nm})
                 if widgetRc.widget_nm in NO_PARAMETERS_WIDGET:
@@ -867,10 +868,12 @@ class ScreenDfn(ScreenAPIView):
         if isNotNullBlank(widgetPrams):
             cleanedDict = {k: v for k, v in widgetPrams.items() if isNotNullBlank(v) and (k != 'multiple' or v != 'false')}
             if 'recordset' in cleanedDict and isNotNullBlank(cleanedDict['recordset']):
-                recordsetRc = ikModels.ScreenRecordset.objects.filter(id=cleanedDict['recordset']).first()
+                recordsetRc = ScreenRecordset.objects.filter(id=cleanedDict['recordset']).first()
                 cleanedDict['recordset'] = recordsetRc.recordset_nm
             if 'values' in cleanedDict and isNotNullBlank(cleanedDict['values']) and cleanedDict['values'] == '{"value": "value", "display": "display"}':
                 cleanedDict.pop('values')
+            if 'type' in cleanedDict and isNotNullBlank(cleanedDict['type']) and cleanedDict['type'] == 'normal':
+                cleanedDict.pop('type')
             newWidgetPrams = '\n'.join(f"{k}: {v}" for k, v in cleanedDict.items())
             data = {'value': newWidgetPrams, 'display': newWidgetPrams}
         return IkSccJsonResponse(data=data)

@@ -1,0 +1,229 @@
+#,This is a comment line.
+s,apiUrl
+,
+s,autoRefresh
+,
+s,editable
+,yes
+t,fieldGroupLinkTable
+t,fieldGroupTable
+,importFg,fields,,,,yes,,,,,,,,,,,,
+,screenToolbar1,iconBar,,,,yes,,,,,,,,,,,,
+,screenSelectionFg,fields,,screenSelectRc,,yes,,,,,,,,,,,,
+,screenDtlFg,fields,Screen Summary:,screenRc,,yes,,,,,,,,,,,,
+,screenToolbar2,iconBar,,,,yes,,,,,,,,,,,,
+,recordsetListFg,table,Screen Recordset(s):,recordsetRcs,yes,yes,yes,yes,,,,,,,,,,
+,recordsetToolbar,iconBar,,,,yes,,,,,,,,,,,,
+,fieldGroupListFg,resultTable,Field Group(s):,fieldGroupRcs,,,,yes,,,,,,,,,,
+,fieldGroupDtlFg,fields,Field Group Detail:,fieldGroupRc,yes,yes,yes,,,,,,,,,,,
+,fieldListFg,table,Field(s):,fieldRcs,yes,yes,yes,yes,,,,,,,,,,
+,fgToolbar,iconBar,,,,yes,,,,,,,,,,,,
+,subScreenFg,table,Sub Screen:,screenDfnRcs,yes,yes,yes,yes,,,,,,,,,,
+,subScreenToolbar,iconBar,,,,yes,,,,,,,,,,,,
+,fgLinkListFg,resultTable,Field Group Link(s):,fgLinkRcs,,,,yes,,,,,,,,,,
+,fgLinkDtlFg,fields,Field Group Link Detail:,fgLinkRc,,yes,,,,,,,,,,,,
+,fgLinkToolbar,iconBar,,,,yes,,,,,,,,,,,,
+,fgHeaderFooterListFg,resultTable,Table Header and Footer(s):,fgHeaderFooterRcs,,,,yes,,,,,,,,,,
+,fgHeaderFooterDtlFg,fields,Table Header and Footer Detail:,fgHeaderFooterRc,,yes,,,,,,,,,,,,
+,fgHeaderFooterToolbar,iconBar,,,,yes,,,,,,,,,,,,
+,dialogWidgetPramsFg,fields,,dialogWidgetPramsRc,,yes,,,,,,,,,,,,
+,dialogHtml,html,,,,,,,,,,,,,,,,
+,dialogAdditionalPropsFg,fields,,dialogAdditionalPropsRc,,yes,,,,,,,,,,,,
+t,fieldTable
+,importFg,ImportScreen,Please Select a Excel File To Import.,,,,File,multiple:true,,,,,,
+,screenToolbar1,bttNewScreen,New Screen,,,,IconAndText,icon:images/new_button.gif,,,,newScreen,,
+,screenToolbar1,bttImportScreen,Import Screen,,,,IconAndText,"icon:images/upload_button.gif
+type:upload",,,,importScreen(importFg),,
+,screenToolbar1,bttDownloadExample,Download Example,,,,IconAndText,"icon:images/download_button.gif
+type:download",,,,downloadExample,,
+,screenToolbar1,bttSyncScreenDefinitions,Sync Screen Definitions,,,,IconAndText,icon:images/action_button.gif,,,,syncScreenDefinitions,,
+,screenToolbar1,bttCreateCSVFile,Create CSV file,,,,IconAndText,icon:images/action_button.gif,,,,createCSVFile,,
+,screenSelectionFg,screenField,Screen:,,,,ComboBox,"dataUrl: getScreens
+values: {""value"": ""screen_sn"", ""display"": ""screen_full_sn""}
+onChange: changeScreen",value,,,,,
+,screenDtlFg,screenApiVersionField,API Version:,,,,Label,,api_version,,,,width: 255px;,
+,screenDtlFg,screenSnField,Screen ID:,,,,TextBox,,screen_sn,,,,width: 255px;,
+,screenDtlFg,screenTitleField,Screen Title:,,,,TextBox,,screen_title,,,,width: 255px;,
+,screenDtlFg,screenDscField,Description:,,,,TextBox,,screen_dsc,,,,width: 255px;,
+,screenDtlFg,screenLayoutTypeField,Layout Type:,,,,ComboBox,dataUrl: getScreenLayoutType,layout_type,,,,width: 260px;,
+,screenDtlFg,screenLayoutParamsField,Layout Parameters:,,,,TextArea,,layout_params,,,,width: 255px;,
+,screenDtlFg,screenClassNmField,Class Name:,,,,TextBox,,class_nm,,,,width: 255px;,
+,screenDtlFg,screenApiUrlField,API URL,,,,TextBox,,api_url,,,,width: 255px;,
+,screenDtlFg,screenEditableField,Editable:,,,,CheckBox,,editable,,,,,
+,screenDtlFg,screenAutoRefreshIntervalField,Auto Refresh Interval:,,,,TextBox,,auto_refresh_interval,,,,width: 255px;,
+,screenDtlFg,screenAutoRefreshActionField,Auto Refresh Action:,,,,TextBox,,auto_refresh_action,,,,width: 255px;,
+,screenDtlFg,screenRmkField,Remark:,,,,TextArea,,rmk,,,,width: 255px;,
+,screenToolbar2,bttSaveScreen,Save Screen,,,,IconAndText,icon:images/save_button.gif,,,,saveScreen(screenDtlFg),,
+,screenToolbar2,bttDeleteScreen,Delete Screen,,,,IconAndText,"icon:images/delete_button.gif
+dialog: dialogBeforeDisplayEvent:checkBeforeDelete(screenDtlFg)",,,,deleteScreen(screenDtlFg),,
+,screenToolbar2,bttDeleteLastRev,Delete Last Definition,,,,IconAndText,"icon:images/delete_button.gif
+dialog: dialogBeforeDisplayEvent:checkBeforeDeleteLast(screenDtlFg)",,,,deleteLastScreen(screenDtlFg),,
+,screenToolbar2,bttCopyScreen,Create a Copy,,,,IconAndText,icon:images/new_button.gif,,,,copyScreen,,
+,screenToolbar2,bttExportScreen,Export Screen,,,,IconAndText,"icon:images/download_button.gif
+type:download",,,,exportScreen,,
+,recordsetListFg,rsNmField,Recordset Name,,,,TextBox,,recordset_nm,,,,,
+,recordsetListFg,rsSelectField,Select Fields,default is *,,,TextBox,,sql_fields,,,,,
+,recordsetListFg,rsModelsField,Models,,,,TextBox,,sql_models,,,,,
+,recordsetListFg,rsWhereField,Where,,,,TextBox,,sql_where,,,,,
+,recordsetListFg,rsOrderField,Order,,,,TextBox,,sql_order,,,,,
+,recordsetListFg,rsLimitField,Limit,,,,TextBox,,sql_limit,,,,,
+,recordsetListFg,rsRemarkField,Remark,,,,TextBox,,rmk,,,,,
+,recordsetToolbar,bttSaveRecordsets,Save Screen Recordset(s),,,,IconAndText,icon:images/save_button.gif,,,,"saveRecordsets(screenDtlFg, recordsetListFg)",,
+,fieldGroupListFg,listFgNmField,Field Group Name,,,,Label,,fg_nm,,,,,
+,fieldGroupListFg,listFgTypeField,Group Type,,,,Label,,fg_type_nm,,,,,
+,fieldGroupListFg,listFgCaptionField,Caption,,,,Label,,caption,,,,,
+,fieldGroupListFg,listFgRecordsetField,Recordset,,,,Label,,recordset_nm,,,,,
+,fieldGroupListFg,listFgDeletableField,Deletable,,,,Label,,deletable,,,,,
+,fieldGroupListFg,listFgEditableField,Editable,,,,Label,,editable,,,,,
+,fieldGroupListFg,listFgInsertableField,Insertable,,,,Label,,insertable,,,,,
+,fieldGroupListFg,listFgHighlightRowField,Highlight Row,,,,Label,,highlight_row,,,,,
+,fieldGroupListFg,listFgSelectionModeField,Selection Mode,,,,Label,,selection_mode,,,,,
+,fieldGroupListFg,listFgColsField,Cols,,,,Label,,cols,,,,,
+,fieldGroupListFg,listFgPageTypeField,Page Type,,,,Label,,data_page_type,,,,,
+,fieldGroupListFg,listFgPageSizeField,Page Size,,,,Label,,data_page_size,,,,,
+,fieldGroupListFg,listFgAdditionalPropsField,Additional Properties,,,,Label,,additional_props,,,,,
+,fieldGroupListFg,listFgRemarkField,Remark,,,,Label,,rmk,,,,,
+,fieldGroupListFg,Plugin,,,,,Plugin,,id,,,openFieldGroup(@id),,
+,fieldGroupDtlFg,dtlFgSeqField,Seq,,,,TextBox,,seq,,,,width: 255px;,
+,fieldGroupDtlFg,dtlFgNmField,Field Group Name,,,,TextBox,,fg_nm,,,,width: 255px;,
+,fieldGroupDtlFg,dtlFgTypeField,Group Type,,,,ComboBox,"dataUrl: getFgTypes
+values: {""value"": ""id"", ""display"": ""type_nm""}",fg_type_id,,,,width: 260px;,
+,fieldGroupDtlFg,dtlFgCaptionField,Caption,,,,TextBox,,caption,,,,width: 255px;,
+,fieldGroupDtlFg,dtlFgRecordsetField,Recordset,,,,ComboBox,"dataUrl: getScreenRecordsets
+values: {""value"": ""id"", ""display"": ""recordset_nm""}",recordset_id,,,,width: 260px;,
+,fieldGroupDtlFg,dtlFgDeletableField,Deletable,,,,CheckBox,,deletable,,,,,
+,fieldGroupDtlFg,dtlFgEditableField,Editable,,,,CheckBox,,editable,,,,,
+,fieldGroupDtlFg,dtlFgInsertableField,Insertable,,,,CheckBox,,insertable,,,,,
+,fieldGroupDtlFg,dtlFgHighlightRowField,Highlight Row,,,,CheckBox,,highlight_row,,,,,
+,fieldGroupDtlFg,dtlFgSelectionModeField,Selection Mode,,,,ComboBox,dataUrl: getSelectionModes,selection_mode,,,,width: 260px;,
+,fieldGroupDtlFg,dtlFgColsField,Cols,,,,TextBox,,cols,,,,width: 255px;,
+,fieldGroupDtlFg,dtlFgPageTypeField,Page Type,,,,ComboBox,dataUrl: getFgPageTypes,data_page_type,,,,width: 260px;,
+,fieldGroupDtlFg,dtlFgPageSizeField,Page Size,,,,TextBox,,data_page_size,,,,width: 255px;,
+,fieldGroupDtlFg,dtlFgOuterLayoutParamsField,Outer Layout Parameters,,,,TextArea,,outer_layout_params,,,,width: 255px;,
+,fieldGroupDtlFg,dtlFgInnerLayoutTpField,Inner Layout Type,,,,ComboBox,dataUrl: getScreenLayoutType,inner_layout_type,,,,width: 255px;,
+,fieldGroupDtlFg,dtlFgInnerLayoutParamsField,Inner Layout Parameters,,,,TextArea,,inner_layout_params,,,,width: 255px;,
+,fieldGroupDtlFg,dtlFgHtmlField,Html,,,,TextArea,,html,,,,width: 255px;,
+,fieldGroupDtlFg,dtlFgAdditionalPropsField,Additional Properties,,,,AdvancedSelection,"icon:images/goto_sbutton.gif
+data:[]
+dialog: dialogBeforeDisplayEvent:postPreAdditionalProps;dialogName:additionalPropsDialog",additional_props,,,uploadAdditionalProps,width: 255px;,
+,fieldGroupDtlFg,dtlFgRemarkField,Remark,,,,TextArea,,rmk,,,,width: 255px;,
+,fieldListFg,seqField,Seq,,,,TextBox,,seq,,,,,
+,fieldListFg,fNmField,Field Name,,,,TextBox,,field_nm,,,,,
+,fieldListFg,fCaptionField,Caption,,,,TextBox,,caption,,,,,
+,fieldListFg,fTooltipField,Tooltip,,,,TextBox,,tooltip,,,,,
+,fieldListFg,fVisibleField,Visible,,,,CheckBox,,visible,,,,,
+,fieldListFg,fEditableField,Editable,,,,CheckBox,,editable,,,,,
+,fieldListFg,fWidgetField,Widget,,,,ComboBox,"dataUrl: getWidgets
+values: {""value"": ""widget_id"", ""display"": ""widget_nm""}",widget_id,,,,,
+,fieldListFg,fwidgetParametersField,widget parameters,,,,AdvancedSelection,"icon:images/goto_sbutton.gif
+data:[]
+dialog: dialogBeforeDisplayEvent:postRow;dialogName:widgetPramsDialog",widget_parameters,,,uploadWidgetPrams,,
+,fieldListFg,fFieldField,Field,,,,TextBox,,db_field,,,,,
+,fieldListFg,fFormatField,Format,,,,TextBox,,md_format,,,,,
+,fieldListFg,fvalidationField,validation,,,,TextBox,,md_validation,,,,,
+,fieldListFg,fEventHandlerField,Event Handler,,,,TextBox,,event_handler,,,,,
+,fieldListFg,fStylesField,Styles,,,,TextBox,,styles,,,,,
+,fieldListFg,fRemarkField,Remark,,,,TextBox,,rmk,,,,,
+,fgToolbar,bttHideFgDtl,Hide Field Group Detail,,,,IconAndText,icon:images/back_button.gif,,,,hideFgDetail,,
+,fgToolbar,bttNewFg,New Field Group,,,,IconAndText,icon:images/new_button.gif,,,,newFieldGroup,,
+,fgToolbar,bttSaveFg,Save Field Group,,,,IconAndText,"icon:images/save_button.gif
+dialog: dialogBeforeDisplayEvent: checkFieldIsRelated(fieldListFg)",,,,"saveFieldGroup(screenDtlFg, recordsetListFg, fieldGroupDtlFg, fieldListFg)",,
+,fgToolbar,bttDeleteFg,Delete Field Group,,,,IconAndText,"icon:images/delete_button.gif
+dialog: dialogBeforeDisplayEvent: checkFgIsRelated",,,,deleteFieldGroup,,
+,subScreenFg,screenNmField,Sub Screen Name,,,,TextBox,,sub_screen_nm,,,,,
+,subScreenFg,fieldGroupsField,Field Groups,Setting it to empty will display all field groups in sub screen,,,TextBox,,field_group_nms,,,,,
+,subScreenFg,rmkField,Remark,,,,TextBox,,rmk,,,,,
+,subScreenToolbar,bttSaveFg,Save Sub Screen,,,,IconAndText,icon:images/save_button.gif,,,,"saveSubScreen(screenDtlFg, recordsetListFg, fieldGroupDtlFg, fieldListFg, subScreenFg)",,
+,fgLinkListFg,fgLinkFgNmField,Field Group Name,,,,Label,,field_group_nm,,,,,
+,fgLinkListFg,fgLinkLocalKeyField,Local Key,,,,Label,,local_key,,,,,
+,fgLinkListFg,fgLinkParentFgNmField,Parent Field Group Name,,,,Label,,parent_field_group_nm,,,,,
+,fgLinkListFg,fgLinkParentKeyField,Parent Key,,,,Label,,parent_key,,,,,
+,fgLinkListFg,fgLinkRmkField,Remark,,,,Label,,rmk,,,,,
+,fgLinkListFg,Plugin,,,,,Plugin,,,,,openFgLink(@id),,
+,fgLinkDtlFg,dtlFgLinkFgNmField,Field Group Name,,,,ComboBox,"dataUrl: getFieldGroups
+values: {""value"": ""field_group_id"", ""display"": ""fg_nm""}
+onChange: changeDbKeyAndPFgs(fgLinkDtlFg)",field_group_id,,,,,
+,fgLinkDtlFg,dtlFgLinkLocalKeyField,Local Key,,,,ComboBox,"dataUrl: getFgFieldDbKeys
+values: {""value"": ""local_key"", ""display"": ""local_key""}",local_key,,,,,
+,fgLinkDtlFg,dtlFgLinkParentFgNmField,Parent Field Group Name,,,,ComboBox,"dataUrl: getParentFieldGroups
+values: {""value"": ""parent_field_group_id"", ""display"": ""fg_nm""}
+onChange: changeDbKeys(fgLinkDtlFg)",parent_field_group_id,,,,,
+,fgLinkDtlFg,dtlFgLinkParentKeyField,Parent Key,,,,ComboBox,"dataUrl: getParentFgFieldDbKeys
+values: {""value"": ""parent_key"", ""display"": ""parent_key""}",parent_key,,,,,
+,fgLinkDtlFg,dtlFgLinkRmkField,Remark,,,,TextArea,,rmk,,,,,
+,fgLinkToolbar,bttHideFgLinkDtl,Hide Field Group Link Detail,,,,IconAndText,icon:images/back_button.gif,,,,hideFgLinkDetail,,
+,fgLinkToolbar,bttNewFgLink,New Field Group Link,,,,IconAndText,icon:images/new_button.gif,,,,newFgLink,,
+,fgLinkToolbar,bttSaveFgLink,Save Field Group Link,,,,IconAndText,icon:images/save_button.gif,,,,"saveFgLink(screenDtlFg, recordsetListFg, fieldGroupDtlFg, fieldListFg, subScreenFg, fgLinkDtlFg)",,
+,fgLinkToolbar,bttDeleteFgLink,Delete Field Group Link,,,,IconAndText,icon:images/delete_button.gif,,,,deleteFgLink,,
+,fgHeaderFooterListFg,fgHfFgNmField,Field Group Name,,,,Label,,field_group_nm,,,,,
+,fgHeaderFooterListFg,fgHfFieldNmField,Field Name,,,,Label,,field_nm,,,,,
+,fgHeaderFooterListFg,fgHfHl1Field,Header level 1,,,,Label,,header_level1,,,,,
+,fgHeaderFooterListFg,fgHfHl2Field,Header level 2,,,,Label,,header_level2,,,,,
+,fgHeaderFooterListFg,fgHfHl3Field,Header level 3,,,,Label,,header_level3,,,,,
+,fgHeaderFooterListFg,fgHfFooterField,Footer,,,,Label,,footer,,,,,
+,fgHeaderFooterListFg,fgHfRmkField,Remark,,,,Label,,rmk,,,,,
+,fgHeaderFooterListFg,Plugin,,,,,Plugin,,id,,,openFgHeaderFooter(@id),,
+,fgHeaderFooterDtlFg,dtlFgHfFgNmField,Field Group Name,,,,ComboBox,"dataUrl: getTableFieldGroups
+values: {""value"": ""id"", ""display"": ""fg_nm""}
+onChange: changeFgFields(fgHeaderFooterDtlFg)",field_group_id,,,,,
+,fgHeaderFooterDtlFg,dtlFgHfFieldNmField,Field Name,,,,ComboBox,"dataUrl: getFgFields
+values: {""value"": ""id"", ""display"": ""field_nm""}",field_id,,,,,
+,fgHeaderFooterDtlFg,dtlFgHfHl1Field,Header level 1,,,,TextBox,,header_level1,,,,,
+,fgHeaderFooterDtlFg,dtlFgHfHl2Field,Header level 2,,,,TextBox,,header_level2,,,,,
+,fgHeaderFooterDtlFg,dtlFgHfHl3Field,Header level 3,,,,TextBox,,header_level3,,,,,
+,fgHeaderFooterDtlFg,dtlFgHfFooterField,Footer,,,,TextArea,,footer,,,,,
+,fgHeaderFooterDtlFg,dtlFgHfRmkField,Remark,,,,TextArea,,rmk,,,,,
+,fgHeaderFooterToolbar,bttHideFgHeaderFooterDtl,Hide Field Group Header Footer Detail,,,,IconAndText,icon:images/back_button.gif,,,,hideFgHeaderFooterDetail,,
+,fgHeaderFooterToolbar,bttNewFgHeaderFooter,New Table Header and Footer,,,,IconAndText,icon:images/new_button.gif,,,,newFgHeaderFooter,,
+,fgHeaderFooterToolbar,bttSaveHeaderFooter,Save Table Header and Footer,,,,IconAndText,icon:images/save_button.gif,,,,"saveFgHeaderFooter(screenDtlFg, recordsetListFg, fieldGroupDtlFg, fieldListFg, subScreenFg, fgLinkDtlFg, fgHeaderFooterDtlFg)",,
+,fgHeaderFooterToolbar,bttDeleteHeaderFooter,Delete Table Header and Footer,,,,IconAndText,icon:images/delete_button.gif,,,,deleteFgHeaderFooter,,
+,dialogWidgetPramsFg,formatField1,Format,,,,TextBox,,format,,,,width: 255px;,
+,dialogWidgetPramsFg,formatField2,Format,,,,ComboBox,dataUrl: getFormat,format,,,,width: 260px;,
+,dialogWidgetPramsFg,stateNumField,State Number,,,,ComboBox,dataUrl: getStateNum,stateNumber,,,,width: 260px;,
+,dialogWidgetPramsFg,multipleField,Multiple,,,,CheckBox,,multiple,,,,,
+,dialogWidgetPramsFg,iconField,Icon,,,,TextBox,,icon,,,,width: 255px;,
+,dialogWidgetPramsFg,typeField,Type,,,,ComboBox,dataUrl: getBttType,type,,,,width: 260px;,
+,dialogWidgetPramsFg,recordsetField,Recordset,,,,ComboBox,"dataUrl: getScreenRecordsets
+values: {""value"": ""id"", ""display"": ""recordset_nm""}",recordset,,,,width: 260px;,
+,dialogWidgetPramsFg,dataField,Data,,,,TextArea,,data,,,,width: 256px;,
+,dialogWidgetPramsFg,dataUrlField,DataUrl,,,,TextBox,,dataUrl,,,,width: 255px;,
+,dialogWidgetPramsFg,valuesField,Values,,,,TextBox,,values,,,,width: 255px;,
+,dialogWidgetPramsFg,onChangeField,On Change,,,,TextBox,,onChange,,,,width: 255px;,
+,dialogWidgetPramsFg,dialogField,Dialog,,,,TextArea,,dialog,,,,width: 256px;,
+,dialogAdditionalPropsFg,tableHeightField,Table Height,px,,,TextBox,,tableHeight,,,,width: 255px;,
+,dialogAdditionalPropsFg,sortNewRowsField,Sort New Rows,,,,CheckBox,,sortNewRows,,,,,
+t,headerFooterTable
+s,layoutParams
+,
+s,layoutType
+,1
+t,recordsetTable
+,dialogAdditionalPropsRc,*,core.db.model.DummyModel,,,,
+,dialogWidgetPramsRc,*,core.db.model.DummyModel,,,,
+,fgHeaderFooterRc,*,core.models.ScreenFgHeaderFooter,,,,
+,fgHeaderFooterRcs,*,core.models.ScreenFgHeaderFooter,,,,
+,fgLinkRc,*,core.models.ScreenFgLink,,,,
+,fgLinkRcs,*,core.models.ScreenFgLink,,,,
+,fieldGroupRc,*,core.models.ScreenFieldGroup,,seq,,
+,fieldGroupRcs,*,core.models.ScreenFieldGroup,,seq,,
+,fieldRcs,*,core.models.ScreenField,,seq,,
+,recordsetRcs,*,core.models.ScreenRecordset,,,,
+,screenDfnRcs,*,core.models.ScreenDfn,,,,
+,screenRc,*,core.models.Screen,,,,
+,screenSelectRc,*,core.db.model.DummyModel,,,,
+s,rmk
+,
+t,subScreenTable
+,additionalPropsDialog,dialogAdditionalPropsFg,
+,Main Screen,"fgHeaderFooterDtlFg, fgHeaderFooterListFg, fgHeaderFooterToolbar, fgLinkDtlFg, fgLinkListFg, fgLinkToolbar, fgToolbar, fieldGroupDtlFg, fieldGroupListFg, fieldListFg, importFg, recordsetListFg, recordsetToolbar, screenDtlFg, screenSelectionFg, screenToolbar1, screenToolbar2, subScreenFg, subScreenToolbar",
+,widgetPramsDialog,"dialogWidgetPramsFg, dialogHtml",
+s,viewAPIRev
+,1
+s,viewDesc
+,Screen Definition
+s,viewID
+,ScreenDfn
+s,viewName
+,core.views.ScreenDfn
+s,viewTitle
+,Screen Definition

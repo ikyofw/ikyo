@@ -2,7 +2,7 @@ import "./App.css"
 import "../public/static/css/menu-v1.css"
 import "../public/static/css/style-v2.css"
 
-import { BrowserRouter, Route, Routes } from "react-router-dom"
+import { BrowserRouter, Route, Routes, useLocation } from "react-router-dom"
 import TopBar from "./components/TopBar"
 import TopTitle from "./components/TopTitle"
 import BeforeLogin from "./screen/BeforeLogin"
@@ -14,7 +14,7 @@ import ScreenRender from "./components/ScreenRender"
 import Help from "./screen/Help"
 import Menu from "./screen/Menu"
 import { useHttp } from "./utils/http"
-import { validateResponse } from "./utils/sysUtil"
+import { validateResponse, showErrorMessage } from "./utils/sysUtil"
 
 import { useEffect, useState } from "react"
 import pyiLogger from "./utils/log"
@@ -65,6 +65,17 @@ function App() {
     }
   }, [])
 
+  const NoMatch = () => {
+    const location = useLocation()
+    const screenID = location.pathname.substring(1).toLowerCase()
+    useEffect(() => {
+      if (screenID && screenIDs.length > 0 && !screenIDs.includes(screenID)) {
+        showErrorMessage("Screen doesn't not exists: [" + screenID + "]")
+      }
+    }, [screenID])
+    return null
+  }
+
   return (
     <>
       {window.location.href.toLowerCase().includes("/help") ? (
@@ -93,6 +104,7 @@ function App() {
                         <Route path={"/" + paths[index]} element={<ScreenRender screenID={screenID} />} key={index} />
                       ))
                     : null}
+                  <Route path="*" element={<NoMatch />} />
                 </Routes>
               </BrowserRouter>
               <div style={{ height: "10px" }}></div>

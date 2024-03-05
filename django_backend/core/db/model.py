@@ -24,6 +24,28 @@ MODEL_RECORD_DATA_STATUS_KEY_NAME = '__STT_'
 MODEL_RECORD_DATA_CURRENT_KEY_NAME = '__CRR_'
 
 
+FOREIGN_KEY_VALUE_FLAG = '.'
+"""Foreign key value flag. 
+
+Example:
+
+    user.usr_nm
+"""
+
+
+MODEL_PROPERTY_ATTRIBUTE_NAME_PREFIX = '_'
+"""Model additional property attribute name's prefix.
+    It's a read only function.
+
+Example:
+    @property
+        
+    def _cre_usr_nm(self):
+    
+        pass
+"""
+
+
 class ModelRecordStatus(Enum):
     '''
         model record status: n (new), m (modified), r (retrieve from database), d (delete)
@@ -55,9 +77,9 @@ def toRecordJson(dictValues, fields=None, addRowStatus=True) -> dict:
     for key, value in dictValues.items():
         if key == '_state' or '__ik_' in key:  # _state: django model field. __ik_: ikyo fields, e.g. _IkModel__ik_status
             if addRowStatus:
-                if (key == '_IkModel__ik_status' or key == '_DummyModel__ik_status'):
+                if (key == '_Model__ik_status' or key == '_DummyModel__ik_status'):
                     j[MODEL_RECORD_DATA_STATUS_KEY_NAME] = value.value
-                elif (key == '_IkModel__ik_cursor' or key == '_DummyModel__ik_cursor'):
+                elif (key == '_Model__ik_cursor' or key == '_DummyModel__ik_cursor'):
                     j[MODEL_RECORD_DATA_CURRENT_KEY_NAME] = value
             continue  # _state: django fields
         if type(value) == datetime:

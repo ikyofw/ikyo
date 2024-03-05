@@ -8,10 +8,11 @@ from email.utils import formataddr
 
 from django.template import loader
 
+import core.utils.djangoUtils as du
 from core.core.exception import IkException
 from core.sys.systemSetting import SystemSetting
 from core.utils import strUtils, templateManager
-from core.utils.langUtils import validateEmail
+from core.utils.langUtils import validateEmail, isNullBlank, isNotNullBlank
 from iktools import IkConfig
 
 logger = logging.getLogger('ikyo')
@@ -111,9 +112,10 @@ class _Mailer():
         self.smtpPassword = SystemSetting.get(name='SMTP Password', default=IkConfig.get("Email", "mail.password"))
         self.senderAddress = SystemSetting.get(name='SMTP Sender Address', default=IkConfig.get("Email", "mail.from"))
         self.senderName = SystemSetting.get(name='SMTP Sender Name', default=IkConfig.get("Email", "mail.from,name"))
-        if self.senderName is None or self.senderName.strip() == '' and self.senderAddress is not None:
+        if isNullBlank(self.senderName) and isNotNullBlank(self.senderAddress):
             self.senderName = getEmailAddressName(self.senderAddress)
-        self.sender = formataddr(pair=(self.senderName, self.senderAddress))
+        if isNotNullBlank(self.senderName) and isNotNullBlank(self.senderAddress):
+            self.sender = formataddr(pair=(self.senderName, self.senderAddress))
 
     # get default email sender
     def getDefaultMailSender(self) -> EmailAddress:
@@ -223,9 +225,7 @@ class _Mailer():
         content = t.render({} if templateParameters is None else templateParameters)
         return self.send(subject=subject, content=content, contentType=contentType, sendFrom=sendFrom, to=to, cc=cc, attachments=attachments)
 
-
-Mailer = _Mailer()
-
+Mailer = du.instanceClass(_Mailer)
 
 class _MailQueueData:
     """mail data class.
@@ -273,8 +273,9 @@ class _MailQueueData:
         self.mailContent = templateManager.loadTemplateFile(templateFilename, parameters)
 
     def __getEmailAddresses(self, userIDs) -> tuple:
+        from core.user.userManager import getUserEmailAddresses
         errorMessage = ''
-        emails = UserManager.getUserEmailAddresses(userIDs)
+        emails = getUserEmailAddresses(userIDs)
         for i in range(len(emails)):
             email = emails[i]
             if emails is None or str(email).strip() == '':
@@ -364,7 +365,7 @@ class __MailQueue:
         '''
         if mailData.send2EmailList is None or len(mailData.send2EmailList) == 0:
             return (False, 'No sender found.')
-        isSuccess = Mailer.sendHtmlMail(subject=mailData.subject, content=mailData.mailContent, sendFrom=self.__mailFrom, to=mailData.send2EmailList, cc=mailData.cc2EmailList)
+        isSuccess = _Mailer().sendHtmlMail(subject=mailData.subject, content=mailData.mailContent, sendFrom=self.__mailFrom, to=mailData.send2EmailList, cc=mailData.cc2EmailList)
         errorMessage = None
         if mailData.mailAddressErrorMessage:
             errorMessage = mailData.mailAddressErrorMessage
@@ -430,4 +431,4 @@ class __MailQueue:
 
 
 # create one instance only
-MailQueue = __MailQueue()
+MailQueue = du.instanceClass(__MailQueue)

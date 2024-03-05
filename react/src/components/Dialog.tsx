@@ -1,12 +1,12 @@
+import { Box, Button, Dialog, DialogContent, DialogTitle } from "@material-ui/core"
 import React from "react"
-import { Dialog, DialogContent, DialogTitle } from "@material-ui/core"
+import "../../public/static/css/Dialog-v2.css"
 import { useHttp } from "../utils/http"
 import pyiLogger from "../utils/log"
 import pyiLocalStorage from "../utils/pyiLocalStorage"
 import { getScreenDfn } from "../utils/sysUtil"
 import ImageButton from "./ImageButton"
 import Screen from "./Screen"
-import "../../public/static/css/Dialog-v2.css"
 
 const pyiGlobal = pyiLocalStorage.globalParams
 const close_icon = pyiGlobal.PUBLIC_URL + "images/close1.png"
@@ -47,9 +47,14 @@ export default function CustomDialog(props: CustomDialogProps) {
     dialogPrams.onCancel()
   }
 
+  // Home Inbox Dialog
+  const openInbox = () => {
+    dialogPrams.openInbox()
+  }
+
   React.useEffect(() => {
     if (dialogName) {
-      refreshList()  // get sub screen's field groups name
+      refreshList() // get sub screen's field groups name
     }
   }, [dialogName])
 
@@ -84,29 +89,55 @@ export default function CustomDialog(props: CustomDialogProps) {
         <div className="dialog_title">{dialogPrams.dialogTitle}</div>
         <img src={close_icon} alt="Close" className="dialog_close" onClick={handleCancel}></img>
       </DialogTitle>
-      <DialogContent className="dialog_content" style={{width: dialogPrams.dialogWidth, height: dialogPrams.dialogHeight}}>
-        <div style={{ paddingLeft: '4px', whiteSpace: 'pre-wrap'}}>{dialogPrams.dialogMessage}</div>
+      <DialogContent className="dialog_content" style={{ width: dialogPrams.dialogWidth, height: dialogPrams.dialogHeight }}>
+        <div
+          style={{
+            paddingLeft: "4px",
+            whiteSpace: "pre-wrap",
+            fontSize: dialogPrams.dialogType === localStorage.DIALOG_TYPE_HOME_INBOX ? "9pt" : "8pt",
+          }}
+        >
+          {dialogPrams.dialogMessage}
+        </div>
+
         {fgNames.length !== 0 ? <Screen ref={screenRef} subScreenNm={dialogName} fgNames={fgNames} screenID={dialogPrams.screenID} /> : null}
+
+        {/* Home Inbox Dialog  */}
+        {dialogPrams.dialogType === localStorage.DIALOG_TYPE_HOME_INBOX ? (
+          <>
+            <br />
+            <br />
+            <br />
+            <br />
+            <Box textAlign="center">
+              <Button variant="contained" onClick={openInbox} style={{ textTransform: "none", cursor: "pointer", fontWeight: "bolder" }}>
+                Go To Inbox
+              </Button>
+            </Box>
+          </>
+        ) : null}
       </DialogContent>
 
-      <div className="dialog_button">
-        <ImageButton
-          key={0}
-          caption={dialogPrams.cancelNm + "  "}
-          name={dialogPrams.cancelNm}
-          widgetParameter={{ icon: "images/cancel_button.gif" }}
-          clickEvent={handleCancel}
-          editable={true}
-        />
-        <ImageButton
-          key={1}
-          caption={dialogPrams.continueNm}
-          name={dialogPrams.continueNm}
-          widgetParameter={{ icon: "images/action_button.gif" }}
-          clickEvent={handleContinue}
-          editable={true}
-        />
-      </div>
+      {dialogPrams.dialogType === localStorage.DIALOG_TYPE_HOME_INBOX ? null : (
+        <div className="dialog_button">
+          <ImageButton
+            key={0}
+            caption={dialogPrams.cancelNm + "  "}
+            name={dialogPrams.cancelNm}
+            widgetParameter={{ icon: "images/cancel_button.gif" }}
+            clickEvent={handleCancel}
+            editable={true}
+          />
+          <ImageButton
+            key={1}
+            caption={dialogPrams.continueNm}
+            name={dialogPrams.continueNm}
+            widgetParameter={{ icon: "images/action_button.gif" }}
+            clickEvent={handleContinue}
+            editable={true}
+          />
+        </div>
+      )}
     </Dialog>
   )
 }

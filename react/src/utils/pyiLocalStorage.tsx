@@ -33,22 +33,23 @@ const pyiLocalStorage = {
     PLUGIN_ACTIVE_STATUS: "__CRR_",
 
     // dialog type
-    NORMAL_DIALOG_TYPE: "normal",
-    HTML_DIALOG_TYPE: "html",
-    UPLOAD_DIALOG_TYPE: "upload",
+    DIALOG_TYPE_NORMAL: "normal",
+    DIALOG_TYPE_HTML: "html",
+    DIALOG_TYPE_UPLOAD: "upload",
+    DIALOG_TYPE_HOME_INBOX: "homeInbox",
 
     // button type
-    NORMAL_BTN_TYPE: "normal",
-    UPLOAD_BTN_TYPE: "upload",
-    DOWNLOAD_BTN_TYPE: "download",
+    BTN_TYPE_NORMAL: "normal",
+    BTN_TYPE_UPLOAD: "upload",
+    BTN_TYPE_DOWNLOAD: "download",
 
     // button type in table
-    TABLE_NORMAL_BTN_TYPE: "normal",
-    TABLE_DIALOG_BTN_TYPE: "dialog",
-    TABLE_SWITCH_BTN_TYPE: "switch",
-    TABLE_PDF_BTN_TYPE: "pdf",
-    TABLE_UPLOAD_BTN_TYPE: "upload",
-    TABLE_DOWNLOAD_BTN_TYPE: "download",
+    TABLE_BTN_TYPE_NORMAL: "normal",
+    TABLE_BTN_TYPE_DIALOG: "dialog",
+    TABLE_BTN_TYPE_SWITCH: "switch",
+    TABLE_BTN_TYPE_PDF: "pdf",
+    TABLE_BTN_TYPE_UPLOAD: "upload",
+    TABLE_BTN_TYPE_DOWNLOAD: "download",
 
     // selection mode
     SELECTION_MODE_SINGLE: "single",
@@ -74,6 +75,10 @@ const pyiLocalStorage = {
     HTTP_TYPE_DELETE: "DELETE",
     HTTP_TYPE_POST_NO_HEADER: "POST_NO_HEADER",
     HTTP_TYPE_DOWNLOAD: "DOWNLOAD",
+
+    // How to manipulate the secondary menu to display the tertiary menu.
+    // Values: click/hover. Default to click.
+    SUBMENU_DISPLAY_MODE: 'click'
   },
 
   // cookie info

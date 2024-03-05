@@ -3,13 +3,14 @@ import json
 import logging
 import os
 import re
+import time
 from datetime import datetime
 from pathlib import Path
 from threading import Lock
 
 import core.core.http as ikhttp
-import core.db.model as ikModels
-import core.models as ikModel
+import core.db.model as ikDbModels
+import core.models as ikModels
 import core.utils.httpUtils as ikHttpUtils
 import core.utils.modelUtils as modelUtils
 import core.utils.djangoUtils as ikDjangoUtils
@@ -37,9 +38,9 @@ SCREEN_FIELD_TYPE_HTML                  = 'html'
 SCREEN_FIELD_TYPE_IFRAME                = 'iframe'
 SCREEN_FIELD_TYPE_UDF_VIEWER            = 'viewer'              
 
-SCREEN_FIELD_GROUP_TYPES_TABLE  = (SCREEN_FIELD_TYPE_TABLE,         SCREEN_FIELD_TYPE_RESULT_TABLE)
-SCREEN_FIELD_GROUP_TYPE_DETAILS = (SCREEN_FIELD_TYPE_FIELDS,        SCREEN_FIELD_TYPE_SEARCH)
-SCREEN_FIELD_NORMAL_GROUP_TYPES = (SCREEN_FIELD_TYPE_TABLE,         SCREEN_FIELD_TYPE_RESULT_TABLE,
+SCREEN_FIELD_GROUP_TYPES_TABLE  = (SCREEN_FIELD_TYPE_TABLE,        SCREEN_FIELD_TYPE_RESULT_TABLE)
+SCREEN_FIELD_GROUP_TYPE_DETAILS = (SCREEN_FIELD_TYPE_FIELDS,       SCREEN_FIELD_TYPE_SEARCH)
+SCREEN_FIELD_NORMAL_GROUP_TYPES = (SCREEN_FIELD_TYPE_TABLE,        SCREEN_FIELD_TYPE_RESULT_TABLE,
                                    SCREEN_FIELD_TYPE_FIELDS,       SCREEN_FIELD_TYPE_SEARCH,
                                    SCREEN_FIELD_TYPE_ICON_BAR,     SCREEN_FIELD_TYPE_HTML,
                                    SCREEN_FIELD_TYPE_IFRAME,       SCREEN_FIELD_TYPE_UDF_VIEWER)
@@ -76,6 +77,18 @@ GET_DATA_URL_FLAG_PARAMETER_NAME = 'GETDATAREQUEST'
 MAIN_SCREEN_NAME = 'Main Screen'
 
 REFRESH_INTERVAL = 1  # seconds
+
+
+def getScreenFileFolder() -> Path:
+    return Path(os.path.join(BASE_DIR, 'var', 'sys', 'screen'))
+
+
+def getScreenCsvFileFolder() -> Path:
+    return Path(os.path.join(BASE_DIR, 'var', 'sys', 'screen-csv'))
+
+
+def getScreenFileTemplateFolder() -> Path:
+    return Path(os.path.join(BASE_DIR, 'var', 'sys', 'screen-template'))
 
 
 def getScreenFieldGroupType(typeName) -> str:
@@ -137,6 +150,17 @@ def getResultTableEditButonDefaultEventName(fieldName) -> str:
 
 
 RESULT_TABLE_WIDGET_DEFAULT_PARAMETERS = 'iconCurrent:images/current_sbutton.gif\niconExpand:images/expand_sbutton.gif'
+
+
+def _getSceenFieldName(fieldName: str, actionName: str, parentFieldGroupName: str) -> str:
+    if isNotNullBlank(fieldName):
+        return fieldName
+    else:
+        if actionName:
+            actionName = actionName.split('/')[-1]
+            return '%s_%s' % (parentFieldGroupName, actionName)
+        else:
+            return '%s_%s' % (parentFieldGroupName, time.perf_counter_ns())
 
 
 class ScreenRecordSet:
@@ -206,8 +230,9 @@ class ScreenField:
         isEditable = self.parent.parent.editable and self.editable  # just match screen editable & button editable, ignore toolbar
         jField = {}
         # YL.ikyo, 2023-04-20 database no use - start
+        fieldName = _getSceenFieldName(self.name, self.getEventHandlerName(), self.parent.name)
         if isTableFieldGroup(fgType) or isDetailFieldGroup(fgType):
-            jField = {'name': self.name,
+            jField = {'name': fieldName,
                       'caption': self.caption,
                       'tooltip': self.tooltip,
                       'widget': self.widget,
@@ -227,7 +252,7 @@ class ScreenField:
                       }
         # YL.ikyo, 2023-04-20 - end
         elif fgType == SCREEN_FIELD_TYPE_ICON_BAR:
-            jField = {'name': self.name,
+            jField = {'name': fieldName,
                       'caption': self.caption,
                       'tooltip': self.tooltip,
                       'widget': self.widget,
@@ -616,6 +641,13 @@ class Screen:
         for fg in self.fieldGroups:
             fg.visible = visible
 
+    def setTitle(self, value) -> None:
+        self.title = value
+
+
+    '''
+        Field Groups
+    '''
     def setFieldGroupsVisible(self, fieldGroupNames, visible) -> None:
         '''
             fieldGroupNames(str/list): field group names
@@ -655,6 +687,46 @@ class Screen:
             if isEditable is not None:
                 fg.editable = isEditable
 
+    # YL.ikyo, 2023-03-29, update field group caption
+    def setFieldGroupCaption(self, fieldGroupName, value) -> None:
+        '''
+            fieldGroupName(str): field group name
+        '''
+        if fieldGroupName is None or value is None:
+            return
+        if type(fieldGroupName) != str:
+            raise IkValidateException('Parameter "fieldGroupName" should be a str value.')
+        if type(value) != str:
+            raise IkValidateException('Parameter "value" should be a str value.')
+        fg = self.getFieldGroup(fieldGroupName)
+        if fg is None:
+            raise IkValidateException('Field group [%s] is not found in screen [%s], please check.' % (fieldGroupName, self.id))
+        fg.caption = value
+
+    # YL.ikyo, 2023-05-16 set field group page size
+    def setFieldGroupPageSize(self, fieldGroupName, pageSize) -> None:
+        '''
+            fieldGroupName(str): field group name
+        '''
+        '''
+            pageSize(int): page size
+        '''
+        if fieldGroupName is None or pageSize is None:
+            return
+        if type(pageSize) != str and type(pageSize) != int:
+            raise IkValidateException('Parameter "pageSize" should be a bool value.')
+        pageSize = int(pageSize)
+        if type(fieldGroupName) != str:
+            raise IkValidateException('Parameter "fieldGroupName" should be a str value.')
+        fg = self.getFieldGroup(fieldGroupName)
+        if fg is None:
+            raise IkValidateException('Field group [%s] is not found in screen [%s], please check.' % (fieldGroupName, self.id))
+        fg.pageSize = pageSize
+
+
+    '''
+        Field
+    '''
     # YL.ikyo, 2022-12-21 set fields visible - start
     def setFieldsVisible(self, fieldGroupName, fieldNames, visible) -> None:
         '''
@@ -709,43 +781,31 @@ class Screen:
             f.editable = editable
     # YL.ikyo, 2022-12-21 - end
 
-    # YL.ikyo, 2023-05-16 set field group page size - start
-    def setFieldGroupPageSize(self, fieldGroupName, pageSize) -> None:
+    # XH, 2022-03-28 set fields visible - start
+    def setFieldsRequired(self, fieldGroupName, fieldNames, required) -> None:
         '''
             fieldGroupName(str): field group name
         '''
         '''
-            pageSize(int): page size
+            fieldNames(str/list): field names
         '''
-        if fieldGroupName is None or pageSize is None:
+        if fieldGroupName is None or fieldNames is None or required is None:
             return
-        if type(pageSize) != str and type(pageSize) != int:
-            raise IkValidateException('Parameter "pageSize" should be a bool value.')
-        pageSize = int(pageSize)
+        if type(required) != bool:
+            raise IkValidateException('Parameter "required" should be a bool value.')
         if type(fieldGroupName) != str:
             raise IkValidateException('Parameter "fieldGroupName" should be a str value.')
         fg = self.getFieldGroup(fieldGroupName)
         if fg is None:
             raise IkValidateException('Field group [%s] is not found in screen [%s], please check.' % (fieldGroupName, self.id))
-        fg.pageSize = pageSize
-    # YL.ikyo, 2023-05-16 - end
-
-    # YL.ikyo, 2023-03-29 - start
-    # update field group caption
-    def setFieldGroupCaption(self, fieldGroupName, value) -> None:
-        '''
-            fieldGroupName(str): field group name
-        '''
-        if fieldGroupName is None or value is None:
-            return
-        if type(fieldGroupName) != str:
-            raise IkValidateException('Parameter "fieldGroupName" should be a str value.')
-        if type(value) != str:
-            raise IkValidateException('Parameter "value" should be a str value.')
-        fg = self.getFieldGroup(fieldGroupName)
-        if fg is None:
-            raise IkValidateException('Field group [%s] is not found in screen [%s], please check.' % (fieldGroupName, self.id))
-        fg.caption = value
+        if type(fieldNames) == str:
+            fieldNames = [fieldNames]
+        for name in fieldNames:
+            f = self.getField(fg.name, name)
+            if f is None:
+                raise IkValidateException('Field [%s] is not found in Field group [%s], please check.' % (name, fieldGroupName))
+            f.required = required
+    # XH, 2023-03-28 - end
 
     # update field caption
     def setFieldCaption(self, fieldGroupName, fieldName, value) -> None:
@@ -805,32 +865,6 @@ class Screen:
             raise IkValidateException('HTML field group [%s] is not found in screen [%s], please check.' % (fieldGroupName, self.id))
         fg.data = value
     # YL.ikyo, 2023-03-29 - end
-
-    # XH, 2022-03-28 set fields visible - start
-    def setFieldsRequired(self, fieldGroupName, fieldNames, required) -> None:
-        '''
-            fieldGroupName(str): field group name
-        '''
-        '''
-            fieldNames(str/list): field names
-        '''
-        if fieldGroupName is None or fieldNames is None or required is None:
-            return
-        if type(required) != bool:
-            raise IkValidateException('Parameter "required" should be a bool value.')
-        if type(fieldGroupName) != str:
-            raise IkValidateException('Parameter "fieldGroupName" should be a str value.')
-        fg = self.getFieldGroup(fieldGroupName)
-        if fg is None:
-            raise IkValidateException('Field group [%s] is not found in screen [%s], please check.' % (fieldGroupName, self.id))
-        if type(fieldNames) == str:
-            fieldNames = [fieldNames]
-        for name in fieldNames:
-            f = self.getField(fg.name, name)
-            if f is None:
-                raise IkValidateException('Field [%s] is not found in Field group [%s], please check.' % (name, fieldGroupName))
-            f.required = required
-    # XH, 2023-03-28 - end
 
 
 class ScreenDefinition:
@@ -928,11 +962,11 @@ DNF_Summary = __DFN_Summary()
 
 def acceptScreenFile(filename) -> bool:
     # ~$ is temp file, . is a hide file
-    return filename.lower().endswith('.xlsx') and filename[0:2] != '~$' and ' - Copy.' not in filename and filename[0] != '-' and filename[0] != '.'
+    return filename.lower().endswith('.xlsx') and filename[0:2] != '~$' and ' - Copy.' not in filename and filename[0] != '-' and filename[0] != '_' and filename[0] != '.'
 
 
 def acceptScreenFolder(foldername) -> bool:
-    return foldername[0] != '-' and foldername[0] != '.' and not foldername.endswith(' - Copy')
+    return foldername[0] != '-' and foldername[0] != '_' and foldername[0] != '.' and not foldername.endswith(' - Copy')
 
 
 class __ScreenManager:
@@ -944,13 +978,13 @@ class __ScreenManager:
             self.__parseScreenFiles()
 
     def getScreenFileFolder(self) -> Path:
-        return Path(os.path.join(BASE_DIR, 'var/sys/views'))
+        return getScreenFileFolder()
 
     def getScreenFileTemplateFolder(self) -> Path:
-        return Path(os.path.join(self.getScreenFileFolder().absolute(), '-Templates-'))
+        return getScreenFileTemplateFolder()
 
     def getScreenFileExampleFolder(self) -> Path:
-        return self.getScreenFileTemplateFolder()
+        return getScreenFileTemplateFolder()
 
     def __parseScreenFiles(self):
         global DNF_Summary
@@ -981,7 +1015,7 @@ class __ScreenManager:
         dfn = None
         if "." in name:
             name = name.split(".")[1]
-        screenRc = ikModel.Screen.objects.filter(screen_sn__iexact=name).order_by("-rev").first()
+        screenRc = ikModels.Screen.objects.filter(screen_sn__iexact=name).order_by("-rev").first()
         if screenRc:
             dfn = {}
             dfn['viewAPIRev'] = screenRc.api_version
@@ -994,7 +1028,7 @@ class __ScreenManager:
             dfn['editable'] = screenRc.editable
             # Recordset
             dfn['recordsetTable'] = []
-            recordsetRcs = ikModel.ScreenRecordset.objects.filter(screen=screenRc).order_by("id")
+            recordsetRcs = ikModels.ScreenRecordset.objects.filter(screen=screenRc).order_by("id")
             for rc in recordsetRcs:
                 data = []
                 data.append(rc.recordset_nm)
@@ -1010,7 +1044,7 @@ class __ScreenManager:
 
             # Field Groups
             dfn['fieldGroupTable'] = []
-            fieldGroupRcs = ikModel.ScreenFieldGroup.objects.filter(screen=screenRc).order_by("seq")
+            fieldGroupRcs = ikModels.ScreenFieldGroup.objects.filter(screen=screenRc).order_by("seq")
             for rc in fieldGroupRcs:
                 data = []
                 data.append(rc.fg_nm)
@@ -1036,7 +1070,7 @@ class __ScreenManager:
 
             # Fields
             dfn['fieldTable'] = []
-            fieldRcs = ikModel.ScreenField.objects.filter(screen=screenRc).order_by("seq")
+            fieldRcs = ikModels.ScreenField.objects.filter(screen=screenRc).order_by("seq")
             lastFgNm = None
             for rc in fieldRcs:
                 data = []
@@ -1062,7 +1096,7 @@ class __ScreenManager:
 
             # Sub Screen
             dfn['subScreenTable'] = []
-            dfnRcs = ikModel.ScreenDfn.objects.filter(screen=screenRc)
+            dfnRcs = ikModels.ScreenDfn.objects.filter(screen=screenRc)
             for rc in dfnRcs:
                 data = []
                 data.append(rc.sub_screen_nm)
@@ -1071,7 +1105,7 @@ class __ScreenManager:
 
             # Field Group Links
             dfn['fieldGroupLinkTable'] = []
-            fgLinkRcs = ikModel.ScreenFgLink.objects.filter(screen=screenRc).order_by("field_group__seq")
+            fgLinkRcs = ikModels.ScreenFgLink.objects.filter(screen=screenRc).order_by("field_group__seq")
             for rc in fgLinkRcs:
                 data = []
                 data.append(rc.field_group.fg_nm if rc.field_group else None)
@@ -1083,7 +1117,7 @@ class __ScreenManager:
 
             # Table Header and Footer
             dfn['headerFooterTable'] = []
-            fgHeaderFooterRcs = ikModel.ScreenFgHeaderFooter.objects.filter(screen=screenRc).order_by("field_group__seq", "field__seq")
+            fgHeaderFooterRcs = ikModels.ScreenFgHeaderFooter.objects.filter(screen=screenRc).order_by("field_group__seq", "field__seq")
             for rc in fgHeaderFooterRcs:
                 data = []
                 data.append(rc.field_group.fg_nm if rc.field_group else None)
@@ -1110,7 +1144,7 @@ class __ScreenManager:
         screenDfn = ikuiCache.getPageDefinitionFromCache(screenName)
         if isNullBlank(screenDfn):
             screenDfn = self._getScreenDefinitionFromDB(screenName)  # YL.ikyo, 2023-04-18 get screen from database
-            ikuiCache.updatePageDefinitionCache(screenName, screenDfn)
+            ikuiCache.setPageDefinitionCache(screenName, screenDfn)
         dfn = copy.deepcopy(screenDfn)
 
         if dfn is None:
@@ -1163,8 +1197,8 @@ class __ScreenManager:
             displayFgs = []
         screen.subScreenName = subScreenNm
 
-        for fgName, fgType,	caption, recordsetName, deletable, editable, insertable, highlightRow, selectionMode, cols, pageType, \
-            pageSize, outerLayoutParams, innerLayoutType, innerLayoutParams, html, additionalProps, rmk in dfn['fieldGroupTable']:  # from database
+        for fgName, fgType, caption, recordsetName, deletable, editable, insertable, highlightRow, selectionMode, cols, pageType, \
+                pageSize, outerLayoutParams, innerLayoutType, innerLayoutParams, html, additionalProps, rmk in dfn['fieldGroupTable']:  # from database
             if displayFgs is not None and fgName not in displayFgs:
                 continue
             sfg = ScreenFieldGroup(parent=screen)
@@ -1218,16 +1252,14 @@ class __ScreenManager:
             field = ScreenField(parent=sfg)
             sfg.fields.append(field)
 
-            if isNullBlank(name):
-                name = fieldGroupName + '_' + dataField
+            eventHandlerUrl, eventHandlerPrms = self.__getEventHandler(screen, eventHandler)
             if isNullBlank(widget):
                 if sfg.groupType == SCREEN_FIELD_TYPE_ICON_BAR:
                     widget = SCREEN_FIELD_WIDGET_ICON_AND_TEXT
                 else:
                     widget = SCREEN_FIELD_WIDGET_LABEL
-            eventHandlerUrl, eventHandlerPrms = self.__getEventHandler(screen, eventHandler)
 
-            field.name = name
+            field.name = _getSceenFieldName(name, dataField if isNotNullBlank(dataField) else eventHandlerUrl, fieldGroupName)
             field.caption = caption
             field.tooltip = tooltip
             field.widget = getScreenFieldWidget(widget)
@@ -1401,12 +1433,12 @@ class __ScreenManager:
                     screen = screenFieldGroup.parent
                     oneRc = None
                     for rc in data:
-                        if isinstance(rc, ikModels.Model):
+                        if isinstance(rc, ikDbModels.Model):
                             if rc.ik_is_cursor():
                                 oneRc = rc
                                 break
                         elif type(rc) == dict:
-                            if rc.get(ikModels.MODEL_RECORD_DATA_CURRENT_KEY_NAME, False):
+                            if rc.get(ikDbModels.MODEL_RECORD_DATA_CURRENT_KEY_NAME, False):
                                 oneRc = rc
                                 break
                     oneRc = data[0] if oneRc is None else oneRc
@@ -1582,7 +1614,7 @@ class __ScreenManager:
                         v = self.__addQuotes(v)
                     prms[k] = v
         return prms
-    
+
     def parseWidgetPrams(self, parameters):
         return self.__getWidgetPramsOnly(parameters)
 
@@ -1677,8 +1709,8 @@ class __ScreenManager:
                         for dataItem in comboxData:
                             if type(dataItem) == dict and len(dataItem) == 2 and 'value' in dataItem.keys() and 'display' in dataItem.keys():
                                 comboxData2.append(dataItem)
-                            elif type(dataItem) == dict and len(dataItem) == 1: # {'name': 'abc'}
-                                for _key,value in dataItem.items():
+                            elif type(dataItem) == dict and len(dataItem) == 1:  # {'name': 'abc'}
+                                for _key, value in dataItem.items():
                                     comboxData2.append({'value': value, 'display': value})
                             elif type(dataItem) == int or type(dataItem) == float or type(dataItem) == str:
                                 comboxData2.append({'value': dataItem, 'display': dataItem})

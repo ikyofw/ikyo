@@ -1,5 +1,4 @@
 import * as React from "react"
-import ReactDOM from "react-dom"
 import pyiLocalStorage from "../../utils/pyiLocalStorage"
 import * as Loading from "../Loading"
 import * as Actions from "./actions"
@@ -9,12 +8,12 @@ import * as Types from "./types"
 import useDispatch from "./use-dispatch"
 import useSelector from "./use-selector"
 
+import parse from "html-react-parser"
+import { useContext } from "react"
 import { useHttp } from "../../utils/http"
 import pyiLogger from "../../utils/log"
 import { showErrorMessage, validateResponse } from "../../utils/sysUtil"
-import { useContext } from "react"
 import { DialogContext } from "../ConText"
-import parse from "html-react-parser"
 import { getDialogEventHandler } from "../Dialog"
 
 const pyiGlobal = pyiLocalStorage.globalParams
@@ -115,7 +114,7 @@ const Button: React.FC<IButton> = (props) => {
                 dialogName: dialogName,
                 onCancel: () => closeDialog(),
                 onContinue: (dialogData) => {
-                  if (btnType === pyiGlobal.UPLOAD_BTN_TYPE) {
+                  if (btnType === pyiGlobal.BTN_TYPE_UPLOAD) {
                     onClickEvent(btnType, eventHandler, dialogData)
                   } else {
                     onClickEvent(btnType, eventHandler, { ...buttonData, ...dialogData })
@@ -138,7 +137,7 @@ const Button: React.FC<IButton> = (props) => {
           dialogName: dialogName,
           onCancel: () => closeDialog(),
           onContinue: (dialogData) => {
-            if (btnType === pyiGlobal.UPLOAD_BTN_TYPE) {
+            if (btnType === pyiGlobal.BTN_TYPE_UPLOAD) {
               onClickEvent(btnType, eventHandler, dialogData)
             } else {
               onClickEvent(btnType, eventHandler, { ...buttonData, ...dialogData })
@@ -163,7 +162,7 @@ const Button: React.FC<IButton> = (props) => {
     let removeLoadingDiv = true
     Loading.show()
     try {
-      if (btnType && btnType.toLocaleLowerCase() === pyiGlobal.TABLE_NORMAL_BTN_TYPE && eventHandler) {
+      if (btnType && btnType.toLocaleLowerCase() === pyiGlobal.TABLE_BTN_TYPE_NORMAL && eventHandler) {
         await HttpPost(eventHandler, JSON.stringify(buttonData))
           .then((response) => response.json())
           .then((result) => {

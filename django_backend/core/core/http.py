@@ -8,7 +8,7 @@ from enum import Enum
 from pathlib import Path
 from urllib.parse import quote
 
-import core.db.model as ikModels
+import core.db.model as ikDbModels
 import core.utils.modelUtils as modelUtils
 import django.core.files.uploadedfile as djangoUploadedfile
 from core.utils.langUtils import isNotNullBlank, isNullBlank
@@ -168,26 +168,23 @@ class IkJsonResponse(JsonResponse):
     def forwarder(self) -> dict:
         return self.__forwarder
 
-    def getJsonData(self) -> dict:
-        data2 = self.__data
-        return self.__getJsonData(data2)
+    def getJsonData(self, modelAdditionalFields:list[str] = None) -> dict:
+        """Convert data to json object.
 
-    def __getJsonData(self, data2):
+        Args:
+            modelAdditionalFields (list[str], optional): Additional field names for QuerySet.
+        """
+        data2 = self.__data
+        return self.__getJsonData(data2, modelAdditionalFields)
+
+    def __getJsonData(self, data2: object, modelAdditionalFields:list[str] = None):
         if data2 is not None:
             if isinstance(data2, QuerySet):
-                data2 = self.__getDataSetValues(data2)
+                data2 = self.__getDataSetValues(data2, modelAdditionalFields)
             elif isinstance(data2, models.Model):
-                data2 = self.__model2Json(data2)
-            # YL.ikyo, 2023-03-07 bugfix, can't serialize when view get screen - start
-            elif isinstance(data2, datetime.datetime):
-                data2 = data2.strftime("%Y-%m-%d %H:%M:%S")
-            elif isinstance(data2, datetime.date):
-                data2 = data2.strftime("%Y-%m-%d")
-            elif isinstance(data2, datetime.time):
-                data2 = data2.strftime("%H:%M:%S")
-            elif isinstance(data2, decimal.Decimal):
-                data2 = str(data2)
-            # YL.ikyo, 2023-03-07 - end
+                data2 = self.__model2Json(data2, modelAdditionalFields)
+            elif isinstance(data2, ikDbModels.DummyModel):
+                data2 = data2.getJson()
             elif type(data2) == list:
                 data3 = []
                 for item in data2:
@@ -198,25 +195,17 @@ class IkJsonResponse(JsonResponse):
                 for key, value in data2.items():
                     data3[key] = self.__getJsonData(value)
                 data2 = data3
-            elif isinstance(data2, ikModels.DummyModel):
-                data2 = data2.getJson()
+            else:
+                data2 = self.__object2Str(data2)
         return data2
 
-    def __model2Json(self, r) -> dict:
+    def __model2Json(self, r: models.Model, modelAdditionalFields: list[str] = None) -> dict:
         # YL.ikyo, 2023-03-29 bugfix, can't serialize when view get screen(return data is a querySet or model) - start
         for field in r._meta.get_fields():
             try:
                 if isinstance(field, models.Field) and not isinstance(field, models.ForeignKey):
                     key = field.name
-                    value = r.__dict__[field.name]
-                    if isinstance(value, datetime.datetime):
-                        r.__dict__[field.name] = value.strftime("%Y-%m-%d %H:%M:%S")
-                    elif isinstance(value, datetime.date):
-                        r.__dict__[field.name] = value.strftime("%Y-%m-%d")
-                    elif isinstance(value, datetime.time):
-                        r.__dict__[field.name] = value.strftime("%H:%M:%S")
-                    elif isinstance(value, decimal.Decimal):
-                        r.__dict__[field.name] = str(value)
+                    r.__dict__[field.name] = self.__object2Str(r.__dict__[field.name])
             except Exception as e:
                 # this is not a model field or field is not a normal field. ignore it
                 logger.error(str(e))
@@ -226,9 +215,45 @@ class IkJsonResponse(JsonResponse):
         if r._meta.pk is not None and r._meta.pk.name is not None:
             primaryKey = r._meta.pk.name
             d['__PK_'] = primaryKey
+        if modelAdditionalFields and len(modelAdditionalFields) > 0:
+            for name in modelAdditionalFields:
+                if name not in d.keys():
+                    if ikDbModels.FOREIGN_KEY_VALUE_FLAG in name:
+                        attributes = name.split('.')
+                        value = r
+                        for attr in attributes:
+                            if value:
+                                try:
+                                    value = getattr(value, attr)
+                                except Exception as e:
+                                    value = None
+                                    logger.error("Model [%s] does't have attr [%s]. Values=[%s]" % (type(r).__name__, attr, str(r)))
+                            else:
+                                value = None
+                                break
+                        d[name] = self.__object2Str(value)
+                    elif name.startswith(ikDbModels.MODEL_PROPERTY_ATTRIBUTE_NAME_PREFIX):
+                        try:
+                            value = getattr(r, name, None)
+                            d[name] = self.__object2Str(value)
+                        except Exception as e:
+                            logger.error('Get Model[%s] attribute [%s] failed.' % (type(r).__name__, name), exc_info=True)
+                    else:
+                        logger.warn('Ignore get Model[%s] attribute [%s] failed.' % (type(r).__name__, name))
         return d
+    
+    def __object2Str(self, value: object) -> str:
+        if isinstance(value, datetime.datetime):
+            return value.strftime("%Y-%m-%d %H:%M:%S")
+        elif isinstance(value, datetime.date):
+            return value.strftime("%Y-%m-%d")
+        elif isinstance(value, datetime.time):
+            return value.strftime("%H:%M:%S")
+        elif isinstance(value, decimal.Decimal):
+            return str(value)
+        return value
 
-    def __getDataSetValues(self, dataset) -> list:
+    def __getDataSetValues(self, dataset: QuerySet, modelAdditionalFields: list[str] = None) -> list:
         rs = []
         for r in dataset:
             if type(r) == dict:  # model.values(a,b)
@@ -237,8 +262,10 @@ class IkJsonResponse(JsonResponse):
                 rs.append(r)
             elif type(r) == tuple:
                 rs.append(r)
+            elif isinstance(r, models.Model): #type(r) == models.Model:
+                rs.append(self.__model2Json(r, modelAdditionalFields))
             else:
-                rs.append(self.__model2Json(r))
+                rs.append(self.__object2Str(r)) # model.values_list
         return rs
 
     def toJson(self) -> dict:
@@ -455,23 +482,23 @@ def GetRequestData(request, parameterModelMap={}, screen=None, initDataFromDatab
                 data[key] = rows
             else:
                 modelClassName = parameterModelMap[key]
-                if modelClassName == (ikModels.DummyModel.__module__ + '.' + ikModels.DummyModel.__name__):
+                if modelClassName == (ikDbModels.DummyModel.__module__ + '.' + ikDbModels.DummyModel.__name__):
                     rows = []
                     for r in tableData:
-                        clientStatus = ikModels.ModelRecordStatus.RETRIEVE
+                        clientStatus = ikDbModels.ModelRecordStatus.RETRIEVE
                         isSelected = None
                         if r[0] == RECORD_SET.STATUS_NEW.value:
-                            clientStatus = ikModels.ModelRecordStatus.NEW
+                            clientStatus = ikDbModels.ModelRecordStatus.NEW
                         elif r[0] == RECORD_SET.STATUS_DELETE.value:
-                            clientStatus = ikModels.ModelRecordStatus.DELETE
+                            clientStatus = ikDbModels.ModelRecordStatus.DELETE
                         elif r[0] == RECORD_SET.STATUS_UPDATE.value:
-                            clientStatus = ikModels.ModelRecordStatus.MODIFIED
+                            clientStatus = ikDbModels.ModelRecordStatus.MODIFIED
                         elif r[0] == True or r[0] == False:
                             isSelected = r[0]
                         elif not isNullBlank(r[0]) and r[0] != RECORD_SET.STATUS_NO_CHANGE.value:
                             raise IkValidateException('Unknown record status: %s' % r[0])
                         id = None if isNullBlank(r[1]) else int(r[1])
-                        rc = ikModels.DummyModel(status=clientStatus)
+                        rc = ikDbModels.DummyModel(status=clientStatus)
                         rc['id'] = id  # put the id field on the first, user may overwrite the id field
                         for i in range(2, len(attr)):
                             rc[attr[i]] = r[i]
@@ -527,7 +554,7 @@ def GetRequestData(request, parameterModelMap={}, screen=None, initDataFromDatab
                                         setattr(modelInstance, cmf, rowValuesDict[cmf])
 
                     # unique validate
-                    if not issubclass(modelClass, ikModels.DummyModel):
+                    if not issubclass(modelClass, ikDbModels.DummyModel):
                         dbFieldNamesAttrsIndex = -1
                         for fieldName in dbFieldNamesAttrs:
                             dbFieldNamesAttrsIndex += 1
@@ -576,7 +603,7 @@ def __GetRequestData_oneRecord(screen, parameterModelMap, name, values, initData
 
     modelClass = modelUtils.getModelClass(modelClassName)
     # XH 2023-04-21  Data from tables using DummyModel is not processed and directly returns the original data passed from the front end.
-    if issubclass(modelClass, ikModels.DummyModel):
+    if issubclass(modelClass, ikDbModels.DummyModel):
         return values
     primaryKeyName = modelClass._meta.pk.name  # E.g. 'id', 'menu_id'
 
@@ -600,9 +627,9 @@ def __GetRequestData_oneRecord(screen, parameterModelMap, name, values, initData
     for field in screenFieldGroup.fields:
         # if field.dataField is not None and field.visible and field.editable and field.widget.lower() in ('textbox', 'combobox', 'checkBox'.lower(), 'datebox', 'textarea'): # TODO: get from somewhere
         if field.dataField is not None and field.visible and field.widget.lower() in ('label', 'textbox', 'combobox', 'AdvancedSelection'.lower(), 'checkBox'.lower(), 'datebox', 'textarea', 'password'):
-            if field.dataField.startswith('_'):  # read only fields. E.g. _cre_usr_nm, _mod_usr_nm
+            if field.dataField.startswith(ikDbModels.MODEL_PROPERTY_ATTRIBUTE_NAME_PREFIX):  # read only fields. E.g. _cre_usr_nm, _mod_usr_nm
                 continue  # ignore
-            elif '__' in field.dataField:  # foreign key fields. E.g. foreign key field user. access to user.name: user__usr_nm
+            elif ikDbModels.FOREIGN_KEY_VALUE_FLAG in field.dataField:  # foreign key fields. E.g. foreign key field user. access to user.name: user.usr_nm
                 continue  # ignore
 
             newValue = values.get(field.dataField)
@@ -681,10 +708,10 @@ def __GetRequestData_oneRecord(screen, parameterModelMap, name, values, initData
                         newValue = False
 
                 if not isNewModelRecord:
-                    if newValue != originalFieldValue:
+                    if str(newValue) != str(originalFieldValue):
                         # value changed
                         setattr(modelInstance, field.dataField, newValue)
-                        if isinstance(modelInstance, ikModels.Model):
+                        if isinstance(modelInstance, ikDbModels.Model):
                             modelInstance.ik_set_status_modified()
                 else:
                     setattr(modelInstance, field.dataField, newValue)

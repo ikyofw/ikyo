@@ -9,13 +9,13 @@ import * as Types from "./types"
 import useDispatch from "./use-dispatch"
 import useSelector from "./use-selector"
 
+import { useContext } from "react"
 import { useHttp } from "../../utils/http"
 import pyiLogger from "../../utils/log"
-import { showErrorMessage, validateResponse, showInfoMessage } from "../../utils/sysUtil"
-import { useContext } from "react"
+import { showErrorMessage, showInfoMessage, validateResponse } from "../../utils/sysUtil"
 import { DialogContext } from "../ConText"
-import FileViewer from "../FileViewer"
 import { getDialogEventHandler } from "../Dialog"
+import FileViewer from "../FileViewer"
 import { getFormData } from "../Screen"
 
 const pyiGlobal = pyiLocalStorage.globalParams
@@ -162,7 +162,7 @@ const Button: React.FC<IButton> = (props) => {
                 dialogName: dialogName,
                 onCancel: () => closeDialog(),
                 onContinue: (dialogData) => {
-                  if (btnType === pyiGlobal.UPLOAD_BTN_TYPE) {
+                  if (btnType === pyiGlobal.BTN_TYPE_UPLOAD) {
                     onClickEvent(btnType, eventHandler, getFormData(dialogData, buttonData))
                   } else {
                     onClickEvent(btnType, eventHandler, { ...buttonData, ...dialogData })
@@ -185,7 +185,7 @@ const Button: React.FC<IButton> = (props) => {
           dialogName: dialogName,
           onCancel: () => closeDialog(),
           onContinue: (dialogData) => {
-            if (btnType === pyiGlobal.UPLOAD_BTN_TYPE) {
+            if (btnType === pyiGlobal.BTN_TYPE_UPLOAD) {
               onClickEvent(btnType, eventHandler, getFormData(dialogData, buttonData))
             } else {
               onClickEvent(btnType, eventHandler, { ...buttonData, ...dialogData })
@@ -212,7 +212,7 @@ const Button: React.FC<IButton> = (props) => {
     console.log(btnType)
 
     try {
-      if (btnType && btnType.toLocaleLowerCase() === pyiGlobal.TABLE_NORMAL_BTN_TYPE) {
+      if (btnType && btnType.toLocaleLowerCase() === pyiGlobal.TABLE_BTN_TYPE_NORMAL) {
         await HttpPost(eventHandler, JSON.stringify(buttonData))
           .then((response) => response.json())
           .then((result) => {
@@ -223,13 +223,13 @@ const Button: React.FC<IButton> = (props) => {
               refreshTable(true)
             }
           })
-      } else if (btnType && btnType.toLocaleLowerCase() === pyiGlobal.TABLE_SWITCH_BTN_TYPE) {
+      } else if (btnType && btnType.toLocaleLowerCase() === pyiGlobal.TABLE_BTN_TYPE_SWITCH) {
         if (String(value)?.trim().toLocaleLowerCase() === "true") {
           setCellData(props.active, { value: "false" }, props.initialData)
         } else if (String(value)?.trim().toLocaleLowerCase() === "false") {
           setCellData(props.active, { value: "true" }, props.initialData)
         }
-      } else if (btnType && btnType.toLocaleLowerCase() === pyiGlobal.TABLE_PDF_BTN_TYPE) {
+      } else if (btnType && btnType.toLocaleLowerCase() === pyiGlobal.TABLE_BTN_TYPE_PDF) {
         HttpDownload(eventHandler, JSON.stringify(buttonData)).then((response) => {
           let respType = response.headers?.["content-type"]
           var reader = new FileReader()
@@ -257,7 +257,7 @@ const Button: React.FC<IButton> = (props) => {
             }
           }
         })
-      } else if (btnType && btnType === pyiGlobal.TABLE_UPLOAD_BTN_TYPE) {
+      } else if (btnType && btnType === pyiGlobal.TABLE_BTN_TYPE_UPLOAD) {
         // upload button event
         await HttpPostNoHeader(eventHandler, buttonData).then((response) => {
           response.blob().then((blob) => {
@@ -282,7 +282,7 @@ const Button: React.FC<IButton> = (props) => {
           })
         })
         removeLoadingDiv = false
-      } else if (btnType && btnType.toLocaleLowerCase() === pyiGlobal.TABLE_DOWNLOAD_BTN_TYPE) {
+      } else if (btnType && btnType.toLocaleLowerCase() === pyiGlobal.TABLE_BTN_TYPE_DOWNLOAD) {
         HttpDownload(eventHandler, JSON.stringify(buttonData)).then((response) => {
           let respType = response.headers?.["content-type"]
           if (respType.trim().toLocaleLowerCase() === "application/json") {

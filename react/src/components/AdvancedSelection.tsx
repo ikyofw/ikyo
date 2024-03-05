@@ -5,18 +5,17 @@
  * @Date: 2023-10-23 10:46:14
  */
 import transform, { StyleTuple } from "css-to-react-native"
-import React, { forwardRef, Ref } from "react"
-import * as Loading from "./Loading"
-import ImageButton from "./ImageButton"
-import { useContext } from "react"
+import React, { forwardRef, Ref, useContext } from "react"
 import { DialogContext } from "./ConText"
+import ImageButton from "./ImageButton"
+import * as Loading from "./Loading"
 
 import { useHttp } from "../utils/http"
-import { validateResponse } from "../utils/sysUtil"
-import pyiLocalStorage from "../utils/pyiLocalStorage"
 import pyiLogger from "../utils/log"
+import pyiLocalStorage from "../utils/pyiLocalStorage"
+import { validateResponse } from "../utils/sysUtil"
 
-import { getDialogEvent, getDialogEventParamArr, getDialogEventHandler, getDialogParams } from "./Dialog"
+import { getDialogEvent, getDialogEventHandler, getDialogEventParamArr, getDialogParams } from "./Dialog"
 
 const pyiGlobal = pyiLocalStorage.globalParams
 
@@ -95,11 +94,11 @@ const AdvancedSelection: React.FC<IAdvancedSelection> = forwardRef((props, ref: 
                 screenID: screenID,
                 dialogName: dialogName,
                 onCancel: () => closeDialog(),
-                onContinue: (dialogData) => onClickEvent(btnType, {...buttonData, ...dialogData}),
+                onContinue: (dialogData) => onClickEvent(btnType, { ...buttonData, ...dialogData }),
                 continueNm: continueNm,
                 cancelNm: cancelNm,
                 dialogWidth: dialogWidth,
-                dialogHeight: dialogHeight
+                dialogHeight: dialogHeight,
               }
               openDialog(params)
             }
@@ -112,11 +111,11 @@ const AdvancedSelection: React.FC<IAdvancedSelection> = forwardRef((props, ref: 
           screenID: screenID,
           dialogName: dialogName,
           onCancel: () => closeDialog(),
-          onContinue: (dialogData) => onClickEvent(btnType, {...buttonData, ...dialogData}),
+          onContinue: (dialogData) => onClickEvent(btnType, { ...buttonData, ...dialogData }),
           continueNm: continueNm,
           cancelNm: cancelNm,
           dialogWidth: dialogWidth,
-          dialogHeight: dialogHeight
+          dialogHeight: dialogHeight,
         }
         openDialog(params)
       }
@@ -133,7 +132,7 @@ const AdvancedSelection: React.FC<IAdvancedSelection> = forwardRef((props, ref: 
     Loading.show()
     try {
       const eventHandler = props.clickPrams[0]
-      if (btnType && btnType.toLocaleLowerCase() === pyiGlobal.TABLE_NORMAL_BTN_TYPE) {
+      if (btnType && btnType.toLocaleLowerCase() === pyiGlobal.TABLE_BTN_TYPE_NORMAL) {
         await HttpPost(eventHandler, JSON.stringify(buttonData))
           .then((response) => response.json())
           .then((result) => {

@@ -133,7 +133,9 @@ const ComboBox: React.FC<IComboBox> = forwardRef((props, ref: Ref<any>) => {
               valueAndDisplay.length > 0 &&
               valueAndDisplay.map((item: any, index) => (
                 <option key={index} value={item["value"]} title={String(item["display"]).length < 50 ? null : item["display"]}>
-                  {String(item["display"]).length < 50 ? item["display"] : String(item["display"]).slice(0, 50) + "..."}
+                  {String(item["display"]).length < 50
+                    ? String(item["display"]).replace(/\s/g, "\u00a0")
+                    : String(item["display"]).slice(0, 50).replace(/\s/g, "\u00a0") + "..."}
                 </option>
               ))}
           </select>

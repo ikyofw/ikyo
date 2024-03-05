@@ -2,6 +2,7 @@ from django.db.models import QuerySet
 
 import core.models as ikModels
 from core.session.user import UserManager
+from core.sys.accessLog import getLatestAccessLog
 from core.utils.langUtils import isNullBlank, isNotNullBlank
 from core.menu.menuManager import MenuManager
 
@@ -48,7 +49,7 @@ Invoke:  MENU_ACTION_FILTER(ikModels.Menu) -> str
 
 
 def getUserMenus(request) -> list:
-    usrId = request.user.id
+    usrID = request.user.id
     menus = []
     if UserManager.HasLogin(request):
         showSubMenus = False
@@ -63,7 +64,7 @@ def getUserMenus(request) -> list:
                     showSubMenus = True
 
         # add top menu
-        usrTopMenus = MenuManager.getUserAclMenus(usrId)
+        usrTopMenus = MenuManager.getUserAclMenus(usrID)
         for menu in usrTopMenus:  # top menu
             subdirectoryNum = ikModels.Menu.objects.filter(parent_menu_id=menu.id).count()
             action = None
@@ -84,17 +85,17 @@ def getUserMenus(request) -> list:
                 topMenu.isCurrentMenu = True
                 if showSubMenus:
                     parentMenuRc1 = MenuManager.getParentMenuByMenuNm(currentMenu.menu_nm)
-                    subMenus1 = MenuManager.getUserMenus(usrId, int(parentMenuRc1.id))
+                    subMenus1 = MenuManager.getUserMenus(usrID, int(parentMenuRc1.id))
                     if isNotNullBlank(parentMenuRc1.sub_menu_lct):
                         parentMenuRc2 = MenuManager.getParentMenuByMenuId(parentMenuRc1.id)
-                        subMenus2 = MenuManager.getUserMenus(usrId, int(parentMenuRc2.id))
-                        topMenu = __addSubMenu(usrId, topMenu, subMenus2, parentMenuRc1)
+                        subMenus2 = MenuManager.getUserMenus(usrID, int(parentMenuRc2.id))
+                        topMenu = __addSubMenu(usrID, topMenu, subMenus2, parentMenuRc1)
                     else:
-                        topMenu = __addSubMenu(usrId, topMenu, subMenus1, currentMenu)
+                        topMenu = __addSubMenu(usrID, topMenu, subMenus1, currentMenu)
                         
                     for secondaryMenu in topMenu.subMenus:
-                        subMenus = MenuManager.getUserMenus(usrId, secondaryMenu.id)
-                        secondaryMenu = __addSubMenu(usrId, secondaryMenu, subMenus, currentMenu)
+                        subMenus = MenuManager.getUserMenus(usrID, secondaryMenu.id)
+                        secondaryMenu = __addSubMenu(usrID, secondaryMenu, subMenus, currentMenu)
         # YL.ikyo, 2022-06-30 - end
         menus.append(Menu(-1, 'Logout', 'Logout', 'logout'))  # YL.ikyo, 2022-04-24 CHANG for logout
     else:
@@ -108,8 +109,12 @@ def __addSubMenu(usrID: int, parentMenu: Menu, subMenus: QuerySet[ikModels.Menu]
         if isNullBlank(subMenu.screen_nm):
             subMenusRcs = MenuManager.getUserMenus(usrID, subMenu.id)
             subMenuIDList = [str(i.id) for i in subMenusRcs]
-            firstSbuMenu = ikModels.Menu.objects.filter(id=subMenuIDList[0]).first()
-            menuAction = firstSbuMenu.screen_nm
+            subMenuIDstr = ", ".join(subMenuIDList)
+            latestAccessMenu = getLatestAccessLog(usrID, subMenuIDstr)
+            if len(latestAccessMenu) == 0:
+                menuAction = MenuManager.getFirstValidSubMenu(usrID, parentMenu.id)
+            else:
+                menuAction = latestAccessMenu[0]['screen_nm']
         else:
             menuAction = subMenu.screen_nm.lower()
 

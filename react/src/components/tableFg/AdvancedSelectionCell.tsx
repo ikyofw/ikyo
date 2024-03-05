@@ -8,12 +8,12 @@ import * as Types from "./types"
 import useDispatch from "./use-dispatch"
 import useSelector from "./use-selector"
 
-import { useHttp } from "../../utils/http"
-import pyiLogger from "../../utils/log"
-import { validateResponse } from "../../utils/sysUtil"
 import { useContext } from "react"
 import { DialogContext } from "../../components/ConText"
 import { getDialogEventHandler } from "../../components/Dialog"
+import { useHttp } from "../../utils/http"
+import pyiLogger from "../../utils/log"
+import { validateResponse } from "../../utils/sysUtil"
 
 const pyiGlobal = pyiLocalStorage.globalParams
 
@@ -157,15 +157,15 @@ const AdvancedSelection: React.FC<IAdvancedSelection> = (props) => {
     let removeLoadingDiv = true
     Loading.show()
     try {
-      if (btnType && btnType.toLocaleLowerCase() === pyiGlobal.TABLE_NORMAL_BTN_TYPE) {
+      if (btnType && btnType.toLocaleLowerCase() === pyiGlobal.TABLE_BTN_TYPE_NORMAL) {
         await HttpPost(eventHandler, JSON.stringify(buttonData))
           .then((response) => response.json())
           .then((result) => {
             if (validateResponse(result, false)) {
               const newValue = result.data["value"]
               let newDisplay = result.data["display"]
-              if (newValue || newValue === '' || newValue === false) {
-                if (!newDisplay && newValue !== '' && newValue !== false) {
+              if (newValue || newValue === "" || newValue === false) {
+                if (!newDisplay && newValue !== "" && newValue !== false) {
                   newDisplay = newValue
                 }
                 updateCellValue({ value: newValue, display: newDisplay })
@@ -202,7 +202,7 @@ export const handleData = (rowData: Types.CellBase<any>[], fields: string[]): an
   fields &&
     fields.map((field: string, index: number) => {
       if (field === "__KEY_") {
-        data["id"] = rowData[index]?.value 
+        data["id"] = rowData[index]?.value
       } else {
         const value = rowData[index]?.comboKey !== undefined ? rowData[index]?.comboKey : rowData[index]?.value ? rowData[index]?.value : null
         data[field] = value

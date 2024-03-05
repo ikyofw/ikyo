@@ -19,22 +19,19 @@ import useDispatch from "./use-dispatch"
 // LHH.ikyo 2022-05-20 end
 
 /** The default Spreadsheet DataEditor component */
-const DataEditor: React.FC<Types.DataEditorProps> = ({
-  onChange,
-  cell,
-  column,
-  comboPrams,
-  dateBoxCols,
-  textareaCols,
-  style,
-}) => {
+const DataEditor: React.FC<Types.DataEditorProps> = ({ onChange, cell, column, comboPrams, dateBoxCols, textareaCols, style }) => {
   // for combobox cell
   let isComboCell = false
-  const index = comboPrams['columns'].indexOf(column)
+  const index = comboPrams["columns"].indexOf(column)
   let options: Array<{ value: string; display: string }> = []
-  if (index !== -1 && comboPrams['comboData'].length > 0) {
+  if (index !== -1 && comboPrams["comboData"].length > 0) {
     isComboCell = true
-    options = comboPrams['comboData'][index]["data"]
+    options = comboPrams["comboData"][index]["data"]
+    // YL, 2024-02-23 show empty value - start
+    options.forEach((op, index) => {
+      op.display = op.display.replace(/\s/g, "\u00a0")
+    })
+    // YL, 2024-02-23 - end
   }
 
   // LHH.ikyo 2022-05-09 start: please delete the commented lines in the former version and replace with the new lines

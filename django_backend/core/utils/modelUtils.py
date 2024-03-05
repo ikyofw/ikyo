@@ -29,7 +29,7 @@ def __model2Fields(modelRc) -> dict:
     return fields
 
 
-def redcordsets2List(recordsets, fields, removeDumpItemFields=None) -> list:
+def redcordsets2List(recordsets, fields: list[str], removeDumpItemFields=None) -> list:
     data = []
     if recordsets is not None:
         for rc in recordsets:
@@ -165,3 +165,21 @@ def locateToFirst(recordset, fieldName, fieldValue) -> Model:
 
 def locateToFirstByID(recordset, id) -> Model:
     return locateToFirst(recordset, 'id', None if isNullBlank(id) else int(id))
+
+
+def dictToModel(dictData: dict, modelClass: Model) -> Model:
+    modelOnstance = modelClass()
+    # Iterate through the dictionary items
+    for key, value in dictData.items():
+        # Check if the key exists as a field in the model
+        if hasattr(modelOnstance, key):
+            # Set the value of the field
+            setattr(modelOnstance, key, value)
+    return modelOnstance
+
+
+def dictsToModels(dictDataList: list[dict], modelClass: Model) -> list[Model]:
+    rcs = []
+    for dd in dictDataList:
+        rcs.append(dictToModel(dd, modelClass))
+    return rcs

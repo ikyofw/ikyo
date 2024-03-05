@@ -18,6 +18,7 @@ const ToolBar: React.FC<IToolBar> = (props) => {
             <ImageButton
               key={index}
               caption={imgBtn.caption}
+              tooltip={imgBtn.tooltip}
               name={imgBtn.name}
               widgetParameter={imgBtn.widgetParameter}
               clickEvent={() => props.clickEvent([imgBtn.eventHandler, imgBtn.eventHandlerParameter, imgBtn.widgetParameter])}

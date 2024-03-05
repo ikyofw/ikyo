@@ -164,6 +164,10 @@ def getLastRevisionFile(folder, filename) -> str:
             rev = f.stem[len(stem) + 1:].lower()  # abc-V1.txt -> v1 or abc v1.txt -> v1
             if len(rev) > 0 and rev[0] == 'v':
                 rev = rev[1:]
+                for index, char in enumerate(rev):
+                    if not char.isdigit():
+                        rev = rev[:index]
+                        break
                 if rev != '':
                     try:
                         rev = float(rev)
@@ -265,7 +269,7 @@ def deleteFileAndFolder(file: Path, folder: str) -> None:
                 if not os.listdir(p.absolute()):
                     # empty folder, then delete it
                     try:
-                        os.rmdir(p) 
+                        os.rmdir(p)
                         p = p.parent
                     except:
                         # the folder cannot be deleted or it's not empty

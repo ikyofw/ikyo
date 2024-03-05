@@ -19,6 +19,7 @@ from django.http.response import HttpResponseBase, StreamingHttpResponse
 import core.core.fs as ikfs
 import core.core.http as ikhttp
 import core.models as ikModels
+import core.db.model as ikDbModels
 import core.ui.ui as ikui
 import core.utils.db as dbUtils
 import core.utils.modelUtils as modelUtils
@@ -319,13 +320,18 @@ class ScreenAPIView(AuthAPIView):
                 else:
                     data = None
             else:
+                tableModelAdditionalFields = []
+                for field in fieldGroup.fields:
+                    if field.dataField and (ikDbModels.FOREIGN_KEY_VALUE_FLAG in field.dataField \
+                        or field.dataField.startswith(ikDbModels.MODEL_PROPERTY_ATTRIBUTE_NAME_PREFIX)):
+                        tableModelAdditionalFields.append(field.dataField)
                 if isinstance(r, ikhttp.IkJsonResponse):
                     self._addMessages(r.messages)
                     self.__updateDataCursor(fieldGroup, r.data)
-                    data = r.getJsonData()
+                    data = r.getJsonData(modelAdditionalFields=tableModelAdditionalFields)
                 else:
                     self.__updateDataCursor(fieldGroup, r)
-                    data = ikhttp.IkSccJsonResponse(data=r).getJsonData()
+                    data = ikhttp.IkSccJsonResponse(data=r).getJsonData(modelAdditionalFields=tableModelAdditionalFields)
             self._fieldGroupData[fieldGroup.name] = data
             if recordsetName is not None:
                 self.setSessionParameter(recordsetName, data)

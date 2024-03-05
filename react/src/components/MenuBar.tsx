@@ -15,10 +15,11 @@ import * as sysUtil from "../utils/sysUtil"
 const pyiGlobal = pyiLocalStorage.globalParams
 
 const MenuBar = () => {
-  const HttpGet = useHttp(pyiLocalStorage.globalParams.HTTP_TYPE_GET)
+  const HttpGet = useHttp(pyiGlobal.HTTP_TYPE_GET)
 
   const MENU_KEY = pyiGlobal.COOKIE_MENU_ID
   const MENU_ACTION = pyiGlobal.COOKIE_MENU_ACTION
+  const SUBMENU_DISPLAY_MODE = pyiGlobal.SUBMENU_DISPLAY_MODE ? pyiGlobal.SUBMENU_DISPLAY_MODE : 'click'
   const lastSelectedMenuId = cookie.load(MENU_KEY)
   // cookie.remove(KEY, { path: "/" })
   const path = window.location.pathname
@@ -81,7 +82,7 @@ const MenuBar = () => {
     }
   }
 
-  const handleMouseMove = (menu) => (event: React.MouseEvent<HTMLLIElement>) => {
+  const displayTertiaryMenu = (menu) => (event: React.MouseEvent<HTMLLIElement>) => {
     setSelectedL1MenuId(menu.id)
   }
 
@@ -141,7 +142,8 @@ const MenuBar = () => {
           level={"L1"}
           menus={menu1Data}
           selectedMenuId={selectedL1MenuId}
-          onMouseMove={Object.keys(menu2Data).length > 0 ? (menu) => handleMouseMove(menu) : null}
+          onClick={Object.keys(menu2Data).length > 0 && SUBMENU_DISPLAY_MODE === 'click' ? (menu) => displayTertiaryMenu(menu) : null}
+          onMouseMove={Object.keys(menu2Data).length > 0 && SUBMENU_DISPLAY_MODE === 'hover' ? (menu) => displayTertiaryMenu(menu) : null}
         />
       ) : null}
       {Object.keys(menu2Data).length > 0 ? (
