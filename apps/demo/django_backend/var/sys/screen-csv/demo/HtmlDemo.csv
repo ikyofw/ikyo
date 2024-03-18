@@ -1,0 +1,41 @@
+#,This is a comment line.
+s,apiUrl
+,
+s,autoRefresh
+,
+s,editable
+,yes
+t,fieldGroupLinkTable
+t,fieldGroupTable
+,htmlComponent,html,Html Component,,,,,,,,,,,,,,,
+,tableHtml,table,Table Html Column,htmlFg,,yes,,yes,,,client,4,,,,,,
+,actionBar,iconBar,,,,yes,,,,,,,,,,,,
+t,fieldTable
+,htmlComponent,TestHtml1,Test Html,,,,,,,,,,height: 100px,
+,tableHtml,id,id,,,,Label,,id,,,,,
+,tableHtml,rmk,Remark,,,,TextBox,,rmk,,,,,
+,tableHtml,html,Html,,,,Html,,html1,,,,,
+,tableHtml,html1,Html1,,,,Html,dialog: width: 200px; height: 200px; dialogMessage: test message; dialogTitle: test title; dialogBeforeDisplayEvent: postRow,html2,,,htmlClick,,
+,tableHtml,html2,Html2,,,,Html,,html2,,,,,
+,actionBar,refresh,Refresh,,,,IconAndText,icon:images/refresh_button.gif,,,,refresh,,
+t,headerFooterTable
+s,layoutParams
+,
+s,layoutType
+,1
+t,recordsetTable
+,htmlFg,*,core.db.model.DummyModel,,,,
+s,rmk
+,
+t,subScreenTable
+,Main Screen,"tableHtml, actionBar, htmlComponent",
+s,viewAPIRev
+,1
+s,viewDesc
+,Html Demo
+s,viewID
+,HtmlDemo
+s,viewName
+,demo.views.htmlDemo.HtmlDemo
+s,viewTitle
+,Html Demo

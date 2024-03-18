@@ -1,0 +1,45 @@
+#,This is a comment line.
+s,apiUrl
+,
+s,autoRefresh
+,
+s,editable
+,yes
+t,fieldGroupLinkTable
+t,fieldGroupTable
+,searchFg,search,Search,,,yes,,,,,,,,,,,,
+,showFg,table,Show,showFg,,yes,,yes,,,,,,,,,,
+,actionBar1,iconBar,,,,yes,,,,,,,,,,,,
+t,fieldTable
+,searchFg,schTextbox,Text Box,,,,TextBox,,,,,search(showFg),,
+,searchFg,schCombobox,Combo Box,,,,ComboBox,"dataUrl: getCombo
+values: {""value"": ""nm"", ""display"": ""nm""}",,,,,,
+,searchFg,schCheckbox,Check Box,,,,CheckBox,,,,,,,
+,searchFg,schDatebox,Date Box,,,,DateBox,format: yyyy-MM-dd,,,,,,
+,showFg,text,Text Box,,,,Label,,schTextbox,,,,,
+,showFg,combo,Combo Box,,,,ComboBox,"dataUrl: getCombo
+values: {""value"": ""nm"", ""display"": ""nm""}",schCombobox,,,,,
+,showFg,check,Check Box,,,,CheckBox,,schCheckbox,,,,,
+,showFg,date,Date Box,,,,DateBox,,schDatebox,,,,,
+,actionBar1,clear,Clear Query Condition,,,,IconAndText,icon:images/action_button.gif,,,,clearSearchFg,,
+t,headerFooterTable
+s,layoutParams
+,
+s,layoutType
+,1
+t,recordsetTable
+,schFg,*,core.db.model.DummyModel,,,,
+,showFg,*,core.db.model.DummyModel,,,,
+s,rmk
+,
+t,subScreenTable
+s,viewAPIRev
+,1
+s,viewDesc
+,SearchFg Demo
+s,viewID
+,SearchFgDemo
+s,viewName
+,demo.views.searchFgDemo.SearchFgDemo
+s,viewTitle
+,SearchFg Demo

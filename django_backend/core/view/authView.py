@@ -39,6 +39,9 @@ class AuthAPIView(APIView):
     def initial(self, request, *args, **kwargs):
         super().initial(request, *args, **kwargs)
 
+    def _getInstanceID(self) -> int:
+        return self.__instanceID
+
     def getCurrentUser(self) -> User:
         '''
             return User
@@ -52,12 +55,6 @@ class AuthAPIView(APIView):
     def getCurrentUserName(self) -> int:
         user = self.getCurrentUser()
         return None if user is None else user.usr_nm
-
-    def getViewUrl(self) -> str:
-        '''
-            this function is used for urls.py file
-        '''
-        return self.__class__.__name__.lower()
 
     def __isUseSession(self) -> bool:
         return isSupportSession(self.request)

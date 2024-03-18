@@ -1,24 +1,22 @@
 import datetime
 import decimal
+import inspect
 import json
 import logging
-import inspect
 import os
 from enum import Enum
 from pathlib import Path
 from urllib.parse import quote
-
-import core.db.model as ikDbModels
-import core.utils.modelUtils as modelUtils
 import django.core.files.uploadedfile as djangoUploadedfile
-from core.utils.langUtils import isNotNullBlank, isNullBlank
 from django.core.exceptions import FieldDoesNotExist
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db import models
 from django.db.models.query import QuerySet
 from django.http import HttpRequest, HttpResponse
 from django.http.response import JsonResponse, StreamingHttpResponse
-
+import core.db.model as ikDbModels
+import core.utils.modelUtils as modelUtils
+from core.utils.langUtils import isNotNullBlank, isNullBlank
 from .code import IkCode, MessageType
 from .exception import IkMessageException, IkValidateException
 
@@ -168,7 +166,7 @@ class IkJsonResponse(JsonResponse):
     def forwarder(self) -> dict:
         return self.__forwarder
 
-    def getJsonData(self, modelAdditionalFields:list[str] = None) -> dict:
+    def getJsonData(self, modelAdditionalFields: list[str] = None) -> dict:
         """Convert data to json object.
 
         Args:
@@ -177,7 +175,7 @@ class IkJsonResponse(JsonResponse):
         data2 = self.__data
         return self.__getJsonData(data2, modelAdditionalFields)
 
-    def __getJsonData(self, data2: object, modelAdditionalFields:list[str] = None):
+    def __getJsonData(self, data2: object, modelAdditionalFields: list[str] = None):
         if data2 is not None:
             if isinstance(data2, QuerySet):
                 data2 = self.__getDataSetValues(data2, modelAdditionalFields)
@@ -227,7 +225,8 @@ class IkJsonResponse(JsonResponse):
                                     value = getattr(value, attr)
                                 except Exception as e:
                                     value = None
-                                    logger.error("Model [%s] does't have attr [%s]. Values=[%s]" % (type(r).__name__, attr, str(r)))
+                                    if type(e).__name__ != 'RelatedObjectDoesNotExist':
+                                        logger.error("Model [%s] does't have attr [%s]. Values=[%s]" % (type(r).__name__, attr, str(r)))
                             else:
                                 value = None
                                 break
@@ -241,7 +240,7 @@ class IkJsonResponse(JsonResponse):
                     else:
                         logger.warn('Ignore get Model[%s] attribute [%s] failed.' % (type(r).__name__, name))
         return d
-    
+
     def __object2Str(self, value: object) -> str:
         if isinstance(value, datetime.datetime):
             return value.strftime("%Y-%m-%d %H:%M:%S")
@@ -262,10 +261,10 @@ class IkJsonResponse(JsonResponse):
                 rs.append(r)
             elif type(r) == tuple:
                 rs.append(r)
-            elif isinstance(r, models.Model): #type(r) == models.Model:
+            elif isinstance(r, models.Model):  # type(r) == models.Model:
                 rs.append(self.__model2Json(r, modelAdditionalFields))
             else:
-                rs.append(self.__object2Str(r)) # model.values_list
+                rs.append(self.__object2Str(r))  # model.values_list
         return rs
 
     def toJson(self) -> dict:
@@ -443,7 +442,7 @@ def GetRequestData(request, parameterModelMap={}, screen=None, initDataFromDatab
     data = IkRequestData()
     data.setRequest(request)
     for key, value in data0.items():
-        data[key] = value
+        data[key] = value if isNotNullBlank(value) else None  # YL, 2024-03-06, '' change to None.
     dataAdditions = {}
     for key, value in data.items():
         if value is not None and type(value) == str and len(value) > 0 and value[0] == '{' and value[-1] == '}':
@@ -546,7 +545,7 @@ def GetRequestData(request, parameterModelMap={}, screen=None, initDataFromDatab
                             rowValuesDict = {}
                             for i in range(len(dbFieldNamesAttrs)):
                                 rowValuesDict[dbFieldNamesAttrs[i]] = rowValues[i]
-                            classMembers = inspect.getmembers(modelClass, lambda a: not(inspect.isroutine(a)))
+                            classMembers = inspect.getmembers(modelClass, lambda a: not (inspect.isroutine(a)))
                             classMemberFields = [member[0] for member in classMembers if not member[0].startswith('__')]
                             for cmf in classMemberFields:
                                 if cmf in dbFieldNamesAttrs:

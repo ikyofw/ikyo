@@ -1,0 +1,38 @@
+#,This is a comment line.
+s,apiUrl
+,
+s,autoRefresh
+,
+s,editable
+,yes
+t,fieldGroupLinkTable
+t,fieldGroupTable
+,outputFg,table,Monthly Attendance,clockins,yes,yes,yes,yes,,,,,,,,,,
+,actionBar,iconBar,,,,yes,,,,,,,,,,,,
+t,fieldTable
+,outputFg,id,id,,,,Label,,id,,,,,
+,outputFg,rmk1,Remarks1,,,,TextArea,,rmk1,,,,text-align:left,
+,outputFg,rmk2,Remarks2,,,,TextBox,,rmk2,,,,,
+,outputFg,openField,Show Detail,,,,Plugin,"iconCurrent:images/current_sbutton.gif
+iconExpand:images/expand_sbutton.gif",,,,showDetails(@id),,
+,actionBar,saveBtt,save,,,,IconAndText,icon:images/save_button.gif,,,,save(outputFg),,
+t,headerFooterTable
+s,layoutParams
+,
+s,layoutType
+,1
+t,recordsetTable
+,clockins,*,core.db.model.DummyModel,,,,
+s,rmk
+,
+t,subScreenTable
+s,viewAPIRev
+,1
+s,viewDesc
+,Table Style Demo
+s,viewID
+,TableStyleDemo
+s,viewName
+,demo.views.tableStyleDemo.TableStyleDemo
+s,viewTitle
+,Table Style Demo

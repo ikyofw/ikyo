@@ -6,28 +6,15 @@ Date: 2023-09-26 09:11:45
 '''
 from typing import Union
 
-from django.core.paginator import Paginator
-
 import core.ui.ui as ikui
-from core.utils.langUtils import isNotNullBlank, isNullBlank
 from core.core.http import *
 from core.db.transaction import IkTransaction
-from core.view.screenView import ScreenAPIView
-from core.user import UsrGrpMntManager
 from core.menu.menuManager import MenuManager
-from core.user import userManager
-
 from core.models import *
-
-
-GRP_MEMBER_TP_TEAM_NM = "team"
-GRP_MEMBER_TP_TEAM_ID = None
-
-GRP_MEMBER_TP_JOB_TITLE_NM = "jobTitle"
-GRP_MEMBER_TP_JOB_TITLE_ID = None
-
-GRP_MEMBER_TP_OFFICE_NM = "office"
-GRP_MEMBER_TP_OFFICE_ID = None
+from core.user import UsrGrpMntManager, userManager
+from core.utils.langUtils import isNotNullBlank, isNullBlank
+from core.view.screenView import ScreenAPIView
+from django.core.paginator import Paginator
 
 
 class UsrGrpMntView(ScreenAPIView):
@@ -87,19 +74,13 @@ class UsrGrpMntView(ScreenAPIView):
         # search
         schItems = self.getSessionParameter('schItems')
         schKey = None
-        schKeyRst = []
         if isNotNullBlank(schItems) and isNotNullBlank(schItems['schKey']):
             schKey = schItems['schKey']
             for d in data:
                 if schKey.lower() not in d['grp_nm'].lower() and schKey.lower() not in d['usrs'].lower() \
                         and schKey.lower() not in d['menus'].lower() and schKey.lower() not in d['rmk'].lower():
                     data.remove(d)
-        pageSize = self._getPaginatorPageSize("grpListFg")
-        pageNum = self._getPaginatorPageNumber("grpListFg")
-        totalLen = len(data)
-        paginator = Paginator(data, pageSize)
-        results = paginator.get_page(pageNum)
-        return IkSccJsonResponse(data={"grpListFg": results.object_list, "__dataLen__": totalLen})
+        return IkSccJsonResponse(data=data)
 
     def showDtl(self):
         curGrpID = self._getEditIndexField()

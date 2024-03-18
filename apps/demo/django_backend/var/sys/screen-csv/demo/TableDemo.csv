@@ -1,0 +1,79 @@
+#,This is a comment line.
+s,apiUrl
+,
+s,autoRefresh
+,
+s,editable
+,yes
+t,fieldGroupLinkTable
+t,fieldGroupTable
+,IKTableDemoServerFg,table,PYI Table Demo(Server),IKTableDemo,yes,yes,yes,yes,,,server,4,,,,,,
+,actionBar,iconBar,,,,yes,,,,,,,,,,,,
+,IKTableDemoClientFg,table,PYI Table Demo(Client),IKTableDemo,yes,yes,yes,yes,,,client,4,,,,,,
+,actionBar1,iconBar,,,,yes,,,,,,,,,,,,
+,IKTableDemoSelectFg,resultTable,PYI Table Demo(Selectable),IKTableDemo,,,,yes,multiple,,,,,,,,,
+,actionBar2,iconBar,,,,yes,,,,,,,,,,,,
+t,fieldTable
+,IKTableDemoServerFg,Label,Label,,,,Label,,Label,,,,,
+,IKTableDemoServerFg,TextBox,TextBox,,,,TextBox,,TextBox,,,,,
+,IKTableDemoServerFg,Invisible,Invisible,,yes,,TextBox,,Invisible,,,,,
+,IKTableDemoServerFg,textarea,Textarea,,,,TextArea,,Textarea,,,,,
+,IKTableDemoServerFg,blank,,,,,,,,,,,,
+,IKTableDemoServerFg,comboBox,ComboBox,,,,ComboBox,"dataUrl: getComboBox
+values: {""value"": ""comboBox"", ""display"": ""comboBox""}",ComboBox,,,,,
+,IKTableDemoServerFg,CheckBox1,CheckBox(3 options),,,,CheckBox,stateNumber: 3,CheckBox1,,,,,
+,IKTableDemoServerFg,CheckBox2,CheckBox(2 options),,,,CheckBox,,CheckBox2,,,,,
+,IKTableDemoServerFg,DateBox,DateBox,,,,DateBox,format: YYYY-MM-DD HH:mm:ss,DateBox,,,,,
+,IKTableDemoServerFg,Button,Button,,,,Button,"icon: images/expand_sbutton.gif
+type:normal",id,,,buttonShowID(@id),,
+,IKTableDemoServerFg,Plugin,Plugin,,,,Plugin,"iconCurrent:images/current_sbutton.gif
+iconExpand:images/expand_sbutton.gif",,,,pluginShowID(@id),,
+,actionBar,saveClockInFg,Save,,,,IconAndText,icon:images/save_button.gif,,,,save(PYITableDemoServerFg),,
+,IKTableDemoClientFg,Label,Label,,,,Label,,Label,,,,,
+,IKTableDemoClientFg,TextBox,TextBox,,,,TextBox,,TextBox,,,,,
+,IKTableDemoClientFg,Invisible,Invisible,,yes,,TextBox,,Invisible,,,,,
+,IKTableDemoClientFg,textarea,Textarea,,,,TextArea,,Textarea,,,,,
+,IKTableDemoClientFg,comboBox,ComboBox,,,,ComboBox,"dataUrl: getComboBox
+values: {""value"": ""comboBox"", ""display"": ""comboBox""}",ComboBox,,,,,
+,IKTableDemoClientFg,CheckBox1,CheckBox(3 options),,,,CheckBox,"values: {'true': 'yellow"", 'false': 'green', 'none': 'none'}",CheckBox1,,,,,
+,IKTableDemoClientFg,CheckBox2,CheckBox(2 options),,,,CheckBox,,CheckBox2,,,,,
+,IKTableDemoClientFg,DateBox,DateBox,,,,DateBox,format: YYYY-MM-DD,DateBox,,,,,
+,IKTableDemoClientFg,Button,Button,,,,Button,"icon: images/expand_sbutton.gif
+type:normal",id,,,buttonShowID(@id),,
+,IKTableDemoClientFg,Plugin,Plugin,,,,Plugin,"iconCurrent:images/current_sbutton.gif
+iconExpand:images/expand_sbutton.gif",,,,pluginShowID(@id),,
+,actionBar1,saveClockInFg,Save,,,,IconAndText,icon:images/save_button.gif,,,,save(PYITableDemoClientFg),,
+,IKTableDemoSelectFg,Label,Label,,,,Label,,Label,,,,,
+,IKTableDemoSelectFg,TextBox,TextBox,,,,TextBox,,TextBox,,,,,
+,IKTableDemoSelectFg,Invisible,Invisible,,yes,,TextBox,,Invisible,,,,,
+,IKTableDemoSelectFg,textarea,Textarea,,,,TextArea,,Textarea,,,,,
+,IKTableDemoSelectFg,comboBox,ComboBox,,,,ComboBox,"dataUrl: getComboBox
+values: {""value"": ""comboBox"", ""display"": ""comboBox""}",ComboBox,,,,,
+,IKTableDemoSelectFg,CheckBox1,CheckBox(3 options),,,,CheckBox,"values: {'true': 'yellow"", 'false': 'green', 'none': 'none'}",CheckBox1,,,,,
+,IKTableDemoSelectFg,CheckBox2,CheckBox(2 options),,,,CheckBox,,CheckBox2,,,,,
+,IKTableDemoSelectFg,DateBox,DateBox,,,,DateBox,format: YYYY-MM-DD,DateBox,,,,,
+,IKTableDemoSelectFg,Button,Button,,,,Button,"icon: images/expand_sbutton.gif
+type:normal",id,,,buttonShowID(@id),,
+,IKTableDemoSelectFg,Plugin,Plugin,,,,Plugin,"iconCurrent:images/current_sbutton.gif
+iconExpand:images/expand_sbutton.gif",,,,pluginShowID(@id),,
+,actionBar2,saveClockInFg,Save,,,,IconAndText,icon:images/save_button.gif,,,,save(PYITableDemoSelectFg),,
+t,headerFooterTable
+s,layoutParams
+,
+s,layoutType
+,1
+t,recordsetTable
+,IKTableDemo,*,core.db.model.DummyModel,,,,
+s,rmk
+,
+t,subScreenTable
+s,viewAPIRev
+,1
+s,viewDesc
+,Table Demo
+s,viewID
+,TableDemo
+s,viewName
+,demo.views.tableDemo.TableDemo
+s,viewTitle
+,Table Demo

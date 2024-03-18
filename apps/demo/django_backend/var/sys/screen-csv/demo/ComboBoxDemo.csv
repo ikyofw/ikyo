@@ -1,0 +1,57 @@
+#,This is a comment line.
+s,apiUrl
+,
+s,autoRefresh
+,
+s,editable
+,yes
+t,fieldGroupLinkTable
+t,fieldGroupTable
+,searchFg,search,Search,,,yes,,,,,,,,,,,,
+,simpleFg,fields,Simple,details,,yes,,,,,,,,,,,,
+,ListBoxFg,fields,ListBox,,,yes,,,,,,,,,,,,
+,AdvancedComboBoxFg,fields,AdvancedComboBox,details,,yes,,,,,,,,,,,,
+,outputFg,table,Table,clockins,,yes,,yes,,,,,,,,,,
+,actionBar,iconBar,,,,yes,,,,,,,,,,,,
+t,fieldTable
+,searchFg,schRmk1,Remark1,,,,ComboBox,"dataUrl: getRmk1
+values: {""value"": ""rmk_id"", ""display"": ""rmk""}
+onChange: updateDefaultValues2(searchFg)",rmk1,,,search,,
+,searchFg,schRmk2,Remark1,,,,ComboBox,"dataUrl: getRmk2
+values: {""value"": ""rmk"", ""display"": ""rmk""}",rmk2,,,,,
+,simpleFg,fieldNmRmk1,Remark1,,,,ComboBox,"dataUrl: getRmk1
+values: {""value"": ""rmk_id"", ""display"": ""rmk""}
+onChange: updateDefaultValues2(searchFg)",rmk1,,,,,
+,simpleFg,fieldNmRmk2,Remark2,,,,ComboBox,"dataUrl: getRmk2
+values: {""value"": ""rmk"", ""display"": ""rmk""}",rmk2,,,,,
+,ListBoxFg,rmk1,Remark1,,,,ListBox,"dataUrl: getRmk1
+values: {""value"": ""rmk_id"", ""display"": ""rmk""}",,,,,,
+,AdvancedComboBoxFg,schRmk1,schRmk1,,,,AdvancedComboBox,"dataUrl: getRmk1
+values: {""value"": ""rmk_id"", ""display"": ""rmk""}",,,,,,
+,outputFg,id,id,,,,Label,,id,,,,,
+,outputFg,rmk1,Remark1,,,,ComboBox,"dataUrl: getRmk1
+values: {""value"": ""rmk_id"", ""display"": ""rmk""}",rmk1,,,,,
+,outputFg,rmk2,Remark2,,,,ComboBox,"data: [{""value"": ""rmk_id1"", ""display"": ""rmk1""}, {""value"": ""rmk_id2"", ""display"": ""rmk2""}, {""value"": ""rmk_id3""}]",rmk_id,,,,,"dataUrl: getRmk1
+values: {""value"": ""rmk_id"", ""display"": ""rmk""}"
+,actionBar,save,Save,,,,IconAndText,icon:images/save_button.gif,,,,"save(searchFg,ListBoxFg,AdvancedComboBoxFg)",,
+t,headerFooterTable
+s,layoutParams
+,
+s,layoutType
+,1
+t,recordsetTable
+,clockins,*,core.db.model.DummyModel,,,,
+,details,*,core.db.model.DummyModel,,,,
+s,rmk
+,
+t,subScreenTable
+s,viewAPIRev
+,1
+s,viewDesc
+,ComboBox Demo
+s,viewID
+,ComboBoxDemo
+s,viewName
+,demo.views.comboBoxDemo.ComboBoxDemo
+s,viewTitle
+,ComboBox Demo

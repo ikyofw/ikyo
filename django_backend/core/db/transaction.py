@@ -375,17 +375,19 @@ class IkTransaction():
     def __getModelForeignField(self, rc, fieldName):
         try:
             return getattr(rc, fieldName)
-        except Exception as e:  # RelatedObjectDoesNotExist
-            if type(fieldName) == str and not fieldName.endswith('_' + DEFAULT_FOREIGN_FIELD):
-                return getattr(rc, fieldName + '_' + DEFAULT_FOREIGN_FIELD)
+        except Exception as e:
+            if type(e).__name__ == 'RelatedObjectDoesNotExist' \
+                and type(fieldName) == str and not fieldName.endswith('_' + DEFAULT_FOREIGN_FIELD):
+                    return getattr(rc, fieldName + '_' + DEFAULT_FOREIGN_FIELD)
             else:
                 raise e
 
     def __setForeignFieldValue(self, rc, fieldName, value):
         try:
             setattr(rc, fieldName, value)
-        except Exception as e:  # RelatedObjectDoesNotExist
-            if type(fieldName) == str and not fieldName.endswith('_' + DEFAULT_FOREIGN_FIELD):
+        except Exception as e:
+            if type(e).__name__ == 'RelatedObjectDoesNotExist' \
+                and type(fieldName) == str and not fieldName.endswith('_' + DEFAULT_FOREIGN_FIELD):
                 setattr(rc, fieldName + '_' + DEFAULT_FOREIGN_FIELD, value)
             else:
                 raise e

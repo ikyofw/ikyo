@@ -78,6 +78,7 @@ def executeSqlFiles(specifiedSqlFile: object = None) -> None:
                 # execute sql
                 # 1) read sql from file
                 sqlContent = None
+                sqlFilename = Path(newSqlFile).name
                 with open(newSqlFile, 'r', encoding='utf-8') as rf:
                     sqlContent = rf.read()
                 if not sqlContent or len(sqlContent.strip()) == 0:
@@ -90,7 +91,7 @@ def executeSqlFiles(specifiedSqlFile: object = None) -> None:
                         if not line.strip().startswith('--'):
                             sqlContent += '%s\n' % line
                         else:
-                            print("ignore line: %s" % line)
+                            logger.debug("%s ignore comment line: %s" % (sqlFilename, line))
                     sqlContent = sqlContent.strip()
                     # execute sql
                     with connection.cursor() as cursor:

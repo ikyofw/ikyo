@@ -1,8 +1,7 @@
 import { useEffect } from "react"
-import { useHttp } from "../utils/http"
 import pyiLocalStorage from "../utils/pyiLocalStorage"
 import * as sysUtil from "../utils/sysUtil"
-import MenuBar from "./MenuBar"
+import { useHttp } from "../utils/http"
 
 const TopBar = () => {
   const HttpGet = useHttp(pyiLocalStorage.globalParams.HTTP_TYPE_GET)
@@ -36,7 +35,6 @@ const TopBar = () => {
           </tr>
         </tbody>
       </table>
-      {pyiLocalStorage.getCurrentUser() ? <MenuBar /> : null}
     </>
   )
 }

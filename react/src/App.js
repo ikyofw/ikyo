@@ -2,21 +2,22 @@ import "./App.css"
 import "../public/static/css/menu-v1.css"
 import "../public/static/css/style-v2.css"
 
+import { useEffect, useState } from "react"
 import { BrowserRouter, Route, Routes, useLocation } from "react-router-dom"
+
+import ScreenRender from "./components/ScreenRender"
 import TopBar from "./components/TopBar"
 import TopTitle from "./components/TopTitle"
 import BeforeLogin from "./screen/BeforeLogin"
+import MenuBar from "./components/MenuBar"
 import Home from "./screen/Home"
 import Login from "./screen/Login"
 import Logout from "./screen/Logout"
-
-import ScreenRender from "./components/ScreenRender"
 import Help from "./screen/Help"
 import Menu from "./screen/Menu"
+
 import { useHttp } from "./utils/http"
 import { validateResponse, showErrorMessage } from "./utils/sysUtil"
-
-import { useEffect, useState } from "react"
 import pyiLogger from "./utils/log"
 import pyiLocalStorage from "./utils/pyiLocalStorage"
 
@@ -76,6 +77,41 @@ function App() {
     return null
   }
 
+  const resizeObserver1 = new ResizeObserver(function (entries) {
+    for (var entry of entries) {
+      const topScreenHeight = entry.contentRect.height
+      const style = document.getElementById("top_screen_title").style
+      style.top = topScreenHeight + "px"
+      style.position = "sticky"
+      style.zIndex = "20"
+    }
+  })
+  const resizeObserver2 = new ResizeObserver(function (entries) {
+    for (var entry of entries) {
+      const topTitleHeight = entry.contentRect.height
+      if (topTitleHeight > 200) {
+        const fixedTopTitleBtt = document.getElementById("sysFixedTopTitle")
+        if (fixedTopTitleBtt) {
+          fixedTopTitleBtt.hidden = false
+          var button = document.getElementById("sysFixScrollImg")
+          if (button) {
+            console.log(button);
+            button.click();
+          }
+        }
+      }
+    }
+  })
+
+  const topScreen = document.getElementById("top_screen")
+  const topTitle = document.getElementById("top_screen_title")
+  if (topScreen) {
+    resizeObserver1.observe(topScreen)
+  }
+  if (topTitle) {
+    resizeObserver2.observe(topTitle)
+  }
+
   return (
     <>
       {window.location.href.toLowerCase().includes("/help") ? (
@@ -89,6 +125,9 @@ function App() {
           <div className="App" id="App">
             <div className="top_screen" id="top_screen">
               <TopBar />
+              {pyiLocalStorage.getCurrentUser() ? <MenuBar /> : null}
+            </div>
+            <div className="top_screen_title" id="top_screen_title">
               <TopTitle />
             </div>
             <div className="main_screen" id="main_screen">

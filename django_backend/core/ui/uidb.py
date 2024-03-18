@@ -95,15 +95,29 @@ def createCSVFileWithDatabase(screenSN: str = None):
         for screenSN in screenSNs:
             latestScreen = Screen.objects.filter(screen_sn__iexact=screenSN['screen_sn']).order_by('-rev').first()
 
-            filePath = _getImportScreenFilePath(latestScreen.class_nm, isCSV=True)
-            filename = '%s.csv' % latestScreen.screen_sn
-            outputFile = os.path.join(filePath, filename)
-            if os.path.isfile(outputFile):
-                os.remove(outputFile)
+            if isNotNullBlank(latestScreen):
+                filePath = _getImportScreenFilePath(latestScreen.class_nm, isCSV=True)
+                filename = '%s.csv' % latestScreen.screen_sn
+                outputFile = os.path.join(filePath, filename)
+                if os.path.isfile(outputFile):
+                    os.remove(outputFile)
 
-            expData = __getExpDataFromDB(latestScreen, isCSV=True)
+                expData = __getExpDataFromDB(latestScreen, isCSV=True)
 
-            csv.Write2CsvFile(outputFile, expData, comments="This is a comment line.")
+                # change \r\n to \n for compate the files.
+                # ( The new line flag in a excel cell is \r\n.)
+                for key, value in expData.items():
+                    if value is not None:
+                        if type(value) == list or type(value) == tuple:
+                            for row in value:
+                                for i in range(len(row)):
+                                    if type(row[i]) == str:
+                                        row[i] = row[i].replace('\r\n', '\n')
+                        elif type(value) == str:
+                            value = value.replace('\r\n', '\n')
+                        expData[key] = value
+
+                csv.Write2CsvFile(outputFile, expData, comments="This is a comment line.")
         return Boolean2(True, 'Create CSV File Success.')
     except Exception as e:
         logger.error(e)
@@ -125,49 +139,57 @@ def updateDatabaseWithImportExcel(ImportScreen: djangoUploadedfile.UploadedFile,
 
     # The imported Excel file's content is updated to the database, then the Excel file is saved at the corresponding location in 'var/views/xxx'.
     latestScreen = Screen.objects.filter(screen_sn__iexact=__strip(dfn['viewID'])).order_by('-rev').first()
-    filePath = _getImportScreenFilePath(latestScreen.class_nm)
-    filename = '%s-imported.xlsx' % latestScreen.screen_sn
-    importFile = os.path.join(filePath, filename)
-    if os.path.isfile(importFile):
-        os.remove(importFile)
-    templateFileFolder = ikui.getScreenFileTemplateFolder()
-    templateFile = ikfs.getLastRevisionFile(templateFileFolder, 'template.xlsx')
-    if isNullBlank(templateFile):
-        processResult = Boolean2(False, 'Screen template file is not found. Please check.')
-        return processResult
-    processResult = screenDbWriteToExcel(latestScreen, templateFile, importFile)
-    if not processResult.value:
-        return processResult
-
-    b = createCSVFileWithDatabase(dfn['viewName'])
-    if not b.value:
-        raise IkValidateException(b.dataStr)
-
-    # ik_screen_file
-    screenFileRc = ScreenFile()
-    screenFileRc.screen = latestScreen
-    screenFileRc.file_nm = filename
-    screenFileRc.file_size = ImportScreen.size
-    screenFileRc.file_path = filePath
-    screenFileRc.file_dt = datetime_.now()
-    screenFileRc.file_md5 = _getExcelMD5(ImportScreen)
-    screenFileRc.rmk = 'Import by Screen Definition'
-    ptrn = IkTransaction()
-    ptrn.add(screenFileRc)
-    b = ptrn.save()
+    if isNullBlank(latestScreen):
+        return Boolean2(False, "Database save failed.")
+    b = screenDbWriteToExcel(latestScreen, 'Import by Screen Definition')
     if not b.value:
         raise IkValidateException(b.dataStr)
     return Boolean2(True, "Imported")
 
 
-# Output the definition of the target page (screenRc) as an Excel file in a specific format (templateFile) at the specified location (outputFile).
-def screenDbWriteToExcel(screenRc, templateFile, outputFile) -> Boolean2:
+# Output the definition of the target page (screenRc) as an Excel file at the specified location (outputFile).
+def screenDbWriteToExcel(screenRc: Screen, fileRmk: str = None) -> Boolean2:
+    if isNullBlank(screenRc):
+        return Boolean2(False, 'Screen does not exist. Please check.')
+    templateFileFolder = ikui.getScreenFileTemplateFolder()
+    templateFile = ikfs.getLastRevisionFile(templateFileFolder, 'template.xlsx')
+    if isNullBlank(templateFile):
+        return Boolean2(False, 'Screen template file is not found. Please check.')
+
+    filePath = _getImportScreenFilePath(screenRc.class_nm)
+    filename = '%s.xlsx' % screenRc.screen_sn
+    outputFile = os.path.join(ikui.getRelativeScreenFileFolder(), filePath, filename)
+    if os.path.isfile(outputFile):
+        os.remove(outputFile)
+
     expData = __getExpDataFromDB(screenRc)
 
     # write to file and download if success
     sw = ikSpreadsheet.SpreadsheetWriter(parameters=expData, templateFile=templateFile, outputFile=outputFile)
     b = sw.write()
-    return b
+    if not b.value:
+        return b
+
+    # ik_screen_file
+    if isNotNullBlank(fileRmk):
+        screenFileRc = ScreenFile()
+        screenFileRc.screen = screenRc
+        screenFileRc.file_nm = filename
+        screenFileRc.file_size = os.path.getsize(outputFile)
+        screenFileRc.file_path = filePath
+        screenFileRc.file_dt = datetime_.now()
+        screenFileRc.file_md5 = _getExcelMD5(outputFile)
+        screenFileRc.rmk = fileRmk
+        ptrn = IkTransaction()
+        ptrn.add(screenFileRc)
+        c = ptrn.save()
+        if not c.value:
+            return c
+
+        d = createCSVFileWithDatabase(screenSN=screenRc.screen_sn)
+        if not d.value:
+            return d
+    return Boolean2(True, outputFile)
 
 
 # get screen definition from database
@@ -187,6 +209,8 @@ def __getExpDataFromDB(screenRc, isCSV: bool = None):
         rc.visible = None if rc.visible == True else 'yes'  # column title: hide
         rc.editable = None if rc.editable == True else 'no'
         if isCSV:
+            if isNotNullBlank(rc.widget_parameters) and "\r\n" in rc.widget_parameters:
+                rc.widget_parameters = rc.widget_parameters.replace("\r\n", "\n")
             continue
         if not rc.field_group:
             continue
@@ -259,57 +283,30 @@ def _updateDatabaseWithExcelFiles(screenDefinition, userID) -> Boolean2:
         return Boolean2(True)
     else:
         processResult = Boolean2(False)
-        lastScreenRev = None
         try:
             lastModifyDtExcel = os.path.getmtime(screenDefinition.filePath)
             lastModifyDtExcel = datetime_.fromtimestamp(lastModifyDtExcel)
 
             logger.info('Import screen definition [%s] from file [%s] ...' % (screenDefinition.fullName, screenDefinition.filePath))
-            filePath = _getImportScreenFilePath(dfn['viewName'])
             # Otherwise, update all the corresponding database tables for that page.
             __updateScreenDatabase(dfn, userID)
 
+            if latestScreen.class_nm != __strip(dfn['viewName']):
+                latestScreenFileRc = ScreenFile.objects.filter(screen=latestScreen).first()
+                if isNotNullBlank(latestScreenFileRc):
+                    _deleteExcelAndCSV(latestScreenFileRc)
+
             latestScreen = Screen.objects.filter(screen_sn__iexact=__strip(dfn['viewID'])).order_by('-rev').first()
-            filename = '%s.xlsx' % latestScreen.screen_sn
-            outputFile = os.path.join(filePath, filename)
-
-            # If the name of the Excel file added by the user differs from the name of the next version of the Excel file generated automatically by the system,
-            # then delete the user-added Excel file and use the file generated automatically by the system based on the revision number.
-            sysPath = Path(outputFile).resolve()
-
-            templateFileFolder = ikui.getScreenFileTemplateFolder()
-            templateFile = ikfs.getLastRevisionFile(templateFileFolder, 'template.xlsx')
-            if isNullBlank(templateFile):
-                raise IkException("Template file does not exist in folder [%s]." % templateFileFolder.absolute())
-            if os.path.isfile(sysPath):
-                logger.info('Import screen definition [%s] from file [%s]: delete file (2) [%s]' % (screenDefinition.fullName, screenDefinition.filePath, sysPath))
-                os.remove(sysPath)
-            logger.info('Import screen definition [%s] from file [%s]: export data to file [%s] ...' % (screenDefinition.fullName, screenDefinition.filePath, sysPath))
-            processResult = screenDbWriteToExcel(latestScreen, templateFile, sysPath)
-            if not processResult.value:
-                return processResult
-            logger.info('Import screen definition [%s] from file [%s]: export data to file [%s] success' % (screenDefinition.fullName, screenDefinition.filePath, sysPath))
-
-            # ik_screen_file
-            screenFileRc = ScreenFile()
-            if not isNullBlank(userID):
-                screenFileRc.cre_usr_id = userID
-                screenFileRc.rmk = 'Reload by Screen Definition'
+            if isNotNullBlank(userID):
+                rmk = 'Reload by Screen Definition'
             else:
-                screenFileRc.rmk = 'Import from spreadsheet.'
-            screenFileRc.screen = latestScreen
-            screenFileRc.file_nm = os.path.basename(outputFile)
-            screenFileRc.file_size = os.path.getsize(outputFile)
-            screenFileRc.file_path = os.path.dirname(outputFile)
-            screenFileRc.file_dt = lastModifyDtExcel
-            screenFileRc.file_md5 = _getExcelMD5(outputFile)
-            ptrn = IkTransaction()
-            ptrn.add(screenFileRc)
-            b = ptrn.save()
+                rmk = 'Import from spreadsheet.'
+            b = screenDbWriteToExcel(latestScreen, rmk)
             if not b.value:
-                processResult = b
-                raise IkValidateException(b.dataStr)
-            lastScreenRev = screenFileRc.screen.rev
+                logger.error('Import screen definition [%s] from file [%s], create excel and csv failed: [%s]' % (screenDefinition.fullName, screenDefinition.filePath, b.dataStr))
+                processResult = Boolean2(False, b.data)
+                return b
+            logger.info('Import screen definition [%s] from file [%s]: export data to file [%s] success' % (screenDefinition.fullName, screenDefinition.filePath, b.data))
             processResult = Boolean2(True, 'Success')
             return processResult
         except Exception as e:
@@ -317,77 +314,33 @@ def _updateDatabaseWithExcelFiles(screenDefinition, userID) -> Boolean2:
             return Boolean2(False, e)
         finally:
             if processResult.value:
-                logger.info('Import screen definition [%s] from file [%s] success. Last Revision is %s.' % (screenDefinition.fullName, screenDefinition.filePath, lastScreenRev))
+                logger.info('Import screen definition [%s] from file [%s] success. Last Revision is %s.' % (screenDefinition.fullName, screenDefinition.filePath, latestScreen.rev))
             else:
                 logger.error('Import screen definition [%s] from file [%s] failed: %s' % (screenDefinition.fullName, screenDefinition.filePath, processResult.dataStr))
 
 
 def __createExcelWithDatabase(screenSN, userID):
     latestScreen = Screen.objects.filter(screen_sn__iexact=screenSN['screen_sn']).order_by('-rev').first()
-    lastScreenFile = ScreenFile.objects.filter(screen=latestScreen).first()
-    filePath = _getImportScreenFilePath(latestScreen.class_nm)
-    if isNullBlank(lastScreenFile) or isNullBlank(lastScreenFile.file_path) or "\\" in lastScreenFile.file_path:
-        filename = '%s.xlsx' % latestScreen.screen_sn
-        outputFile = os.path.join(filePath, filename)
-        if os.path.isfile(outputFile):
-            os.remove(outputFile)
-        templateFileFolder = ikui.getScreenFileTemplateFolder()
-        templateFile = ikfs.getLastRevisionFile(templateFileFolder, 'template.xlsx')
-        if isNullBlank(templateFile):
-            raise IkException("Template file does not exist in folder [%s]." % templateFileFolder.absolute())
-        c = screenDbWriteToExcel(latestScreen, templateFile, outputFile)
-        if not c.value:
-            return c
+    lastScreenFile = ScreenFile.objects.filter(screen=latestScreen).order_by('-file_dt').first()
+    if isNotNullBlank(userID):
+        fileRmk = 'Reload by Screen Definition'
+    else:
+        fileRmk = 'Import from spreadsheet'
 
-        # ik_screen_file
-        if isNullBlank(lastScreenFile):
-            screenFileRc = ScreenFile()
-        else:
-            screenFileRc = lastScreenFile
-            screenFileRc.ik_set_status_modified()
-        if isNotNullBlank(userID):
-            screenFileRc.cre_usr_id = userID
-            screenFileRc.rmk = 'Reload by Screen Definition'
-        else:
-            screenFileRc.rmk = 'Import from spreadsheet'
-        screenFileRc.screen = latestScreen
-        screenFileRc.file_nm = os.path.basename(outputFile)
-        screenFileRc.file_size = os.path.getsize(outputFile)
-        screenFileRc.file_path = os.path.dirname(outputFile)
-        screenFileRc.file_dt = datetime_.now()
-        screenFileRc.file_md5 = _getExcelMD5(outputFile)
-        ptrn = IkTransaction()
-        ptrn.add(screenFileRc)
-        b = ptrn.save()
+    if isNullBlank(lastScreenFile) or isNullBlank(lastScreenFile.file_path) or "var" in lastScreenFile.file_path:
+        b = screenDbWriteToExcel(latestScreen, fileRmk)
         if not b.value:
-            raise IkValidateException(b.dataStr)
+            return b
         return Boolean2(True)
 
-    if not __databaseHasModify(latestScreen):
+    if not __databaseHasModify(lastScreenFile):
         # If there is a corresponding Excel file and the database content has not changed compared to the Excel file, then directly iterate to the next screen_sn.
         return Boolean2(True)
     else:
         # Otherwise, create a new Excel file based on the updated database content.
-        filename = '%s.xlsx' % latestScreen.screen_sn
-        outputFile = os.path.join(filePath, filename)
-        templateFileFolder = ikui.getScreenFileTemplateFolder()
-        templateFile = ikfs.getLastRevisionFile(templateFileFolder, 'template.xlsx')
-        if isNullBlank(templateFile):
-            raise IkException("Template file does not exist in folder [%s]." % templateFileFolder.absolute())
-        if os.path.isfile(outputFile):
-            os.remove(outputFile)
-        c = screenDbWriteToExcel(latestScreen, templateFile, outputFile)
-        if not c.value:
-            return c
-
-        # A new Excel is created, so the Excel file is modified; but the screen definition is not changed, then only the "file_dt" attribute in the ik_screen_file is updated.
-        lastScreenFile.file_dt = datetime_.now()
-        lastScreenFile.ik_set_status_modified()
-        ptrn = IkTransaction()
-        ptrn.add(lastScreenFile)
-        b = ptrn.save()
-        if not b.value:
-            raise IkValidateException(b.dataStr)
+        d = screenDbWriteToExcel(latestScreen, fileRmk)
+        if not d.value:
+            return d
         return Boolean2(True)
 
 
@@ -423,27 +376,42 @@ def _getExcelMD5(file):
     return md5.hexdigest()
 
 
+def _deleteExcelAndCSV(screenFileRc: ScreenFile):
+    if isNullBlank(screenFileRc):
+        return
+    fp = os.path.join(ikui.getRelativeScreenFileFolder(), screenFileRc.file_path, screenFileRc.file_nm)
+    if os.path.isfile(fp):
+        ikfs.deleteEmptyFolderAndParentFolder(fp)
+    index = fp.find("screen")
+    if index != -1:
+        fp2 = fp[:index] + "screen-csv" + fp[index + 6:-5] + ".csv"
+        if os.path.isfile(fp2):
+            ikfs.deleteEmptyFolderAndParentFolder(fp2)
+
+
 def _getImportScreenFilePath(classNm, isCSV: bool = None):
     if isNullBlank(classNm):
         raise IkValidateException("The Class Name of [%s] is None." % (classNm))
     ss = classNm.split('.')
     if len(ss) > 1:
-        return Path(os.path.join(ikui.getScreenCsvFileFolder() if isCSV else ikui.getScreenFileFolder()), ss[0])  # add app name as screen's sub-folder name
+        return os.path.join(ikui.getScreenCsvFileFolder(), ss[0]) if isCSV else Path(ss[0])
+        # return Path(os.path.join(ikui.getScreenCsvFileFolder() if isCSV else ikui.getScreenFileFolder()), ss[0])  # add app name as screen's sub-folder name
     else:
         raise IkValidateException("The format of Class Name in [%s] is error." % (classNm))
 
 
 def __excelHasModify(lastScreen: Screen, newScreenDfn) -> bool:
     lastScreenDfn = __getExpDataFromDB(lastScreen)
-    if int(newScreenDfn['rev']) < lastScreen.rev:
+    if int(newScreenDfn['rev']) <= lastScreen.rev:
         return False
     newScreenDfn['rev'] = lastScreen.rev
     return not (lastScreenDfn == newScreenDfn)
 
 
-def __databaseHasModify(ScreenRc: Screen) -> bool:
-    filePath = _getImportScreenFilePath(ScreenRc.class_nm)
-    filePath = Path(os.path.join(filePath, ScreenRc.screen_sn + '.xlsx'))
+def __databaseHasModify(screenFileRc: ScreenFile) -> bool:
+    if isNullBlank(screenFileRc):
+        return True
+    filePath = Path(os.path.join(ikui.getRelativeScreenFileFolder(), screenFileRc.file_path, screenFileRc.file_nm))
     if os.path.isfile(filePath):
         return False
     return True

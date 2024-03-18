@@ -28,8 +28,13 @@ const DataEditor: React.FC<Types.DataEditorProps> = ({ onChange, cell, column, c
     isComboCell = true
     options = comboPrams["comboData"][index]["data"]
     // YL, 2024-02-23 show empty value - start
-    options.forEach((op, index) => {
-      op.display = op.display.replace(/\s/g, "\u00a0")
+    options.forEach((op) => {
+      if (op.display == "" || op.display == null) {
+        op.display = " "
+      }
+      if (typeof op.display == "string") {
+        op.display = op.display.replace(/\s/g, "\u00a0")
+      }
     })
     // YL, 2024-02-23 - end
   }

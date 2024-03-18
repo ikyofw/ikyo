@@ -31,6 +31,14 @@ class Menu(ScreenAPIView):
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
 
+    # override
+    def getMenuName(self) -> str:
+        """Override.
+        Returns:
+            menu name (str): Menu page's menu name.
+        """
+        return 'menu'
+
     def getScreen(self) -> dict:
         menuID1 = self.request.GET.get('last', None)
         if menuID1:

@@ -187,8 +187,8 @@ class DjangoLogFilter(logging.Filter):
         self.fields = fields
 
     def filter(self, record):
-        record.path = getattr(local, 'path', "none")
-        record.username = getattr(local, 'username', "none")
+        record.path = getattr(local, 'path', "?")
+        record.username = getattr(local, 'username', "system")
         if record.funcName == 'debug_sql' and record.levelname == 'DEBUG':
             if 'ik_screen_field_widget' in record.sql:
                 print(record.sql)

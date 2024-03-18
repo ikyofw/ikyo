@@ -1,0 +1,49 @@
+#,This is a comment line.
+s,apiUrl
+,
+s,autoRefresh
+,
+s,editable
+,yes
+t,fieldGroupLinkTable
+t,fieldGroupTable
+,searchFg,search,Search,,,yes,,,,,,,,,,,,
+,outputFg,table,Monthly Attendance,clockins,,yes,,yes,,,,,,,,,,
+,actionBar1,iconBar,,,,yes,,,,,,,,,,,,
+,simpleFg,fields,Monthly Attendance1,details,,yes,,,,,,,,,,,,
+,actionBar2,iconBar,,,,yes,,,,,,,,,,,,
+t,fieldTable
+,searchFg,schPiers,"Piers (spilt by "","", empty for all)",,,,TextBox,,rmk1,,,search,,
+,outputFg,id,id,,,,Label,,id,,,,,
+,outputFg,rmk1,Remark1,,,,TextBox,,rmk1,,,,,
+,outputFg,rmk2,Remark2,,,,TextBox,,rmk2,,,,,
+,outputFg,openField,Show Detail,,,,Plugin,"iconCurrent:images/current_sbutton.gif
+iconExpand:images/expand_sbutton.gif",,,,showDetails(@id),,
+,actionBar1,saveBtt,save,,,,IconAndText,icon:images/save_button.gif,,,,save(outputFg),,
+,simpleFg,id,id,,,,Label,,id,,,,,
+,simpleFg,rmk1,Remark1,,,,TextBox,,rmk1,,,,,
+,simpleFg,fieldNmRmk2,Remark2,,,,ComboBox,"dataUrl: getRmk2
+values: {""value"": ""rmk"", ""display"": ""rmk""}",,,,,,
+,actionBar2,saveBtt1,saveDetail,,,,IconAndText,icon:images/save_button.gif,,,,saveDetail(simpleFg),,
+,actionBar2,hideDetails,hideDetails,,,,IconAndText,icon:images/cancel_button.gif,,,,hideDetail(),,
+t,headerFooterTable
+s,layoutParams
+,
+s,layoutType
+,1
+t,recordsetTable
+,clockins,*,core.db.model.DummyModel,,,,
+,details,*,core.db.model.DummyModel,,,,
+s,rmk
+,
+t,subScreenTable
+s,viewAPIRev
+,1
+s,viewDesc
+,Detail Table Demo
+s,viewID
+,DetailTableDemo
+s,viewName
+,demo.views.detailTableDemo.DetailTableDemo
+s,viewTitle
+,Detail Table Demo

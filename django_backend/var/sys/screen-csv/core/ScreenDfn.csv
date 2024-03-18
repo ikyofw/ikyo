@@ -1,6 +1,6 @@
 #,This is a comment line.
 s,apiUrl
-,
+,ScreenDfn
 s,autoRefresh
 ,
 s,editable
@@ -26,6 +26,7 @@ t,fieldGroupTable
 ,fgHeaderFooterListFg,resultTable,Table Header and Footer(s):,fgHeaderFooterRcs,,,,yes,,,,,,,,,,
 ,fgHeaderFooterDtlFg,fields,Table Header and Footer Detail:,fgHeaderFooterRc,,yes,,,,,,,,,,,,
 ,fgHeaderFooterToolbar,iconBar,,,,yes,,,,,,,,,,,,
+,dialogCopyPramsFg,fields,,,,yes,,,,,,,,,,,,
 ,dialogWidgetPramsFg,fields,,dialogWidgetPramsRc,,yes,,,,,,,,,,,,
 ,dialogHtml,html,,,,,,,,,,,,,,,,
 ,dialogAdditionalPropsFg,fields,,dialogAdditionalPropsRc,,yes,,,,,,,,,,,,
@@ -37,7 +38,8 @@ type:upload",,,,importScreen(importFg),,
 ,screenToolbar1,bttDownloadExample,Download Example,,,,IconAndText,"icon:images/download_button.gif
 type:download",,,,downloadExample,,
 ,screenToolbar1,bttSyncScreenDefinitions,Sync Screen Definitions,,,,IconAndText,icon:images/action_button.gif,,,,syncScreenDefinitions,,
-,screenToolbar1,bttCreateCSVFile,Create CSV file,,,,IconAndText,icon:images/action_button.gif,,,,createCSVFile,,
+,screenToolbar1,bttCreateCSVFile,Create CSV file,,,,IconAndText,"icon: images/action_button.gif
+type: normal",,,,createCSVFile,,
 ,screenSelectionFg,screenField,Screen:,,,,ComboBox,"dataUrl: getScreens
 values: {""value"": ""screen_sn"", ""display"": ""screen_full_sn""}
 onChange: changeScreen",value,,,,,
@@ -58,9 +60,11 @@ onChange: changeScreen",value,,,,,
 dialog: dialogBeforeDisplayEvent:checkBeforeDelete(screenDtlFg)",,,,deleteScreen(screenDtlFg),,
 ,screenToolbar2,bttDeleteLastRev,Delete Last Definition,,,,IconAndText,"icon:images/delete_button.gif
 dialog: dialogBeforeDisplayEvent:checkBeforeDeleteLast(screenDtlFg)",,,,deleteLastScreen(screenDtlFg),,
-,screenToolbar2,bttCopyScreen,Create a Copy,,,,IconAndText,icon:images/new_button.gif,,,,copyScreen,,
+,screenToolbar2,bttCopyScreen,Create a Copy,,,,IconAndText,"icon: images/new_button.gif
+dialog: dialogMessage:Set the Screen ID of the new copied page;dialogName:copyPramsDialog",,,,copyScreen,,
 ,screenToolbar2,bttExportScreen,Export Screen,,,,IconAndText,"icon:images/download_button.gif
 type:download",,,,exportScreen,,
+,recordsetListFg,rsSeq,Seq,,,,TextBox,,seq,,,,,
 ,recordsetListFg,rsNmField,Recordset Name,,,,TextBox,,recordset_nm,,,,,
 ,recordsetListFg,rsSelectField,Select Fields,default is *,,,TextBox,,sql_fields,,,,,
 ,recordsetListFg,rsModelsField,Models,,,,TextBox,,sql_models,,,,,
@@ -81,6 +85,8 @@ type:download",,,,exportScreen,,
 ,fieldGroupListFg,listFgColsField,Cols,,,,Label,,cols,,,,,
 ,fieldGroupListFg,listFgPageTypeField,Page Type,,,,Label,,data_page_type,,,,,
 ,fieldGroupListFg,listFgPageSizeField,Page Size,,,,Label,,data_page_size,,,,,
+,fieldGroupListFg,listLayoutParams,Layout Parameters,,,,Label,,outer_layout_params,,,,,
+,fieldGroupListFg,listHtml,Html,,,,Label,,html,,,,,
 ,fieldGroupListFg,listFgAdditionalPropsField,Additional Properties,,,,Label,,additional_props,,,,,
 ,fieldGroupListFg,listFgRemarkField,Remark,,,,Label,,rmk,,,,,
 ,fieldGroupListFg,Plugin,,,,,Plugin,,id,,,openFieldGroup(@id),,
@@ -115,12 +121,12 @@ dialog: dialogBeforeDisplayEvent:postPreAdditionalProps;dialogName:additionalPro
 ,fieldListFg,fEditableField,Editable,,,,CheckBox,,editable,,,,,
 ,fieldListFg,fWidgetField,Widget,,,,ComboBox,"dataUrl: getWidgets
 values: {""value"": ""widget_id"", ""display"": ""widget_nm""}",widget_id,,,,,
-,fieldListFg,fwidgetParametersField,widget parameters,,,,AdvancedSelection,"icon:images/goto_sbutton.gif
+,fieldListFg,fwidgetParametersField,Widget Parameters,,,,AdvancedSelection,"icon:images/goto_sbutton.gif
 data:[]
 dialog: dialogBeforeDisplayEvent:postRow;dialogName:widgetPramsDialog",widget_parameters,,,uploadWidgetPrams,,
 ,fieldListFg,fFieldField,Field,,,,TextBox,,db_field,,,,,
 ,fieldListFg,fFormatField,Format,,,,TextBox,,md_format,,,,,
-,fieldListFg,fvalidationField,validation,,,,TextBox,,md_validation,,,,,
+,fieldListFg,fvalidationField,Validation,,,,TextBox,,md_validation,,,,,
 ,fieldListFg,fEventHandlerField,Event Handler,,,,TextBox,,event_handler,,,,,
 ,fieldListFg,fStylesField,Styles,,,,TextBox,,styles,,,,,
 ,fieldListFg,fRemarkField,Remark,,,,TextBox,,rmk,,,,,
@@ -177,6 +183,7 @@ values: {""value"": ""id"", ""display"": ""field_nm""}",field_id,,,,,
 ,fgHeaderFooterToolbar,bttNewFgHeaderFooter,New Table Header and Footer,,,,IconAndText,icon:images/new_button.gif,,,,newFgHeaderFooter,,
 ,fgHeaderFooterToolbar,bttSaveHeaderFooter,Save Table Header and Footer,,,,IconAndText,icon:images/save_button.gif,,,,"saveFgHeaderFooter(screenDtlFg, recordsetListFg, fieldGroupDtlFg, fieldListFg, subScreenFg, fgLinkDtlFg, fgHeaderFooterDtlFg)",,
 ,fgHeaderFooterToolbar,bttDeleteHeaderFooter,Delete Table Header and Footer,,,,IconAndText,icon:images/delete_button.gif,,,,deleteFgHeaderFooter,,
+,dialogCopyPramsFg,screenSn,New Screen ID,,,,TextBox,,,,,,,
 ,dialogWidgetPramsFg,formatField1,Format,,,,TextBox,,format,,,,width: 255px;,
 ,dialogWidgetPramsFg,formatField2,Format,,,,ComboBox,dataUrl: getFormat,format,,,,width: 260px;,
 ,dialogWidgetPramsFg,stateNumField,State Number,,,,ComboBox,dataUrl: getStateNum,stateNumber,,,,width: 260px;,
@@ -204,10 +211,10 @@ t,recordsetTable
 ,fgHeaderFooterRcs,*,core.models.ScreenFgHeaderFooter,,,,
 ,fgLinkRc,*,core.models.ScreenFgLink,,,,
 ,fgLinkRcs,*,core.models.ScreenFgLink,,,,
-,fieldGroupRc,*,core.models.ScreenFieldGroup,,seq,,
+,fieldGroupRc,*,core.models.ScreenFieldGroup,,,,
 ,fieldGroupRcs,*,core.models.ScreenFieldGroup,,seq,,
 ,fieldRcs,*,core.models.ScreenField,,seq,,
-,recordsetRcs,*,core.models.ScreenRecordset,,,,
+,recordsetRcs,*,core.models.ScreenRecordset,,seq,,
 ,screenDfnRcs,*,core.models.ScreenDfn,,,,
 ,screenRc,*,core.models.Screen,,,,
 ,screenSelectRc,*,core.db.model.DummyModel,,,,
@@ -215,6 +222,7 @@ s,rmk
 ,
 t,subScreenTable
 ,additionalPropsDialog,dialogAdditionalPropsFg,
+,copyPramsDialog,dialogCopyPramsFg,
 ,Main Screen,"fgHeaderFooterDtlFg, fgHeaderFooterListFg, fgHeaderFooterToolbar, fgLinkDtlFg, fgLinkListFg, fgLinkToolbar, fgToolbar, fieldGroupDtlFg, fieldGroupListFg, fieldListFg, importFg, recordsetListFg, recordsetToolbar, screenDtlFg, screenSelectionFg, screenToolbar1, screenToolbar2, subScreenFg, subScreenToolbar",
 ,widgetPramsDialog,"dialogWidgetPramsFg, dialogHtml",
 s,viewAPIRev

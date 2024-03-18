@@ -79,6 +79,10 @@ h6 {
   vertical-align: middle;
   width: 25%;
 }
+.msg_box {
+  position: relative;
+  padding: 2px 10px
+}
 /* for Login page */
 .div_center {
   text-align: center;

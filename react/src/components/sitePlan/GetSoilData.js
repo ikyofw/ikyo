@@ -18,10 +18,7 @@ export function GetSoilData(props) {
       await HttpPost("/api/" + props.screenID + "/getSoilData", "segs=" + pts)
         .then((response) => response.json())
         .then((result) => {
-          if (result.msg && result.msg !== null) {
-            sysUtil.showMessage([result.msgType, result.msg])
-          }
-          if (result.code === 1) {
+          if (sysUtil.validateResponse(result, true)) {
             let soilDataList = result.data
             setSoilData(soilDataList)
           }
@@ -54,9 +51,5 @@ export function GetSoilData(props) {
     }
   }, [props.showSoilData])
 
-  return (
-    <div>
-      <SoilProfile soilData={soilData} ptArray={props.ptArray} colorLayerSets={props.colorLayerSets} showSoilData={props.showSoilData} />
-    </div>
-  )
+  return <SoilProfile soilData={soilData} ptArray={props.ptArray} colorLayerSets={props.colorLayerSets} showSoilData={props.showSoilData} />
 }

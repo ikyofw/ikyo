@@ -1,0 +1,42 @@
+#,This is a comment line.
+s,apiUrl
+,
+s,autoRefresh
+,
+s,editable
+,yes
+t,fieldGroupLinkTable
+t,fieldGroupTable
+,clockInFg,table,Server paging,clockins,yes,yes,yes,yes,,,server,11,,,,,,
+,actionBar,iconBar,,,,yes,,,,,,,,,,,,
+,clockInFg1,table,Client paging,clockins,yes,yes,yes,yes,,,client,5,,,,,,
+,actionBar1,iconBar,,,,yes,,,,,,,,,,,,
+t,fieldTable
+,clockInFg,id,id,,,,Label,,id,,,,,
+,clockInFg,rmk1,Remarks1,,,,TextBox,,rmk1,,,,,
+,clockInFg,rmk2,Remarks2,,,,TextBox,,rmk2,,,,,
+,actionBar,saveClockInFg,Save,,,,IconAndText,icon:images/save_button.gif,,,,save(clockInFg),,
+,clockInFg1,id,id,,,,Label,,id,,,,,
+,clockInFg1,rmk1,Remarks1,,,,TextBox,,rmk1,,,,,
+,clockInFg1,rmk2,Remarks2,,,,TextBox,,rmk2,,,,,
+,actionBar1,saveClockInFg1,Save,,,,IconAndText,icon:images/save_button.gif,,,,save(clockInFg1),,
+t,headerFooterTable
+s,layoutParams
+,
+s,layoutType
+,1
+t,recordsetTable
+,clockins,*,core.db.model.DummyModel,,,,
+s,rmk
+,
+t,subScreenTable
+s,viewAPIRev
+,1
+s,viewDesc
+,Pageable Demo
+s,viewID
+,PageableDemo
+s,viewName
+,demo.views.pageableDemo.PageableDemo
+s,viewTitle
+,Pageable Demo

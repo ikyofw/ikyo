@@ -8,18 +8,16 @@ import string
 import traceback
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
-
 import sqlparse
 from django.core.handlers.wsgi import WSGIHandler
 from django.db import connection
 from django.db.models.query import QuerySet
 from django.db.utils import DatabaseError, DataError, IntegrityError, ProgrammingError
 from django.http.response import HttpResponseBase, StreamingHttpResponse
-
 import core.core.fs as ikfs
 import core.core.http as ikhttp
-import core.models as ikModels
 import core.db.model as ikDbModels
+import core.models as ikModels
 import core.ui.ui as ikui
 import core.utils.db as dbUtils
 import core.utils.modelUtils as modelUtils
@@ -27,14 +25,13 @@ import core.utils.spreadsheet as spreadsheet
 from core.core.code import MessageType
 from core.core.exception import IkException, IkMessageException, IkValidateException
 from core.core.lang import Boolean2
-from core.view.authView import AuthAPIView
 from core.db.model import DummyModel, Model
 from core.db.transaction import IkTransaction, IkTransactionForeignKey
 from core.menu.menuManager import MenuManager
 from core.sys.accessLog import addAccessLog
 from core.utils.langUtils import isNotNullBlank, isNullBlank
+from core.view.authView import AuthAPIView
 from iktools import IkConfig
-
 
 logger = logging.getLogger('ikyo')
 
@@ -164,25 +161,32 @@ class ScreenAPIView(AuthAPIView):
                 self._functionCategory = value
             elif SCREEN_INIT_PRM_FNC_CODE == key:
                 self._functionCode = value
-
-        if isNullBlank(self._menuName):
-            queryMenuName = self.__class__.__name__.lower()
-            menuInfoDict = MenuManager.getMenuInfoByMenuName(queryMenuName)
-            if menuInfoDict is not None:
-                self._menuID = menuInfoDict['id']
-                self.setMenuName(queryMenuName)
-            else:
-                queryMenuName = self.__class__.__name__
-                menuInfoDict = MenuManager.getMenuInfoByMenuName(queryMenuName)
-                if menuInfoDict is not None:
-                    self._menuID = menuInfoDict['id']
-                    self.setMenuName(queryMenuName)
-        else:
-            self._menuID = MenuManager.getMenuId(menuName=self._menuName)
-
+        self._initMenu(**kwargs)
         if not isNullBlank(self._menuName) and (isNullBlank(self._functionCategory) or isNullBlank(self._functionCode)):
             self.__updateFunctionInfoFromMenu()
 
+    def _initMenu(self, **kwargs) -> None:
+        """Initialize variable self._menuName and self._menuID when instantiate a view class.
+        
+        Get the menu name and by class name.
+        """
+        menuName = self.getMenuName()
+        if isNullBlank(menuName):
+            screenName = self.__class__.__name__
+            menuNames = MenuManager.getMenuNamesByScreenName(screenName)
+            if len(menuNames) > 2:
+                logger.warning("Too many screen [%s] found in menu table for view class [%s]." % (screenName, self.__class__.__module__, self.__class__.__qualname__))
+            elif len(menuNames) == 0:
+                logger.warning("Screen [%s] doesn't find in menu table for view class [%s.%s]." % (screenName, self.__class__.__module__, self.__class__.__qualname__))
+            else: # find one screen
+                menuName = menuNames[0]
+                menuInfoDict = MenuManager.getMenuInfoByMenuName(menuName)
+                self._menuID = menuInfoDict['id']
+        else:
+            self._menuID = MenuManager.getMenuId(menuName=menuName)
+        self.setMenuName(menuName)
+
+    # override
     def initial(self, request, *args, **kwargs):
         super().initial(request, *args, **kwargs)
 
@@ -211,7 +215,7 @@ class ScreenAPIView(AuthAPIView):
                 code = menuInfoDict.get('cd', None)
                 self._functionCode = None if code == '' else code
 
-    def setMenuName(self, menuName) -> None:
+    def setMenuName(self, menuName: str) -> None:
         self._menuName = menuName
         self.__updateFunctionInfoFromMenu()
 
@@ -220,18 +224,41 @@ class ScreenAPIView(AuthAPIView):
 
     # YL.ikyo, 2023-06-20 get user menu acl - start
     def isACLWriteable(self) -> bool:
-        menuID = MenuManager.getMenuId(self.getMenuName())
         userID = self.getCurrentUserId()
-        groups_ids = ikModels.UserGroup.objects.filter(usr_id=userID).values_list('grp_id', flat=True)
-        acl_permissions = ikModels.GroupMenu.objects.filter(grp__in=groups_ids, menu__id=menuID).values_list('acl', flat=True)
-        return False if acl_permissions is None else 'W' in acl_permissions
+        if not userID:
+            return False
+        menuName = self.getMenuName()
+        if isNullBlank(menuName):
+            return False
+        menuID = MenuManager.getMenuId(menuName)
+        if not menuID:
+            return False
+        groupsIDs = ikModels.UserGroup.objects.filter(usr_id=userID).values_list('grp_id', flat=True)
+        if len(groupsIDs) == 0:
+            return False
+        aclPermissions = ikModels.GroupMenu.objects.filter(grp__in=groupsIDs, menu__id=menuID).values_list('acl', flat=True)
+        return False if aclPermissions is None else 'W' in aclPermissions
 
     def isACLReadOnly(self) -> bool:
-        menuID = MenuManager.getMenuId(self.getMenuName())
         userID = self.getCurrentUserId()
-        groups_ids = ikModels.UserGroup.objects.filter(usr_id=userID).values_list('grp_id', flat=True)
-        acl_permissions = ikModels.GroupMenu.objects.filter(grp__in=groups_ids, menu__id=menuID).values_list('acl', flat=True)
-        return False if acl_permissions is None else 'R' in acl_permissions
+        if not userID:
+            return False
+        menuName = self.getMenuName()
+        if isNullBlank(menuName):
+            return False
+        menuID = MenuManager.getMenuId(menuName)
+        if not menuID:
+            return False
+        groupsIDs = ikModels.UserGroup.objects.filter(usr_id=userID).values_list('grp_id', flat=True)
+        if len(groupsIDs) == 0:
+            return False
+        aclPermissions = ikModels.GroupMenu.objects.filter(grp__in=groupsIDs, menu__id=menuID).values_list('acl', flat=True)
+        return False if aclPermissions is None else 'R' in aclPermissions
+    
+    def isACLDeny(self) -> bool:
+        """User doesn't have write and read rights.
+        """
+        return not self.isACLWriteable() and not self.isACLReadOnly()
 
     # YL.ikyo, 2023-06-20 - end
 
@@ -240,7 +267,7 @@ class ScreenAPIView(AuthAPIView):
 
     def getFunctionCategory(self) -> str:
         '''
-            function category. E.g. GP/SC
+            function category. E.g. ABC, EFG
         '''
         return self._functionCategory
 
@@ -249,18 +276,17 @@ class ScreenAPIView(AuthAPIView):
 
     def getFunctionCode(self) -> str:
         '''
-            return function code. E.g. GP020. 
-            If not set, then get it from 
+            return function code. E.g. ABC999.
         '''
         return self._functionCode
 
     def getScreen(self) -> ikui.Screen:
         return self._screen
 
-    def beforeInitScreenData(self, screen) -> None:
+    def beforeInitScreenData(self, screen: ikui.Screen) -> None:
         pass
 
-    def beforeDisplayScreen(self, screen) -> None:
+    def beforeDisplayScreen(self, screen: ikui.Screen) -> None:
         pass
 
     def _getScreenResponse(self) -> ikhttp.IkSccJsonResponse:
@@ -359,7 +385,8 @@ class ScreenAPIView(AuthAPIView):
                     data.ik_set_cursor(isCursor=getattr(data, cursorInfo.dataFieldName) == cursorInfo.dataValue)
                 elif type(data) == list or isinstance(data, QuerySet):
                     for rc in data:
-                        rc.ik_set_cursor(isCursor=getattr(rc, cursorInfo.dataFieldName) == cursorInfo.dataValue)
+                        if isinstance(rc, Model):
+                            rc.ik_set_cursor(isCursor=getattr(rc, cursorInfo.dataFieldName) == cursorInfo.dataValue)
 
     def _initScreen(self) -> ikhttp.IkSccJsonResponse:
         '''
@@ -403,7 +430,7 @@ class ScreenAPIView(AuthAPIView):
             return tempate file. E.g. var/templates/ikyo/GP/GP020/xxxx-v99.xlsx
         '''
         return self.__getLastTemplateRevisionFile2(filename, rootFolder=self.getTemplateFolderName(), category=category, code=code)
-    
+
     def getTemplateFolderName(self) -> str:
         '''
             return templates/ikyo
@@ -499,7 +526,7 @@ class ScreenAPIView(AuthAPIView):
             return (clientSideFilename, uploadFile, SpreadsheetParser)
         '''
         if savePath is None:
-            savePath = self.getUploadFolder(self.request.user)
+            savePath = self.getUploadFolder(self.getCurrentUser())
         clientSideFilename, uploadFile = self.getUploadSpreadsheetFile(parameterName, savePath)
         # read spreadsheet
         sp = spreadsheet.SpreadsheetParser(uploadFile, tableNames=tableNames)
@@ -581,11 +608,11 @@ class ScreenAPIView(AuthAPIView):
                 self._screen = MenuManager.getScreen2(self.request, self, menuName=self._menuName, subScreenNm=subScreenNm)
                 self._logDuration(_getScreenStartTime, description='MenuManager.getScreen2, menuName=%s, screen=%s'
                                   % (self._menuName, None if self._screen is None else self._screen.id))
-            _getRequestDataStartTime = datetime.datetime.now()
+            #_getRequestDataStartTime = datetime.datetime.now()
             self._requestData = self._getRequestData()
             self._logDuration(_getScreenStartTime, description='_getRequestData, screen=%s' % (None if self._screen is None else self._screen.id))
             self._lastRequestData = self.getSessionParameter(PARAMETER_KEY_NAME_LAST_REQUEST_DATA, default=None)
-            action = self.getRequestAction(**kwargs)  # authorFg_EditIndexField_Click
+            action = self.getRequestAction(**kwargs)  # E.g. userFg_EditIndexField_Click
             _loggerDesc = action
             self._requestAction = action
             if not isNullBlank(action):
@@ -633,7 +660,7 @@ class ScreenAPIView(AuthAPIView):
             self._saveRequestData(additionParameterDict=additionalRequestParameters)
 
             if action != REQUEST_SYSTEM_ACTION_GET_SCREEN and action != REQUEST_SYSTEM_ACTION_LOAD_SCREEN_COMPLETED:
-                addAccessLog(self.request, menuID=self._menuID, pageName=className, actionName=action, remarks='core.%s' % httpMethod)
+                self._addAccessLog(self.request, menuID=self._menuID, pageName=className, actionName=action, remarks='%s' % httpMethod)
             if action is not None and len(action) > 0 and action[0] == '_':
                 return ikhttp.IkErrJsonResponse(message='%s process %s action:[%s]: permission deny.' % (className, httpMethod, action))
             if httpMethod == 'get' and action == REQUEST_SYSTEM_ACTION_INIT_SCREEN:
@@ -1336,6 +1363,17 @@ class ScreenAPIView(AuthAPIView):
         return data
 
     # YL.ikyo, 2023-06-06 for table pagination - end
+    def _addAccessLog(self, request, menuID: int, pageName: str, actionName: str = None, remarks: str =None) -> None:
+        """Add screen access log.
+
+        Args:
+            request: Django request.
+            menuID (int): Menu ID.
+            pageName (str): Django view class name.
+            actionName (str, optional): Action name. It should be a method name defined in django view class.
+            remarks (str, optional): Remarks.
+        """    
+        addAccessLog(request, menuID, pageName, actionName, remarks)
 
 
 def getCurrentView() -> ScreenAPIView:

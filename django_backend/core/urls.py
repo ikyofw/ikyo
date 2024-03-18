@@ -1,7 +1,7 @@
 import logging, sys
 from django.db import connection
 from django.urls import URLPattern, path, re_path
-
+from core.core.exception import IkException
 import core.utils.db as dbUtils
 import core.utils.modelUtils as modelUtils
 import core.utils.djangoUtils as ikDjangoUtils
@@ -14,6 +14,8 @@ from core.help import ScreenHelpView
 logger = logging.getLogger('ikyo')
 
 API_URLS = []
+CLASS_GET_VIEW_URL_METHOD_NAME = 'getViewUrl'
+API_SCREEN_URLS = []
 
 
 def apiUrl(url) -> str:
@@ -26,7 +28,15 @@ def apiUrl(url) -> str:
 
 def apiScreenUrl(apiViewClass, url: str = None) -> URLPattern:
     if ikDjangoUtils.isRunDjangoServer():
-        url2 = apiViewClass().getViewUrl() if url is None else url
+        url2 = url
+        if url2 is None:
+            if hasattr(apiViewClass, CLASS_GET_VIEW_URL_METHOD_NAME):
+                url2 = getattr(apiViewClass, CLASS_GET_VIEW_URL_METHOD_NAME)()
+            if isNullBlank(url2):
+                url2 = apiViewClass.__name__.lower()
+        if url2.lower() in API_SCREEN_URLS:
+            logger.warning('Duplicate screen api: %s (%s.%s)' % (url2, apiViewClass.__module__, apiViewClass.__qualname__))
+        API_SCREEN_URLS.append(url2.lower())
         url2 = apiUrl(url2 + '/<str:action>')
         return path(url2, apiViewClass.as_view())
     else:

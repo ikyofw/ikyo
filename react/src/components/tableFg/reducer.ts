@@ -60,8 +60,8 @@ const reducer = createReducer(INITIAL_STATE, (builder) => {
         if (textareaCols.indexOf(index) !== -1 && cell.value) {
           newCell.value = cell.value.trim()
         }
-        if (comboPrams['columns'].indexOf(index) !== -1 && cell.value) {
-          const comboData = comboPrams['comboData'][comboPrams['columns'].indexOf(index)]
+        if (comboPrams["columns"].indexOf(index) !== -1 && cell.value) {
+          const comboData = comboPrams["comboData"][comboPrams["columns"].indexOf(index)]
           if (comboData && comboData.data) {
             comboData.data.forEach((item) => {
               if (String(item.value) === String(cell.value)) {
@@ -77,18 +77,11 @@ const reducer = createReducer(INITIAL_STATE, (builder) => {
         if (formatPrams[index] && newCell.value) {
           const format = formatPrams[index]
           if (!isNaN(newCell.value)) {
-            // const index = format.indexOf(".")
-            // let newValue = Number(newCell.value) as any
-            // if (index !== -1) {
-            //   const digits = format.slice(index + 1).length
-            //   newValue = newValue.toFixed(Number(digits))
-            //   newValue = newValue.replace(/\B(?<!\.\d*)(?=(\d{3})+(?!\d))/g, ",")
-            // }
             newCell.comboKey = newCell.value
             newCell.value = formatNumber(newCell.value, format)
           } else {
             let newValue = newCell.value
-            newValue = dateFormat(newValue, format)
+            newValue = formatDate(newValue, format)
             newCell.value = newValue
           }
         }
@@ -119,22 +112,22 @@ const reducer = createReducer(INITIAL_STATE, (builder) => {
     const { comboPrams } = action.payload
 
     const columns = state.headerLabels.length
-    let column = Array.from({ length: columns }, () => ({ value: "" }));
+    let column = Array.from({ length: columns }, () => ({ value: "" }))
 
     column.forEach((cell, index) => {
-      if (comboPrams['columns'].indexOf(index) !== -1) {
-        const comboDataIndex = comboPrams['columns'].indexOf(index);
-        const comboData = comboPrams['comboData'][comboDataIndex];
+      if (comboPrams["columns"].indexOf(index) !== -1) {
+        const comboDataIndex = comboPrams["columns"].indexOf(index)
+        const comboData = comboPrams["comboData"][comboDataIndex]
         if (comboData && comboData.data) {
           comboData.data.forEach((item) => {
             if (item.isDefault) {
-              cell['value'] = item.display;
-              cell['comboKey'] = item.value;
+              cell["value"] = item.display
+              cell["comboKey"] = item.value
             }
-          });
+          })
         }
       }
-    });
+    })
 
     column[1] = { value: "+" }
     return {
@@ -441,7 +434,7 @@ const reducer = createReducer(INITIAL_STATE, (builder) => {
   })
   // XH 2022-05-11 start  paste in disableCols
   builder.addCase(Actions.paste, (state, action) => {
-    const { data: text , comboPrams } = action.payload
+    const { data: text, comboPrams } = action.payload
     const { active } = state
     const hasModify: boolean[] = []
     state.hasModify.forEach((i) => {
@@ -556,8 +549,8 @@ const reducer = createReducer(INITIAL_STATE, (builder) => {
       if (rows[1].value !== "") {
         rows.forEach((cell, index) => {
           let newCell = cell
-          if (comboPrams['columns'].indexOf(index) !== -1 && cell && cell.value) {
-            const comboData = comboPrams['comboData'][comboPrams['columns'].indexOf(index)]
+          if (comboPrams["columns"].indexOf(index) !== -1 && cell && cell.value) {
+            const comboData = comboPrams["comboData"][comboPrams["columns"].indexOf(index)]
             if (comboData && comboData.data) {
               comboData.data.forEach((item) => {
                 if (String(item.display) === String(cell.value)) {
@@ -939,32 +932,6 @@ export function getActive<Cell extends Types.CellBase>(state: Types.StoreState<C
   return activeCell || null
 }
 
-function dateFormat(dateString: string, targetFormat: string) {
-  const format = targetFormat.trim().toLocaleLowerCase()
-  if (format !== "yyyy-mm-dd hh:mm:ss" && format !== "yyyy-mm-dd" && format !== "hh:mm:ss") {
-    return dateString
-  }
-
-  const date = new Date(dateString)
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, "0")
-  const day = String(date.getDate()).padStart(2, "0")
-  const hours = String(date.getHours()).padStart(2, "0")
-  const minutes = String(date.getMinutes()).padStart(2, "0")
-  const seconds = String(date.getSeconds()).padStart(2, "0")
-
-  switch (format) {
-    case "yyyy-mm-dd hh:mm:ss":
-      return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
-    case "yyyy-mm-dd":
-      return `${year}-${month}-${day}`
-    case "hh:mm:ss":
-      return `${hours}:${minutes}:${seconds}`
-    default:
-      return dateString
-  }
-}
-
 function areMultiSelectValuesEqual(value1, value2) {
   // Split the strings into arrays, trim whitespace, and filter out any empty strings
   const array1 = value1
@@ -984,8 +951,48 @@ function areMultiSelectValuesEqual(value1, value2) {
   return JSON.stringify(sortedArray1) === JSON.stringify(sortedArray2)
 }
 
+export function formatData(data: string, targetFormat: string) {
+  if (data === undefined || data === '' || data === null) {
+    return data
+  }
 
-export function formatNumber(number, format) {
+  let newData = data
+  const format = targetFormat.trim().toLocaleLowerCase()
+  if (format === "yyyy-mm-dd hh:mm:ss" || format === "yyyy-mm-dd" || format === "hh:mm:ss") {
+    newData = formatDate(data, format)
+  }
+  if (format.includes("#") || format.includes("0")) {
+    newData = formatNumber(data, format)
+  }
+
+  if (newData.indexOf('NaN') !== -1) {
+    return data
+  }
+  return newData
+}
+
+export function formatDate(dateString: string, format: string) {
+  const date = new Date(dateString)
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, "0")
+  const day = String(date.getDate()).padStart(2, "0")
+  const hours = String(date.getHours()).padStart(2, "0")
+  const minutes = String(date.getMinutes()).padStart(2, "0")
+  const seconds = String(date.getSeconds()).padStart(2, "0")
+
+  switch (format.toLocaleLowerCase()) {
+    case "yyyy-mm-dd hh:mm:ss":
+      return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
+    case "yyyy-mm-dd":
+      return `${year}-${month}-${day}`
+    case "hh:mm:ss":
+      return `${hours}:${minutes}:${seconds}`
+    default:
+      return dateString
+  }
+}
+
+export function formatNumber(number: any, format: string) {
   // Handling the formatting of integer parts
   let integerShouldPadZero, decimalShouldPadZero
   let integerFormat: String = format.split(".")[0]
@@ -998,7 +1005,7 @@ export function formatNumber(number, format) {
     decimalShouldPadZero = decimalFormat.includes("0")
   } else {
     integerShouldPadZero = !integerFormat.includes("#")
-    if (integerFormat.endsWith('0')) {
+    if (integerFormat.endsWith("0")) {
       number = Number(number).toFixed(0)
     }
   }

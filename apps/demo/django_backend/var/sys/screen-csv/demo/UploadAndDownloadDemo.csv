@@ -1,0 +1,48 @@
+#,This is a comment line.
+s,apiUrl
+,
+s,autoRefresh
+,
+s,editable
+,yes
+t,fieldGroupLinkTable
+t,fieldGroupTable
+,uploadFg1,fields,Upload1,uploadRc1,,yes,,,,,,,,,,,,
+,uploadBar1,iconBar,,,,,,,,,,,,,,,,
+,uploadFg2,fields,Upload2,uploadRc2,,yes,,,,,,,,,,,,
+,uploadBar2,iconBar,,,,,,,,,,,,,,,,
+,downloadBar,iconBar,,,,,,,,,,,,,,,,
+t,fieldTable
+,uploadFg1,importFile1,Please select a file to upload.,,,,File,multiple:true,,,,,,
+,uploadBar1,importBtt1,Upload1,,,,IconAndText,"icon:images/upload_button.gif
+type:upload
+dialog:dialogMessage:testMsg;dialogBeforeDisplayEvent:getMessage",,,,uploadFile(uploadFg1),,
+,uploadFg2,importFile2,Please select a file to upload.,,,,File,multiple:true,,,,,,
+,uploadBar2,importBtt2,Upload2,,,,IconAndText,"icon:images/upload_button.gif
+type:upload",,,,uploadFile(uploadFg2),,
+,downloadBar,exportBtt1,Download1,,,,IconAndText,"icon:images/download_button.gif
+type:download
+dialog:dialogMessage:testMsg;dialogBeforeDisplayEvent:getMessage",,,,downloadFile,,
+,downloadBar,exportBtt2,Download1,,,,IconAndText,"icon:images/download_button.gif
+type:download",,,,downloadFile,,
+t,headerFooterTable
+s,layoutParams
+,
+s,layoutType
+,1
+t,recordsetTable
+,uploadRc1,*,core.db.model.DummyModel,,,,
+,uploadRc2,*,core.db.model.DummyModel,,,,
+s,rmk
+,
+t,subScreenTable
+s,viewAPIRev
+,1
+s,viewDesc
+,Upload And Download Demo
+s,viewID
+,UploadAndDownloadDemo
+s,viewName
+,demo.views.uploadAndDownloadDemo.UploadAndDownloadDemo
+s,viewTitle
+,Upload And Download Demo

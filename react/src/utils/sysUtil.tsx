@@ -1,17 +1,20 @@
 import moment from "moment"
-import React from "react"
-import cookie from "react-cookies"
-import ReactDOM from "react-dom"
 import { Tooltip } from "react-tooltip"
+import React, { useState, useEffect } from "react"
+import ReactDOM from "react-dom"
+import cookie from "react-cookies"
 import * as Loading from "../components/Loading"
 import SysMsgBox from "../components/SysMsgBox"
-import { useHttp } from "./http"
-import pyiLogger from "./log"
 import pyiLocalStorage from "./pyiLocalStorage"
+import { useHttp } from "../utils/http"
+import pyiLogger from "../utils/log"
 
 const pyiGlobal = pyiLocalStorage.globalParams
 const MENU_ACTION = pyiGlobal.COOKIE_MENU_ACTION
 const backImg = pyiGlobal.PUBLIC_URL + "images/back.png"
+const pinImg = pyiGlobal.PUBLIC_URL + "images/pin.png"
+const noPinImg = pyiGlobal.PUBLIC_URL + "images/pin_angle.png"
+const closeImg = pyiGlobal.PUBLIC_URL + "images/close1.png"
 
 const INFO_MSG = "info"
 const DEBUG_MSG = "debug"
@@ -41,7 +44,7 @@ export function saveMessage(messages: Array<Object>) {
   }
 }
 
-export function showMessage(messages: Array<Object>) {
+export function showMessage(messages: Array<Object>, hiddenTopTitleFixedBtt?: boolean) {
   clearMessage()
 
   let localSysMsgStr = pyiLocalStorage.getSysMsgs()
@@ -69,10 +72,25 @@ export function showMessage(messages: Array<Object>) {
     })
   }
   if (messageArr && messageArr.length > 0 && document.getElementById("sysMsgTitle")) {
+    // bug fix, if wci1 page no sysMsgTitle
+    var style = document.getElementById("top_screen_title").style
+    const setTopTitleFixed = () => {
+      if (style.top) {
+        style.top = ""
+        style.position = ""
+        style.zIndex = "10"
+      } else {
+        style.top = document.getElementById("top_screen").offsetHeight + "px"
+        style.position = "sticky"
+        style.zIndex = "20"
+      }
+      showMessage(messages, true)
+    }
+
     let msgComponent: any = (
-      <div style={{ padding: "2px 10px " }}>
+      <div className="msg_box">
         {messageArr.map((msgObj, index) => {
-          return msgObj["type"] && msgObj["message"] ? (
+          return (
             <SysMsgBox
               key={index}
               ref={(input) => {
@@ -87,8 +105,37 @@ export function showMessage(messages: Array<Object>) {
               editable={true}
               value={msgObj["message"]}
             />
-          ) : null
+          )
         })}
+        <a
+          href="#"
+          hidden={hiddenTopTitleFixedBtt ? !hiddenTopTitleFixedBtt : true}
+          id="sysFixedTopTitle"
+          title={style.top ? "Fix" : "Scroll"}
+          style={{ position: "absolute", top: "8px", right: "25px" }}
+        >
+          <img
+            id="sysFixScrollImg"
+            src={style.top ? pinImg : noPinImg}
+            alt="set top title fixed or unfixed"
+            onClick={() => setTopTitleFixed()}
+            style={{ verticalAlign: "top", borderStyle: "none", padding: "0 5px 0 3px" }}
+          ></img>
+        </a>
+        <a
+          href="#"
+          id="sysClearMsg"
+          title="Clear Message"
+          style={{ position: "absolute", top: "8px", right: "5px" }}
+        >
+          <img
+            id="sysClearMsgImg"
+            src={closeImg}
+            alt="set top title fixed or unfixed"
+            onClick={() => clearMessage()}
+            style={{ verticalAlign: "top", borderStyle: "none", padding: "0 5px 0 3px" }}
+          ></img>
+        </a>
       </div>
     )
     document.body.scrollTop = 0
@@ -299,7 +346,7 @@ export function getDateFormatStr(format: number | string) {
 
 export function formatDate(dateStr: string, format: string) {
   if (!dateStr) {
-    return ''
+    return ""
   }
   if (format === timeStringFormat) {
     return verifyIsTime(dateStr) ? dateStr : ""

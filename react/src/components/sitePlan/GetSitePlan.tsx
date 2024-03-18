@@ -9,6 +9,7 @@ import cookie from "react-cookies"
 import pyiLogger from "../../utils/log"
 
 const pyiGlobal = pyiLocalStorage.globalParams
+const DEFAULT_LAYER_COLOR = '#FFFFFF'
 
 interface GetSitePlanProps {
   params: any
@@ -47,44 +48,42 @@ const GetSitePlan: React.FC<GetSitePlanProps> = (props) => {
 
       let GetHoleData: any
       let GetPierData: any
-      let GetLayerNames: any
+      let GetLayerNames: string[] = [];
+      let GetLayerColorSets: any[] = [];
       await HttpGet("/api/" + props.screenID + "/getBoreholeData")
         .then((response) => response.json())
         .then((result) => {
-          if (result.code !== 1) {
-            if (result.messages && result.messages !== null) {
-              sysUtil.showMessage(result.messages)
-            } else {
-              pyiLogger.error("unknown error. code=" + result.code, true)
-            }
-          } else {
+          if (sysUtil.validateResponse(result, true)) {
             GetHoleData = result.data
           }
         })
       await HttpGet("/api/" + props.screenID + "/getPilecapData")
         .then((response) => response.json())
         .then((result) => {
-          if (result.code !== 1) {
-            if (result.messages && result.messages !== null) {
-              sysUtil.showMessage(result.messages)
-            } else {
-              pyiLogger.error("unknown error. code=" + result.code, true)
-            }
-          } else {
+          if (sysUtil.validateResponse(result, true)) {
             GetPierData = result.data
           }
         })
       await HttpGet("/api/" + props.screenID + "/getLayerNames")
         .then((response) => response.json())
         .then((result) => {
-          if (result.code !== 1) {
-            if (result.messages && result.messages !== null) {
-              sysUtil.showMessage(result.messages)
-            } else {
-              pyiLogger.error("unknown error. code=" + result.code, true)
-            }
-          } else {
-            GetLayerNames = result.data
+          if (sysUtil.validateResponse(result, true)) {
+            result.data.map((item) => {
+              if (Array.isArray(item)) {
+                GetLayerNames.push(item[0])
+                if (item.length === 2) {
+                  let ls = {nm:item[0], color: item[1]}
+                  GetLayerColorSets.push(ls)
+                } else {
+                  let ls = {nm:item, color: DEFAULT_LAYER_COLOR}
+                  GetLayerColorSets.push(ls)
+                }
+              } else {
+                GetLayerNames.push(item)
+                let ls = {nm:item, color: DEFAULT_LAYER_COLOR}
+                GetLayerColorSets.push(ls)
+              }
+            })
           }
         })
 
@@ -118,7 +117,7 @@ const GetSitePlan: React.FC<GetSitePlanProps> = (props) => {
       maxX = minX + maxlength
       maxY = minY + maxlength
 
-      setScatterData({ GetHoleData, GetPierData, minX, minY, maxX, maxY, GetLayerNames })
+      setScatterData({ GetHoleData, GetPierData, minX, minY, maxX, maxY, GetLayerNames, GetLayerColorSets })
     } catch (error) {
       pyiLogger.error("Load page error: " + error, true)
       sysUtil.showErrorMessage("Load data error: " + error)

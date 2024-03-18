@@ -64,31 +64,21 @@ class _MenuManager():
             logger.error("Menu ID[%s] does not exist." % menuID)
             return ACL_DENY
 
-    def getUserMenuByMenuName(self, menuName) -> dict:
-        '''
-            return None if not found else return ik_menu record
-        '''
+    def getMenuInfoByMenuName(self, menuName) -> dict:
+        sql = 'SELECT * FROM ik_menu WHERE menu_nm ILIKE ' + dbUtils.toSqlField(menuName)
         menus = None
         with connection.cursor() as cursor:
-            cursor.execute('SELECT * FROM ik_menu WHERE menu_nm=' + dbUtils.toSqlField(menuName))
+            cursor.execute(sql)
             menus = dbUtils.dictfetchall(cursor)
         return menus[0] if not dbUtils.isEmpty(menus) else None
 
-    def getMenuInfoByMenuName(self, menuName) -> dict:
-        sql = 'SELECT * FROM ik_menu WHERE menu_nm=' + dbUtils.toSqlField(menuName)
-        rs = None
-        with connection.cursor() as cursor:
-            cursor.execute(sql)
-            rs = dbUtils.dictfetchall(cursor)
-        return rs[0] if not dbUtils.isEmpty(rs) else None
-
-    def getUserPermission(self, usrId, menuId) -> str:
-        return True  # TODO:
+    # def getUserPermission(self, usrId, menuId) -> str:
+    #     return True  # TODO:
 
     def getMenuId(self, menuName) -> int:
         menuRcs = None
         with connection.cursor() as cursor:
-            cursor.execute('SELECT id FROM ik_menu WHERE menu_nm=' + dbUtils.toSqlField(menuName))
+            cursor.execute('SELECT id FROM ik_menu WHERE menu_nm ILIKE ' + dbUtils.toSqlField(menuName))
             menuRcs = cursor.fetchall()
         if menuRcs is None or len(menuRcs) == 0:
             raise IkValidateException('Menu [%s] is not found.' % str(menuName))
@@ -117,7 +107,7 @@ class _MenuManager():
 
     def getParentMenuByMenuNm(self, menuName: str):
         parentMenuRc = None
-        menuRc = ikModels.Menu.objects.filter(menu_nm=menuName).first()
+        menuRc = ikModels.Menu.objects.filter(menu_nm__iexact=menuName).first()
         if isNotNullBlank(menuRc):
             parentMenuID = menuRc.parent_menu_id
             parentMenuRc = ikModels.Menu.objects.filter(id=parentMenuID).first()
@@ -134,7 +124,7 @@ class _MenuManager():
     def getParentMenuIdByMenuNm(self, menuName: str) -> int:
         menuRcs = None
         with connection.cursor() as cursor:
-            cursor.execute('SELECT parent_menu_id FROM ik_menu WHERE menu_nm=' + dbUtils.toSqlField(menuName))
+            cursor.execute('SELECT parent_menu_id FROM ik_menu WHERE menu_nm ILIKE ' + dbUtils.toSqlField(menuName))
             menuRcs = cursor.fetchall()
         if menuRcs is None or len(menuRcs) == 0:
             raise IkValidateException('Menu [%s] is not found.' % str(menuName))
@@ -208,6 +198,11 @@ class _MenuManager():
         if parentMenuId is None:
             usrMenuQs = usrMenuQs.filter(parent_menu_id__isnull=True)
         return usrMenuQs.order_by("order_no")
+    
+    def getMenuNamesByScreenName(self, screenName: str) -> list[str]:
+        """Get menu names by screen name.
+        """
+        return [r[0] for r in ikModels.Menu.objects.filter(screen_nm=screenName).order_by('id').values_list('menu_nm')]
 
     def getMenuIdByScreenName(self, screenName) -> int:
         menuRcs = None
@@ -215,7 +210,8 @@ class _MenuManager():
             cursor.execute('SELECT id FROM ik_menu WHERE screen_nm=' + dbUtils.toSqlField(screenName))
             menuRcs = cursor.fetchall()
         if dbUtils.isEmpty(menuRcs):
-            raise IkValidateException('Screen [%s] is not found.' % str(screenName))
+            logger.error('Screen [%s] is not found in ik_menu table.' % screenName)
+            raise IkValidateException('Screen [%s] is not found.' % screenName)
         menuId = menuRcs[0][0]
         if len(menuRcs) > 1:
             logger.debug('Too many manus found for screen [%s], please check. System use the first menu(%s) instead.' % (screenName, menuId))
@@ -235,7 +231,7 @@ class _MenuManager():
             if menuID is None:
                 raise IkValidateException('Screen menu [%s] is not found.' % screenName)
         else:
-            menuInfo = self.getUserMenuByMenuName(menuName)
+            menuInfo = self.getMenuInfoByMenuName(menuName)
             if menuInfo is None:
                 raise IkValidateException('Menu [%s] is not found.' % menuName)
             menuID = menuInfo['id']
@@ -337,14 +333,12 @@ class _MenuManager():
     def getFirstValidSubMenu(self, usrID: int, menuID: int):
         subMenus1 = self.getUserMenus(usrID, menuID)
         for i in subMenus1:
-            if isNotNullBlank(i.screen_nm):
-                return i.screen_nm
-
-        for i in subMenus1:
             subMenus2 = self.getUserMenus(usrID, i.id)
             for j in subMenus2:
                 if isNotNullBlank(j.screen_nm):
                     return j.screen_nm
+            if isNotNullBlank(i.screen_nm):
+                return i.screen_nm
         
         menuRc = ikModels.Menu.objects.filter(id=menuID).first()
         if isNotNullBlank(menuRc):

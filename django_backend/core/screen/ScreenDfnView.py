@@ -24,8 +24,6 @@ from core.view.screenView import ScreenAPIView
 
 logger = logging.getLogger('pyi')
 
-NO_PARAMETERS_WIDGET = [ikui.SCREEN_FIELD_WIDGET_TEXT_AREA, ikui.SCREEN_FIELD_WIDGET_PLUGIN, ikui.SCREEN_FIELD_WIDGET_HTML, ikui.SCREEN_FIELD_WIDGET_PASSWORD]
-
 
 class ScreenDfnView(ScreenAPIView):
 
@@ -33,6 +31,8 @@ class ScreenDfnView(ScreenAPIView):
         super().__init__()
 
         def beforeDisplayAdapter(screen):
+            if screen.subScreenName == 'copyPramsDialog':
+                return
             if screen.subScreenName == 'widgetPramsDialog':
                 widgetNm = self.getSessionParameter('widgetNm')
                 screen.setFieldsVisible(fieldGroupName='dialogWidgetPramsFg',
@@ -41,9 +41,13 @@ class ScreenDfnView(ScreenAPIView):
                                             'onChangeField', 'dialogField', 'iconField', 'typeField'
                                         ],
                                         visible=False)
-                if widgetNm in NO_PARAMETERS_WIDGET:
+                if widgetNm in ScreenDfnManager.NO_PARAMETERS_WIDGET:
                     screen.setFieldGroupsVisible(fieldGroupNames=['dialogWidgetPramsFg'], visible=False)
-                elif widgetNm == ikui.SCREEN_FIELD_WIDGET_LABEL or widgetNm == ikui.SCREEN_FIELD_WIDGET_TEXT_BOX:
+                elif widgetNm == ikui.SCREEN_FIELD_WIDGET_LABEL:
+                    screen.setFieldsVisible(fieldGroupName='dialogWidgetPramsFg',
+                                            fieldNames=['formatField1', 'dataField', 'recordsetField', 'dataUrlField', 'valuesField'],
+                                            visible=True)
+                elif widgetNm == ikui.SCREEN_FIELD_WIDGET_TEXT_BOX:
                     screen.setFieldsVisible(fieldGroupName='dialogWidgetPramsFg', fieldNames=['formatField1'], visible=True)
                 elif widgetNm == ikui.SCREEN_FIELD_WIDGET_DATE_BOX:
                     screen.setFieldsVisible(fieldGroupName='dialogWidgetPramsFg', fieldNames=['formatField2'], visible=True)
@@ -124,7 +128,10 @@ class ScreenDfnView(ScreenAPIView):
         ImportScreen = self.getRequestData().getFile('ImportScreen')
         if ImportScreen is None:
             return IkErrJsonResponse(message="Please select a file to upload.")
-        return ikuidb.updateDatabaseWithImportExcel(ImportScreen, self.getCurrentUserId())
+        b = ikuidb.updateDatabaseWithImportExcel(ImportScreen, self.getCurrentUserId())
+        if b.value:
+            self.deleteSessionParameters(nameFilters=['isNewScreen', 'screenSN', 'isNewFg', 'currentFgID', 'isNewFgLink', 'currentFgLinkID', 'isNewFgHeaderFooter', 'currentFgHeaderFooterID'])
+        return b.toIkJsonResponse1()
 
     def downloadExample(self):
         exampleFileFolder = ikui.IkUI.getScreenFileExampleFolder()
@@ -138,7 +145,10 @@ class ScreenDfnView(ScreenAPIView):
         return ikuidb.syncScreenDefinitions(self.getCurrentUserId())
 
     def createCSVFile(self):
-        return ikuidb.createCSVFileWithDatabase()
+        b = ikuidb.createCSVFileWithDatabase()
+        if not b.value:
+            return b.toIkJsonResponse1()
+        return IkSccJsonResponse(message="Successfully created csv files for all pages.")
 
         # get all screens combobox
     def getScreens(self):
@@ -245,7 +255,14 @@ class ScreenDfnView(ScreenAPIView):
         screenSn = self.getSessionParameter("screenSN")
         if strUtils.isEmpty(screenSn):
             return IkErrJsonResponse(message="Please select a Screen first.")
-        boo = ScreenDfnManager.copyScreen(self, userID, screenSn)
+        dialogCopyPramsFg = self.getRequestData().get('dialogCopyPramsFg', None)
+        if isNullBlank(dialogCopyPramsFg) or isNullBlank(dialogCopyPramsFg['screenSn']):
+            return IkErrJsonResponse(message="Please set the Screen ID of new page.")
+        newScreenSn = dialogCopyPramsFg['screenSn']
+        screenRcs = Screen.objects.filter(screen_sn__iexact=newScreenSn)
+        if len(screenRcs) > 0:
+            return IkErrJsonResponse(message="This Screen ID [%s] already exists, please re-enter." % screenSn)
+        boo = ScreenDfnManager.copyScreen(self, userID, screenSn, newScreenSn)
         return boo.toIkJsonResponse1()
 
     def exportScreen(self):
@@ -256,20 +273,10 @@ class ScreenDfnView(ScreenAPIView):
         if isNullBlank(screenSn):
             return Boolean2(False, 'Not yet saved, please save and then export.')
         screenRc = Screen.objects.filter(screen_sn__iexact=screenSn).order_by('-rev').first()
-        if screenRc is None:
-            return Boolean2(False, 'Screen does not exist. Please check. SN=[%s]' % screenSn)
-        templateFileFolder = ikui.IkUI.getScreenFileTemplateFolder()
-        templateFile = ikfs.getLastRevisionFile(templateFileFolder, 'template.xlsx')
-        if isNullBlank(templateFile):
-            raise IkException("Template file does not exist in folder [%s]." % templateFileFolder.absolute())
-        exportFolder = ikfs.getVarTempFolder(subPath='sys/%s/export' % self.getMenuName())
-        filename = '%s.xlsx' % screenSn
-        outputFile = os.path.join(exportFolder, filename)
-
-        b = ikuidb.screenDbWriteToExcel(screenRc, templateFile, outputFile)
+        b = ikuidb.screenDbWriteToExcel(screenRc)
         if not b.value:
             return b
-        return self.downloadFile(outputFile)
+        return self.downloadFile(b.data)
 
     # end of exportScreen()
 
@@ -277,12 +284,17 @@ class ScreenDfnView(ScreenAPIView):
 
     # Recordset
     def getRecordsetRcs(self):
-        data = []
+        recordsetRcs = []
         screenSn = self.getSessionParameter("screenSN")
         if not strUtils.isEmpty(screenSn):
             screenRc = Screen.objects.filter(screen_sn__iexact=screenSn).order_by("-rev").first()
-            data = ScreenRecordset.objects.filter(screen=screenRc)
-        return data
+            recordsetRcs = list(ScreenRecordset.objects.filter(screen=screenRc))
+            recordsetRcs.sort(key=lambda obj: (obj.seq, obj.recordset_nm)) # sort fields
+            seq1 = 1
+            for recordsetRc in recordsetRcs:
+                recordsetRc.seq = seq1
+                seq1 += 1
+        return recordsetRcs
 
     # # check delete status records was be used.
     # def checkRecordsetIsRelated(self):
@@ -549,7 +561,7 @@ class ScreenDfnView(ScreenAPIView):
     def getFgLinkRc(self):
         fgLinkId = self.getSessionParameterInt("currentFgLinkID")
         isNewFgLink = self.getSessionParameterBool("isNewFgLink")
-        data = None
+        data = {}
         if fgLinkId and not isNewFgLink:
             data = ScreenFgLink.objects.filter(id=fgLinkId).first()
         return IkSccJsonResponse(data=data)
@@ -581,7 +593,7 @@ class ScreenDfnView(ScreenAPIView):
             return IkErrJsonResponse(message="Please select a Screen first.")
         screenRc = Screen.objects.filter(screen_sn__iexact=screenSn).order_by("-rev").first()
         fgLinkDtlFg = self.getRequestData().get("fgLinkDtlFg")
-        fgId = fgLinkDtlFg.field_group_id
+        fgId = fgLinkDtlFg['field_group_id']
         # parent field groups
         pFgQuerySet = ScreenFieldGroup.objects.filter(screen=screenRc).exclude(recordset=None).exclude(recordset__sql_models__icontains="DummyModel").exclude(
             id=fgId).order_by("seq")
@@ -597,7 +609,7 @@ class ScreenDfnView(ScreenAPIView):
             return IkErrJsonResponse(message="Please select a Screen first.")
         screenRc = Screen.objects.filter(screen_sn__iexact=screenSn).order_by("-rev").first()
         fgLinkDtlFg = self.getRequestData().get("fgLinkDtlFg")
-        fgId = fgLinkDtlFg.parent_field_group_id
+        fgId = fgLinkDtlFg['parent_field_group_id']
         dbKeyData = ScreenDfnManager.getFieldDBKeys(screenRc, ScreenFieldGroup.objects.filter(id=fgId).first())
         return self._returnComboboxQueryResult(fgName='fgLinkDtlFg', fgData=None, resultDict={'dtlFgLinkParentKeyField': dbKeyData})
 
@@ -805,9 +817,9 @@ class ScreenDfnView(ScreenAPIView):
             widgetPrams = {'stateNumber': '2'}
         elif widgetNm == ikui.SCREEN_FIELD_WIDGET_ICON_AND_TEXT and 'type' not in widgetPrams:
             widgetPrams['type'] = 'normal'
-        elif widgetNm in ikui.SCREEN_FIELD_SELECT_WIDGETS and 'values' not in widgetPrams:
+        elif (widgetNm in ikui.SCREEN_FIELD_SELECT_WIDGETS or widgetNm == ikui.SCREEN_FIELD_WIDGET_LABEL) and 'values' not in widgetPrams:
             widgetPrams['values'] = '{"value": "value", "display": "display"}'
-        elif widgetNm in ikui.SCREEN_FIELD_SELECT_WIDGETS and 'recordset' in widgetPrams:
+        elif (widgetNm in ikui.SCREEN_FIELD_SELECT_WIDGETS or widgetNm == ikui.SCREEN_FIELD_WIDGET_LABEL) and 'recordset' in widgetPrams:
             screenSn = self.getSessionParameter("screenSN")
             screenRc = Screen.objects.filter(screen_sn__iexact=screenSn).order_by("-rev").first()
             recordsetRc = ScreenRecordset.objects.filter(screen=screenRc, recordset_nm=widgetPrams['recordset']).first()
@@ -818,7 +830,7 @@ class ScreenDfnView(ScreenAPIView):
     def getHtmlDialogHtml(self):
         widgetNm = self.getSessionParameter('widgetNm')
         html = ''
-        if isNotNullBlank(widgetNm) and widgetNm not in NO_PARAMETERS_WIDGET:
+        if isNotNullBlank(widgetNm) and widgetNm not in ScreenDfnManager.NO_PARAMETERS_WIDGET:
             html = '<div style="color: gray; font-size: 12px; font-style: italic; padding-top: 5px;"> See the wiki for detailed parameterization rules: https://pyiwiki.ddns.net/index.php/Widget_Parameters </div>'
         return IkSccJsonResponse(data=html)
 
@@ -836,7 +848,7 @@ class ScreenDfnView(ScreenAPIView):
             widgetRc = ScreenFieldWidget.objects.filter(id=widgetID).first()
             if isNotNullBlank(widgetRc):
                 self.setSessionParameters({'widgetNm': widgetRc.widget_nm})
-                if widgetRc.widget_nm in NO_PARAMETERS_WIDGET:
+                if widgetRc.widget_nm in ScreenDfnManager.NO_PARAMETERS_WIDGET:
                     message = 'This widget does not require parameters.'
         return ikui.DialogMessage.getSuccessResponse(message=message)
 
@@ -864,7 +876,7 @@ class ScreenDfnView(ScreenAPIView):
     def uploadWidgetPrams(self):
         resData = self.getRequestData()
         widgetPrams = resData.get('dialogWidgetPramsFg', '')
-        data = ''
+        data = {'value': '', 'display': ''}
         if isNotNullBlank(widgetPrams):
             cleanedDict = {k: v for k, v in widgetPrams.items() if isNotNullBlank(v) and (k != 'multiple' or v != 'false')}
             if 'recordset' in cleanedDict and isNotNullBlank(cleanedDict['recordset']):

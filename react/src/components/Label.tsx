@@ -1,5 +1,5 @@
 import React, { forwardRef, Ref } from "react"
-import { formatDate, getDateFormatStr } from "../utils/sysUtil"
+import { formatData } from "./tableFg/reducer"
 
 interface ILabel {
   ref: any
@@ -12,12 +12,57 @@ interface ILabel {
 const Label: React.FC<ILabel> = forwardRef((props, ref: Ref<any>) => {
   const [tooltip, setTooltip] = React.useState(String)
   const [value, setValue] = React.useState(props.labelValue)
+  const [display, setDisplay] = React.useState("")
 
   React.useEffect(() => {
-    if (props.labelValue || props.labelValue === 0 || props.labelValue === false || props.labelValue === '') {
+    const data = props.widgetParameter.data
+    if (data) {
+      let values = props.widgetParameter.values
+      if (values) {
+        values = values.replace(/'/g, '"')
+        values = JSON.parse(values)
+      } else {
+        values = { value: "value", display: "display" }
+      }
+      
+      let options = []
+      if (typeof data === "string") {
+        options = JSON.parse(data)
+      } else if (Array.isArray(data)) {
+        if (typeof data[0] !== "object") {
+          data.forEach((option) => {
+            options.push({ value: String(option), display: String(option) })
+          })
+        } else {
+          if ("value" in data[0] && "display" in data[0]) {
+            options = data
+          } else {
+            data.forEach((option) => {
+              options.push({ value: option[values.value], display: option[values.display] })
+            })
+          }
+        }
+      }
+
+      let changeFlag = false
+      options.map((item) => {
+        if (item['value'] === props.labelValue) {
+          changeFlag = true
+          setValue(item['value'])
+          if (props.widgetParameter["format"]) {
+            setDisplay(formatData(item['display'], props.widgetParameter["format"]))
+          } else {
+            setDisplay(item['display'])
+          }
+        }
+      })
+      if (!changeFlag) {
+        setValue('')
+        setDisplay('')
+      }
+    } else {
       if (props.widgetParameter["format"]) {
-        let format = getDateFormatStr(props.widgetParameter["format"])
-        setValue(formatDate(props.labelValue, format))
+        setValue(formatData(props.labelValue, props.widgetParameter["format"]))
       } else {
         setValue(props.labelValue)
       }
@@ -41,7 +86,7 @@ const Label: React.FC<ILabel> = forwardRef((props, ref: Ref<any>) => {
       <th className="property_key">{props.labelLabel}</th>
       <td className="property_value tip_center">
         <input ref={ref} type="hidden" name={props.name} id={props.name} value={value}></input>
-        {value}
+        {display ? display : value}
         {tooltip ? <span className="tip">{tooltip}</span> : null}
       </td>
     </>

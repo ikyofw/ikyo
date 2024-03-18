@@ -1,0 +1,57 @@
+#,This is a comment line.
+s,apiUrl
+,
+s,autoRefresh
+,
+s,editable
+,yes
+t,fieldGroupLinkTable
+t,fieldGroupTable
+,simpleFg,fields,SimpleFg,simpleFg,,yes,,,,,,,,,,,,
+,actionBar1,iconBar,,,,yes,,,,,,,,,,,,
+,showFg,table,Show,showFg,,,,yes,,,,,,,,,,
+,dialogFg,fields,,,,yes,,,,,,,,,,,,
+t,fieldTable
+,simpleFg,schTextbox,Text Box,,,,TextBox,,schTextbox,,,,,
+,simpleFg,schCombobox,Combo Box,,,,ComboBox,"dataUrl: getCombo
+values: {""value"": ""nm"", ""display"": ""nm""}",schCombobox1,,,,,
+,simpleFg,schAdvancedComboBox,Advanced ComboBox,,,,AdvancedComboBox,"dataUrl: getCombo
+values: {""value"": ""nm"", ""display"": ""nm""}",schCombobox2,,,,,
+,simpleFg,schCheckbox1,Check Box (3 options),,,,CheckBox,,schCheckbox1,,,,,
+,simpleFg,schCheckbox2,Check Box (2 options),,,,CheckBox,stateNumber: 2,schCheckbox2,,,,,
+,simpleFg,schDatebox,Date Box,,,,DateBox,format: yyyy-MM-dd,schDatebox,,,,,
+,simpleFg,schPassword,Password,,,,Password,,schPassword,,,,,
+,simpleFg,schAdvancedSelection,Advanced Selection,,,,AdvancedSelection,"icon:images/goto_sbutton.gif
+dataUrl: getCombo2
+values: {""value"": ""id"", ""display"": ""nm""}
+dialog: dialogBeforeDisplayEvent:getMsg;dialogName:dialog2",schAdvancedSelection,,,updateSelect(simpleFg),,
+,actionBar1,submit,Submit,,,,IconAndText,icon:images/action_button.gif,,,,submit(simpleFg),,
+,actionBar1,clear,Clear Query Condition,,,,IconAndText,icon:images/action_button.gif,,,,clearSearchFg,,
+,showFg,text,Text Box,,,,Label,,schTextbox,,,,,
+,showFg,combo,Combo Box,,,,Label,,schCombobox,,,,,
+,showFg,check,Check Box,,,,Label,,schCheckbox,,,,,
+,showFg,date,Date Box,,,,Label,,schDatebox,,,,,
+,dialogFg,rmk,Input,,,,TextBox,,rmk,,,,,
+t,headerFooterTable
+s,layoutParams
+,
+s,layoutType
+,1
+t,recordsetTable
+,showFg,*,core.db.model.DummyModel,,,,
+,simpleFg,*,core.db.model.DummyModel,,,,
+s,rmk
+,
+t,subScreenTable
+,dialog2,dialogFg,
+,Main Screen,"actionBar1, showFg, simpleFg",
+s,viewAPIRev
+,1
+s,viewDesc
+,SimpleFg Demo
+s,viewID
+,SimpleFgDemo
+s,viewName
+,demo.views.simpleFgDemo.SimpleFgDemo
+s,viewTitle
+,SimpleFg Demo

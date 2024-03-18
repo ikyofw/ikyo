@@ -1,0 +1,37 @@
+#,This is a comment line.
+s,apiUrl
+,
+s,autoRefresh
+,
+s,editable
+,yes
+t,fieldGroupLinkTable
+t,fieldGroupTable
+,clockInFg,table,Monthly Attendance,clockins,yes,yes,yes,yes,,,,,,,,,,
+,actionBar,iconBar,,,,yes,,,,,,,,,,,,
+t,fieldTable
+,clockInFg,id,id,,,,Label,,id,,,,,
+,clockInFg,rmk1,Remarks1,,,,TextBox,,rmk1,,,,background-color: red; text-align: left,
+,clockInFg,color,3 options,,,,CheckBox,stateNumber:3,color,,,,,
+,clockInFg,default,2 options,,,,CheckBox,,default,,,,,
+,actionBar,saveClockInFg,Save,,,,IconAndText,icon:images/save_button.gif,,,,save(clockInFg),,
+t,headerFooterTable
+s,layoutParams
+,
+s,layoutType
+,1
+t,recordsetTable
+,clockins,*,core.db.model.DummyModel,,,,
+s,rmk
+,
+t,subScreenTable
+s,viewAPIRev
+,1
+s,viewDesc
+,Check Box Demo
+s,viewID
+,CheckBoxDemo
+s,viewName
+,demo.views.checkBoxDemo.CheckBoxDemo
+s,viewTitle
+,Check Box Demo

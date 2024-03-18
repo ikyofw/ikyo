@@ -94,8 +94,8 @@ class AccessLog(IDModel):
     session_id = models.CharField(max_length=38, blank=True, null=True, verbose_name='Session ID')
     request_url = models.TextField(blank=True, null=True, verbose_name='Request URL')
     ip = models.CharField(max_length=40, blank=True, null=True, verbose_name='IP')
-    usr = models.ForeignKey(User, models.CASCADE, verbose_name='User')
-    menu = models.ForeignKey(Menu, models.CASCADE, verbose_name='Menu')
+    usr_id = models.IntegerField(blank=True, null=True, verbose_name='User ID')
+    menu_id = models.IntegerField(blank=True, null=True, verbose_name='Menu ID')
     page_nm = models.CharField(max_length=100, blank=True, null=True, verbose_name='Page')
     action_nm = models.CharField(max_length=100, blank=True, null=True, verbose_name='Action')
     rmk = models.CharField(max_length=255, blank=True, null=True, verbose_name='Remarks')
@@ -164,6 +164,7 @@ class Screen(IDModel):
 class ScreenRecordset(IDModel):
     screen = models.ForeignKey(Screen, models.CASCADE, verbose_name="Screen")
     recordset_nm = models.CharField(max_length=50, verbose_name='Recordset Name')
+    seq = models.FloatField(blank=True, null=True, default=0, verbose_name='Sequence')
     sql_fields = models.CharField(blank=True, null=True, max_length=255, verbose_name='Recordset SQL - Select Fields')
     sql_models = models.CharField(max_length=255, verbose_name='Recordset SQL - From Model')
     sql_where = models.CharField(max_length=255, blank=True, null=True, verbose_name='Recordset SQL - Where')

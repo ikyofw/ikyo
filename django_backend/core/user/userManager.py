@@ -1,13 +1,12 @@
 '''
     User Manager
 '''
-from django.db import connection
-
 import core.utils.db as dbUtils
 from core.core.exception import IkException
 from core.core.mailer import EmailAddress
 from core.models import User
 from core.view.authView import getCurrentView
+from django.db import connection
 
 ADMINISTRATOR_USER_ID = -2
 '''
@@ -83,32 +82,6 @@ def getUserEmailAddresses(userIDs) -> list:
             for r in rs:
                 emails.append(EmailAddress(r['email'], r['usr_nm']))
     return emails
-
-
-def getLastCoDt(userID) -> str:
-    rs = None
-    with connection.cursor() as cursor:
-        cursor.execute("SELECT last_co_dt FROM ik_usr WHERE id=" + str(userID))
-        rs = dbUtils.dictfetchall(cursor)
-        if not dbUtils.isEmpty(rs):
-            return rs[0]['last_co_dt']
-    return None
-
-
-def getIkUserByDbField(userID, dbField):
-    '''ik_usr'''
-    rs = None
-    with connection.cursor() as cursor:
-        cursor.execute("SELECT %s FROM ik_usr WHERE id=%s" % (dbField, userID))
-        rs = dbUtils.dictfetchall(cursor)
-    return None if dbUtils.isEmpty(rs) else rs[0][dbField]
-
-
-def getUserDefaultOffice(usrId) -> str | None:
-    with connection.cursor() as cursor:
-        cursor.execute('SELECT office FROM ik_usr WHERE id=%s' % usrId)
-        rs = dbUtils.dictfetchall(cursor)
-    return None if dbUtils.isEmpty(rs) else rs[0]['office']
 
 
 def getCurrentUser() -> User:

@@ -1,0 +1,38 @@
+#,This is a comment line.
+s,apiUrl
+,
+s,autoRefresh
+,
+s,editable
+,yes
+t,fieldGroupLinkTable
+t,fieldGroupTable
+,tableHtml,table,Table Button Column test,buttonBoxFg,yes,yes,yes,yes,,,,,,,,,,
+,actionBar,iconBar,,,,yes,,,,,,,,,,,,
+t,fieldTable
+,tableHtml,id,id,,,,Label,,id,,,,,
+,tableHtml,rmk0,Remark 0,,,,TextBox,,rmk0,,,,,
+,tableHtml,rmk1,Remark 1,,,,TextBox,,rmk1,,,,,
+,tableHtml,rmk2,Remark 2,,,,TextBox,,rmk2,,,,,
+,tableHtml,Button,Button,,,,Button,"icon: {""true"": ""images/icon_star.gif"", ""false"": ""images/icon_nostar.gif""}",enable,,,buttonClick(*),,
+,actionBar,refresh,Refresh,,,,IconAndText,icon:images/refresh_button.gif,,,,refresh,,
+t,headerFooterTable
+s,layoutParams
+,
+s,layoutType
+,1
+t,recordsetTable
+,buttonBoxFg,*,core.db.model.DummyModel,,,,
+s,rmk
+,
+t,subScreenTable
+s,viewAPIRev
+,1
+s,viewDesc
+,Button Box Demo
+s,viewID
+,ButtonBoxDemo
+s,viewName
+,demo.views.buttonBoxDemo.ButtonBoxDemo
+s,viewTitle
+,Button Box Demo

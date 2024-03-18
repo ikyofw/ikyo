@@ -8,6 +8,9 @@ from datetime import datetime
 from pathlib import Path
 from threading import Lock
 
+from django.db import models
+from django.db.models.query import QuerySet
+
 import core.core.http as ikhttp
 import core.db.model as ikDbModels
 import core.models as ikModels
@@ -17,8 +20,6 @@ import core.utils.djangoUtils as ikDjangoUtils
 from core.core.exception import IkValidateException
 from core.utils.langUtils import convertStr2Json, isNotNullBlank, isNullBlank
 from core.models import ScreenFgType, ScreenFieldWidget
-from django.db import models
-from django.db.models.query import QuerySet
 from iktools import IkConfig
 
 from django_backend.settings import BASE_DIR
@@ -79,17 +80,17 @@ MAIN_SCREEN_NAME = 'Main Screen'
 REFRESH_INTERVAL = 1  # seconds
 
 
+def getRelativeScreenFileFolder() -> Path:
+    return Path(os.path.join('var', 'sys', 'screen'))
+
 def getScreenFileFolder() -> Path:
     return Path(os.path.join(BASE_DIR, 'var', 'sys', 'screen'))
-
 
 def getScreenCsvFileFolder() -> Path:
     return Path(os.path.join(BASE_DIR, 'var', 'sys', 'screen-csv'))
 
-
 def getScreenFileTemplateFolder() -> Path:
     return Path(os.path.join(BASE_DIR, 'var', 'sys', 'screen-template'))
-
 
 def getScreenFieldGroupType(typeName) -> str:
     if not isNullBlank(typeName) and type(typeName) == str:
@@ -974,6 +975,11 @@ class __ScreenManager:
         self.__screenDefinitions = {}  # {screen name: screen definition}
         self.__screenFileFolder = self.getScreenFileFolder()
         self.__readLock = Lock()
+
+    def refresh(self) -> None:
+        """
+            Load screen spreadsheet files to database and then update the spreadsheet files from database.
+        """
         if ikDjangoUtils.isRunDjangoServer():
             self.__parseScreenFiles()
 
@@ -1628,7 +1634,7 @@ class __ScreenManager:
     def __getWidgetData(self, field, initDataCallBack=None, globalRequestUrlParameters: dict = None) -> dict:
         widget = field.widget
         parameters = field.widgetParameter
-        if widget in SCREEN_FIELD_SELECT_WIDGETS and parameters is not None:  # TODO: lower() for old to json method
+        if (widget in SCREEN_FIELD_SELECT_WIDGETS or widget == SCREEN_FIELD_WIDGET_LABEL) and parameters is not None and len(parameters) > 0:  # TODO: lower() for old to json method
             self.__updateComboxPrms(field, initDataCallBack, globalRequestUrlParameters)
 
     def __updateComboxPrms(self, field, initDataCallBack=None, globalRequestUrlParameters: dict = None) -> None:
@@ -1675,7 +1681,8 @@ class __ScreenManager:
                 getDataFunctionName = dataUrl
             if isNullBlank(getDataFunctionName):
                 fgName = field.parent.name
-                logger.warn('Combox [%s].[%s].[%s] data and dataUrl parameter is not found.' % (screenID, fgName, self.name))
+                if field.widget != SCREEN_FIELD_WIDGET_LABEL:
+                    logger.warn('Combox [%s].[%s].[%s] data and dataUrl parameter is not found.' % (screenID, fgName, field.name))
             else:
                 comboxData, comboxDataUrl = self.__initData(field.parent, field, recordSetName, getDataFunctionName, initDataCallBack)
                 if comboxDataUrl is not None and len(comboxDataUrl) > 0 and comboxDataUrl[0] != '/' and screenID[0] != '/':

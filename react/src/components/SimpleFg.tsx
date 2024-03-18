@@ -16,6 +16,8 @@ import PasswordBox from "./PasswordBox"
 import TextArea from "./TextArea"
 import TextBox from "./TextBox"
 
+import { formatData } from "./tableFg/reducer"
+
 interface ISimpleFg {
   ref: any
   simpleParams: any
@@ -228,6 +230,7 @@ const SimpleFg: React.FC<ISimpleFg> = forwardRef((props, ref: Ref<any>) => {
                           key={index}
                           ref={refs[field.name]}
                           label={field.caption}
+                          value={formatValue(data, field)}
                           name={field.name}
                           editable={editable && field.editable}
                           style={field.style}
@@ -387,22 +390,15 @@ export function formatValue(data: any, field: any) {
     return ""
   }
 
-  if ((data[field.dataField] && data[field.dataField] !== null) || data[field.dataField] === 0 || data[field.dataField] === false) {
+  if ((data[field.dataField] && data[field.dataField] !== null) || data[field.dataField] === 0 || data[field.dataField] === false || data[field.dataField] === "") {
     value = data[field.dataField]
   } else {
     value = data[field.name]
   }
 
   const format = field.widgetParameter && field.widgetParameter["format"] ? field.widgetParameter["format"] : ""
-  if (format && !isNaN(value)) {
-    const index = format.indexOf(".")
-    let newValue = Number(value) as any
-    if (index !== -1) {
-      const digits = format.slice(index + 1).length
-      newValue = newValue.toFixed(Number(digits))
-      newValue = newValue.replace(/\B(?<!\.\d*)(?=(\d{3})+(?!\d))/g, ",")
-    }
-    value = newValue
+  if (value && format && field.widget.trim().toLocaleLowerCase() !== 'label') {
+    value = formatData(value, format)
   }
   return value
 }

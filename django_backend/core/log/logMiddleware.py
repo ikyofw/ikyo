@@ -17,8 +17,8 @@ class RequestLogFilter(logging.Filter):
     """
 
     def filter(self, record):
-        record.path = getattr(local, 'path', "none")
-        record.username = getattr(local, 'username', "none")
+        record.path = getattr(local, 'path', "?")
+        record.username = getattr(local, 'username', "system")
         return True
 
 

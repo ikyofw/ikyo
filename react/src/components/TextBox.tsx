@@ -1,6 +1,5 @@
-import transform, { StyleTuple } from "css-to-react-native"
+import transform, {StyleTuple} from "css-to-react-native"
 import React, { forwardRef, Ref } from "react"
-import { formatDate, getDateFormatStr } from "../utils/sysUtil"
 
 interface ITextbox {
   ref: any
@@ -18,12 +17,7 @@ const TextBox: React.FC<ITextbox> = forwardRef((props, ref: Ref<any>) => {
 
   React.useEffect(() => {
     if (props.textBoxValue || props.textBoxValue === 0 || props.textBoxValue === false) {
-      if (props.widgetParameter && props.widgetParameter["format"] && props.textBoxValue) {
-        let format = getDateFormatStr(props.widgetParameter["format"])
-        setValue(formatDate(props.textBoxValue, format))
-      } else {
-        setValue(String(props.textBoxValue))
-      }
+      setValue(String(props.textBoxValue))
     } else {
       setValue("")
     }

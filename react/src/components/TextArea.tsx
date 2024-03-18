@@ -1,6 +1,5 @@
 import transform, { StyleTuple } from "css-to-react-native"
 import React, { ChangeEvent, Ref, forwardRef, useEffect, useState } from "react"
-import { formatDate, getDateFormatStr } from "../utils/sysUtil"
 
 interface ITextArea {
   ref: any
@@ -18,12 +17,7 @@ const TextArea: React.FC<ITextArea> = forwardRef((props, ref: Ref<any>) => {
 
   useEffect(() => {
     if (props.textAreaValue) {
-      if (props.widgetParameter["format"]) {
-        let format = getDateFormatStr(props.widgetParameter["format"])
-        setValue(formatDate(props.textAreaValue, format))
-      } else {
-        setValue(props.textAreaValue)
-      }
+      setValue(props.textAreaValue)
     } else {
       setValue("")
     }

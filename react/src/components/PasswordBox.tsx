@@ -11,6 +11,7 @@ import transform, { StyleTuple } from "css-to-react-native"
 interface IPasswordBox {
   ref: any
   label: string
+  value: string
   name: string
   editable: boolean
   style?: any
@@ -18,10 +19,14 @@ interface IPasswordBox {
   widgetParameter?: any
 }
 const PasswordBox: React.FC<IPasswordBox> = forwardRef((props, ref: Ref<any>) => {
-  const [value, setValue] = useState("")
   const [tooltip, setTooltip] = useState(String)
 
   React.useEffect(() => {
+    const inputElement: HTMLInputElement | null = document.getElementById(props.name + "_psw") as HTMLInputElement;
+    if (props.value && inputElement) {
+      inputElement.value = props.value
+    }
+
     // set tooltip
     if (props.tip) {
       if (props.tip.includes("\\r\\n")) {
@@ -34,7 +39,7 @@ const PasswordBox: React.FC<IPasswordBox> = forwardRef((props, ref: Ref<any>) =>
         setTooltip(props.tip)
       }
     }
-  }, [props.tip])
+  }, [props.value, props.tip, props.name])
 
   let cellStyle: StyleTuple[] = []
   if (props.style) {
@@ -50,11 +55,9 @@ const PasswordBox: React.FC<IPasswordBox> = forwardRef((props, ref: Ref<any>) =>
       <td className="property_value tip_center">
         <input
           ref={ref}
-          type={"password"}
+          type="password"
           name={props.name}
-          id={props.name}
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
+          id={props.name + "_psw"}
           disabled={!props.editable}
           style={cellStyle.length > 0 ? transform(cellStyle) : null}
         />

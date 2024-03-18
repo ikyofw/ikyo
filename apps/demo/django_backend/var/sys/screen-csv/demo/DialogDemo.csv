@@ -1,0 +1,84 @@
+#,This is a comment line.
+s,apiUrl
+,
+s,autoRefresh
+,
+s,editable
+,yes
+t,fieldGroupLinkTable
+t,fieldGroupTable
+,clockInFg,table,Monthly Attendance,clockins,yes,yes,yes,,,,,,,,,,,
+,dtlFg,fields,,dtlRc,,yes,,,,,,,,,,,,
+,actionBar,iconBar,,,,yes,,,,,,,,,,,,
+,dialogFg,table,,clockins,yes,yes,yes,,,,,,,,,,,
+,dialogFg1,fields,,dialogRc,,yes,,,,,,,,,,,,
+,dialogSchFg,search,,,,yes,,,,,,,,,,,,
+,dialogFg2,resultTable,,dialogRcs,,,,,single,,client,5,,,,,,
+,dialogBar,iconBar,,,,yes,,,,,,,,,,,,
+,dialogFg3,resultTable,,dialogRcs,,,,,multiple,,client,5,,,,,,
+t,fieldTable
+,clockInFg,id,id,,,,Label,,id,,,,,
+,clockInFg,rmk1,Remarks1,,,,TextBox,,rmk1,,,,,
+,clockInFg,rmk2,Remarks2,,,,ComboBox,"dataUrl: getCombo2
+values: {""value"": ""office"", ""display"": ""full_nm""}",office,,,,,
+,clockInFg,btt,Button,,,,Button,"icon:images/upload_button.gif
+dialog: dialogMessage:testMsg;dialogName:dialog1",rmk1,,,uploadPage1,,
+,clockInFg,select,Office,,,,AdvancedSelection,"icon:images/goto_sbutton.gif
+dataUrl: getOffice
+values: {""value"": ""office"", ""display"": ""full_nm""}
+dialog: dialogBeforeDisplayEvent:postRowItem;dialogName:dialog2",office,,,uploadPage2,,
+,clockInFg,select1,Offices 1,,,,AdvancedSelection,"icon:images/goto_sbutton.gif
+dataUrl: getOffice
+values: {""value"": ""office"", ""display"": ""full_nm""}
+dialog: dialogBeforeDisplayEvent:postRowItem1;dialogName:dialog3",offices1,,,uploadPage3,,
+,clockInFg,select2,Offices 2,,,,AdvancedSelection,"icon:images/goto_sbutton.gif
+dataUrl: getOffice
+values: {""value"": ""office"", ""display"": ""full_nm""}
+dialog: dialogBeforeDisplayEvent:postRowItem2;dialogName:dialog4",offices2,,,uploadPage4,,
+,dtlFg,rmk1,Advanced Selection,,,,AdvancedSelection,"icon:images/goto_sbutton.gif
+dataUrl: getCombo3
+values: {""value"": ""office"", ""display"": ""full_nm""}
+dialog: dialogBeforeDisplayEvent:postRowItem2(dtlFg);dialogName:dialog2",office,,,updateSelect,,
+,dtlFg,rmk2,Test Input,,yes,,TextBox,,rmk2,,,,,
+,actionBar,submit,Submit,,,,IconAndText,"icon:images/action_button.gif
+dialog: width: 200px; height: 200px; dialogMessage: test message; dialogTitle: test title",,,,,,
+,dialogFg,id,id,,,,Label,,id,,,,,
+,dialogFg1,comboBoxField,Office,,yes,,ComboBox,"dataUrl: getDialogRcs
+values: {""value"": ""office"", ""display"": ""full_nm""}",,,,,,
+,dialogFg1,advancedComboBoxField,Offices,,,,AdvancedComboBox,"dataUrl: getDialogRcs
+values: {""value"": ""office"", ""display"": ""full_nm""}",,,,,,
+,dialogSchFg,officeField,Office,,,,TextBox,,,,,schDialog,,
+,dialogFg2,code,Code,,,,TextBox,,office,,,,,
+,dialogFg2,dsc,Description,,,,TextBox,,full_nm,,,,,
+,dialogBar,change,Dialog Change,,,,IconAndText,icon:images/action_button.gif,,,,change,,
+,dialogBar,save,Dialog Sava,,,,IconAndText,icon:images/save_button.gif,,,,save(dialogFg2),,
+,dialogFg3,code,Code,,,,Label,,office,,,,,
+,dialogFg3,dsc,Description,,,,Label,,full_nm,,,,,
+t,headerFooterTable
+s,layoutParams
+,
+s,layoutType
+,1
+t,recordsetTable
+,clockins,*,core.db.model.DummyModel,,,,
+,dialogRc,*,core.db.model.DummyModel,,,,
+,dialogRcs,*,core.db.model.DummyModel,,,,
+,dtlRc,*,core.db.model.DummyModel,,,,
+s,rmk
+,test 621
+t,subScreenTable
+,dialog1,dialogFg,
+,dialog2,"dialogSchFg, dialogFg2, dialogBar",
+,dialog3,"dialogSchFg, dialogFg3",
+,dialog4,dialogFg1,
+,Main Screen,"clockInFg, dtlFg, actionBar",
+s,viewAPIRev
+,1
+s,viewDesc
+,Dialog Demo
+s,viewID
+,DialogDemo
+s,viewName
+,demo.views.dialogDemo.DialogDemo
+s,viewTitle
+,Dialog Demo

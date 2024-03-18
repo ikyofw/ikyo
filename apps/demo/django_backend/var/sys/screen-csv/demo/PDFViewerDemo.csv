@@ -1,0 +1,34 @@
+#,This is a comment line.
+s,apiUrl
+,
+s,autoRefresh
+,
+s,editable
+,yes
+t,fieldGroupLinkTable
+t,fieldGroupTable
+,PDFViewer,viewer,,,,yes,,,,,,,{'grid-area': '1 / 1 / 3 / 2'},,,,,
+,Table1,table,Right Side Table,testRcs,,yes,,yes,,,,,{'grid-area': '1 / 2 / 2 / 3'},,,,,
+t,fieldTable
+,Table1,a,aaaa,,,,,,a,,,,,
+,Table1,b,bbbb,,,,,,b,,,,,
+t,headerFooterTable
+s,layoutParams
+,"{'display': 'grid', 'grid-template-columns': '1fr 1fr', 'grid-template-rows': 'auto', 'grid-gap': '5px'}"
+s,layoutType
+,1
+t,recordsetTable
+,testRcs,*,core.db.model.DummyModel,,,,
+s,rmk
+,t
+t,subScreenTable
+s,viewAPIRev
+,1
+s,viewDesc
+,PDF Viewer Demo
+s,viewID
+,PDFViewerDemo
+s,viewName
+,demo.views.pdfViewerDemo.PDFViewerDemo
+s,viewTitle
+,PDF Viewer Demo
