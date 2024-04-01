@@ -4,17 +4,17 @@ import os
 from datetime import datetime as datetime_
 from pathlib import Path
 
-import core.utils.csv as csv
 import django.core.files.uploadedfile as djangoUploadedfile
 
 import core.core.fs as ikfs
+import core.utils.csv as csv
 import core.utils.modelUtils as ikModelUtils
 import core.utils.spreadsheet as ikSpreadsheet
 from core.core.exception import IkException, IkValidateException
 from core.core.lang import Boolean2
 from core.db.transaction import IkTransaction
 from core.models import *
-from core.utils.langUtils import isNullBlank, isNotNullBlank
+from core.utils.langUtils import isNotNullBlank, isNullBlank
 from iktools import IkConfig
 
 from . import ui as ikui
@@ -104,7 +104,7 @@ def createCSVFileWithDatabase(screenSN: str = None):
 
                 expData = __getExpDataFromDB(latestScreen, isCSV=True)
 
-                # change \r\n to \n for compate the files.
+                # change \n to \r\n for compate the files using git tools.
                 # ( The new line flag in a excel cell is \r\n.)
                 for key, value in expData.items():
                     if value is not None:
@@ -112,9 +112,9 @@ def createCSVFileWithDatabase(screenSN: str = None):
                             for row in value:
                                 for i in range(len(row)):
                                     if type(row[i]) == str:
-                                        row[i] = row[i].replace('\r\n', '\n')
+                                        row[i] = row[i].replace('\r\n', '\n').replace('\n', '\r\n')
                         elif type(value) == str:
-                            value = value.replace('\r\n', '\n')
+                            value = value.replace('\r\n', '\n').replace('\n', '\r\n')
                         expData[key] = value
 
                 csv.Write2CsvFile(outputFile, expData, comments="This is a comment line.")
@@ -160,7 +160,10 @@ def screenDbWriteToExcel(screenRc: Screen, fileRmk: str = None) -> Boolean2:
     filename = '%s.xlsx' % screenRc.screen_sn
     outputFile = os.path.join(ikui.getRelativeScreenFileFolder(), filePath, filename)
     if os.path.isfile(outputFile):
-        os.remove(outputFile)
+        try:
+            os.remove(outputFile)
+        except PermissionError:
+            raise IkException("PermissionError: Please check File [%s] is already open. If it is open, please close it and try again." % filename)
 
     expData = __getExpDataFromDB(screenRc)
 
@@ -194,7 +197,7 @@ def screenDbWriteToExcel(screenRc: Screen, fileRmk: str = None) -> Boolean2:
 
 # get screen definition from database
 def __getExpDataFromDB(screenRc, isCSV: bool = None):
-    rsRcs = ScreenRecordset.objects.filter(screen=screenRc).order_by('id')
+    rsRcs = ScreenRecordset.objects.filter(screen=screenRc).order_by('seq', 'id')
     fgRcs = ScreenFieldGroup.objects.filter(screen=screenRc).order_by('seq', 'id')
     for rc in fgRcs:
         rc.deletable = 'yes' if rc.deletable == True else None
@@ -291,7 +294,7 @@ def _updateDatabaseWithExcelFiles(screenDefinition, userID) -> Boolean2:
             # Otherwise, update all the corresponding database tables for that page.
             __updateScreenDatabase(dfn, userID)
 
-            if latestScreen.class_nm != __strip(dfn['viewName']):
+            if isNotNullBlank(latestScreen) and latestScreen.class_nm != __strip(dfn['viewName']):
                 latestScreenFileRc = ScreenFile.objects.filter(screen=latestScreen).first()
                 if isNotNullBlank(latestScreenFileRc):
                     _deleteExcelAndCSV(latestScreenFileRc)
@@ -419,12 +422,16 @@ def __databaseHasModify(screenFileRc: ScreenFile) -> bool:
 
 def __getAutoRefresh(autoRefresh):
     data = [None, None]
-    if not isNullBlank(autoRefresh):
-        autoRefresh = autoRefresh.split(";")
-        if len(autoRefresh) > 0:
-            data[0] = autoRefresh[0]
-        if len(autoRefresh) == 2:
-            data[1] = autoRefresh[1]
+    if isNotNullBlank(autoRefresh):
+        autoRefreshPrp = []
+        if ";" in autoRefresh:
+            autoRefreshPrp = autoRefresh.split(";")
+        elif "," in autoRefresh:
+            autoRefreshPrp = autoRefresh.split(",")
+        if len(autoRefreshPrp) > 0:
+            data[0] = int(autoRefreshPrp[0].strip())
+            if len(autoRefreshPrp) > 1:
+                data[1] = autoRefreshPrp[1].strip()
     return data
 
 
@@ -453,12 +460,14 @@ def __updateScreenDatabase(dfn, userID):
     # ik_screen_recordset
     screenRecordsetRcs = []
     if 'recordsetTable' in dfn and len(dfn['recordsetTable']) > 0:
+        seq = 0
         for i in dfn['recordsetTable']:
             i = [__strip(item) for item in i]
             screenRecordsetRc = ScreenRecordset()
             screenRecordsetRc.cre_dt = datetime_.now()
             screenRecordsetRc.screen = screenRc
             screenRecordsetRc.recordset_nm = i[0]
+            screenRecordsetRc.seq = seq
             screenRecordsetRc.sql_fields = '*' if isNullBlank(i[1]) else i[1]
             screenRecordsetRc.sql_models = i[2]
             screenRecordsetRc.sql_where = i[3]
@@ -466,6 +475,7 @@ def __updateScreenDatabase(dfn, userID):
             screenRecordsetRc.sql_limit = i[5]
             screenRecordsetRc.rmk = i[6]
             screenRecordsetRcs.append(screenRecordsetRc)
+            seq += 1
 
     # ik_screen_field_group
     screenFieldGroupRcs = []
@@ -504,11 +514,18 @@ def __updateScreenDatabase(dfn, userID):
     if 'fieldTable' in dfn and len(dfn['fieldTable']) > 0:
         seq = 0
         fgNm = None
+        fieldNmList = []
         for k in dfn['fieldTable']:
             k = [__strip(item) for item in k]
-            if not isNullBlank(k[0]):
+            if isNotNullBlank(k[0]):
                 fgNm = k[0]
                 seq = 0
+            if isNotNullBlank(k[1]):
+                fieldNm = '%s.%s' % (fgNm, k[1])
+                if fieldNm in fieldNmList:
+                    logger.error('Field name in the same field group must be unique.')
+                    raise IkValidateException('Field name in the same field group must be unique.')
+                fieldNmList.append(fieldNm)
             screenFieldRc = ScreenField()
             screenFieldRc.cre_dt = datetime_.now()
             screenFieldRc.screen = screenRc
@@ -565,7 +582,7 @@ def __updateScreenDatabase(dfn, userID):
         seq = 0
         for m in dfn['headerFooterTable']:
             m = [__strip(item) for item in m]
-            if not isNullBlank(m[0]):
+            if isNotNullBlank(m[0]):
                 fgNm = m[0]
                 seq = 0
             fieldGroup = next((item for item in screenFieldGroupRcs if item.fg_nm.lower() == str(fgNm).lower()), None)

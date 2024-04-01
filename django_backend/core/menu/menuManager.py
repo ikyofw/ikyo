@@ -5,7 +5,7 @@ from django.db.models import Q
 
 import core.models as ikModels
 import core.utils.db as dbUtils
-from core.utils.langUtils import isNotNullBlank
+from core.utils.langUtils import isNotNullBlank, isNullBlank
 from core.core.exception import IkValidateException
 from core.ui.ui import IkUI, Screen
 
@@ -199,24 +199,27 @@ class _MenuManager():
             usrMenuQs = usrMenuQs.filter(parent_menu_id__isnull=True)
         return usrMenuQs.order_by("order_no")
     
-    def getMenuNamesByScreenName(self, screenName: str) -> list[str]:
+    def getMenuNameByScreenName(self, screenName: str) -> list[str]:
         """Get menu names by screen name.
         """
-        return [r[0] for r in ikModels.Menu.objects.filter(screen_nm=screenName).order_by('id').values_list('menu_nm')]
-
-    def getMenuIdByScreenName(self, screenName) -> int:
-        menuRcs = None
-        with connection.cursor() as cursor:
-            cursor.execute('SELECT id FROM ik_menu WHERE screen_nm=' + dbUtils.toSqlField(screenName))
-            menuRcs = cursor.fetchall()
-        if dbUtils.isEmpty(menuRcs):
+        menuRcs = ikModels.Menu.objects.filter(screen_nm__iexact=screenName).order_by('-id')
+        menuRc = menuRcs.first()
+        if isNullBlank(menuRc):
             logger.error('Screen [%s] is not found in ik_menu table.' % screenName)
             raise IkValidateException('Screen [%s] is not found.' % screenName)
-        menuId = menuRcs[0][0]
         if len(menuRcs) > 1:
-            logger.debug('Too many manus found for screen [%s], please check. System use the first menu(%s) instead.' % (screenName, menuId))
-            # raise IkValidateException('Too many manus found for screen [%s], please check.' % str(screenName))
-        return menuId
+            logger.debug('Too many manus found for screen [%s], please check. System use the first menu(%s) instead.' % (screenName, menuRc.id))
+        return menuRc.menu_nm
+
+    def getMenuIdByScreenName(self, screenName: str) -> int:
+        menuRcs = ikModels.Menu.objects.filter(screen_nm__iexact=screenName).order_by('-id')
+        menuRc = menuRcs.first()
+        if isNullBlank(menuRc):
+            logger.error('Screen [%s] is not found in ik_menu table.' % screenName)
+            raise IkValidateException('Screen [%s] is not found.' % screenName)
+        if len(menuRcs) > 1:
+            logger.debug('Too many manus found for screen [%s], please check. System use the first menu(%s) instead.' % (screenName, menuRc.id))
+        return menuRc.id
 
     def __getScreenName(self, classInstance) -> str:
         className = classInstance.__class__.__name__

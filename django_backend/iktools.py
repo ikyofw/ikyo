@@ -29,9 +29,12 @@ def __getAppNames() -> list:
     for dir in os.listdir(projectRootDir):
         if os.path.isdir(dir):
             appName = Path(dir).name
-            if ' ' in appName or appName == PROJECT_APP:
+            if ' ' in appName or appName == PROJECT_APP or appName.startswith('__') or appName.startswith('.'):
+                # e.g. 'dev source', '__pycache__', '.git'
                 continue  # ignore folders if it contains blank character.
-            appNames.append(appName)
+            # check the app folder has apps.py file or not
+            if Path(os.path.join(dir), 'apps.py').is_file():
+                appNames.append(appName)
     return appNames
 
 
@@ -47,21 +50,22 @@ def getDjangoAppConfigs() -> list:
         if os.path.isdir(dir):
             # check the the apps.py file is exists or not
             appFile = Path(os.path.join(dir, 'apps.py'))
-            if appFile.is_file():
-                # get configuration class name. E.g. testApp.apps.TestAppConfig
-                className = appName[0].upper() + appName[1:] + 'Config'
-                configClassName = appName + '.apps.' + className
-                # check the class is exists or not
-                try:
-                    data = []
-                    with open(appFile) as file:
-                        data = file.readlines()
-                    for line in data:
-                        if ('class %s(AppConfig):' % className) in line:
-                            appConfigs.append(configClassName)
-                            break
-                except Exception as e:
-                    print('ERROR %s' % str(e))
+            # get configuration class name. E.g. testApp.apps.TestAppConfig
+            className = appName[0].upper() + appName[1:] + 'Config'
+            configClassName = appName + '.apps.' + className
+            # check the class is exists or not
+            try:
+                if appName == 'wci':
+                    print('sdfsdf')
+                data = []
+                with open(appFile, 'r', encoding='utf-8') as file:
+                    data = file.readlines()
+                for line in data:
+                    if ('class %s(AppConfig):' % className) in line:
+                        appConfigs.append(configClassName)
+                        break
+            except Exception as e:
+                print('ERROR get app [%s] config failed: %s' % (appName, str(e)))
     appConfigs.sort()
     return appConfigs
 

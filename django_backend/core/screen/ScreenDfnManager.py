@@ -33,7 +33,7 @@ PARAMETERS_NOT_REQUIRED_FOR_WIDGET = {
     ikui.SCREEN_FIELD_WIDGET_TEXT_BOX: ['stateNumber', 'multiple', 'icon', 'type', 'recordset', 'data', 'dataUrl', 'values', 'onChange', 'dialog'],
     ikui.SCREEN_FIELD_WIDGET_DATE_BOX: ['stateNumber', 'multiple', 'icon', 'type', 'recordset', 'data', 'dataUrl', 'values', 'onChange', 'dialog'],
     ikui.SCREEN_FIELD_WIDGET_COMBO_BOX: ['format', 'stateNumber', 'multiple', 'icon', 'type', 'dialog'],
-    ikui.SCREEN_FIELD_WIDGET_ADVANCED_SELECTION: ['format', 'stateNumber', 'multiple', 'icon', 'type', 'dialog'],
+    ikui.SCREEN_FIELD_WIDGET_ADVANCED_SELECTION: ['format', 'stateNumber', 'multiple', 'type'],
     ikui.SCREEN_FIELD_WIDGET_CHECK_BOX: ['format', 'icon', 'type', 'recordset', 'data', 'dataUrl', 'values', 'onChange', 'dialog'],
     ikui.SCREEN_FIELD_WIDGET_BUTTON: ['format', 'stateNumber', 'multiple', 'recordset', 'data', 'dataUrl', 'values', 'onChange'],
     ikui.SCREEN_FIELD_WIDGET_ICON_AND_TEXT: ['format', 'stateNumber', 'multiple', 'recordset', 'data', 'dataUrl', 'values', 'onChange'],
@@ -251,6 +251,64 @@ def copyScreen(self, userID, screenSn, newScreenSn) -> Boolean2:
         logger.error(e, exc_info=True)
         return Boolean2(False, 'System error, please ask administrator to check.')
 
+def resetRev(userID, screenSn, newRev) -> Boolean2:
+    lastScreenRc = Screen.objects.filter(screen_sn__iexact=screenSn).order_by("-rev").first()
+    screenRcs = []
+    screenFileRcs = []
+    screenRecordsetRcs = []
+    screenFieldGroupRcs = []
+    screenFieldRcs = []
+    screenFgLinkRcs = []
+    screenFgHeaderFooterRcs = []
+    if lastScreenRc.rev > newRev:
+        screenRcs = Screen.objects.filter(screen_sn__iexact=screenSn, rev__gte=newRev)
+        for screenRc in screenRcs:
+            if screenRc.id != lastScreenRc.id:
+                screenRc.ik_set_status_delete()
+                fileRcs = ScreenFile.objects.filter(screen=screenRc)
+                for i in fileRcs:
+                    i.ik_set_status_delete()
+                    screenFileRcs.append(i)
+                recordsetRcs = ScreenRecordset.objects.filter(screen=screenRc)
+                for j in recordsetRcs:
+                    j.ik_set_status_delete()
+                    screenRecordsetRcs.append(j)
+                fieldGroupRcs = ScreenFieldGroup.objects.filter(screen=screenRc)
+                for k in fieldGroupRcs:
+                    k.ik_set_status_delete()
+                    screenFieldGroupRcs.append(k)
+                fieldRcs = ScreenField.objects.filter(screen=screenRc)
+                for l in fieldRcs:
+                    l.ik_set_status_delete()
+                    screenFieldRcs.append(l)
+                fgLinkRcs = ScreenFgLink.objects.filter(screen=screenRc)
+                for m in fgLinkRcs:
+                    m.ik_set_status_delete()
+                    screenFgLinkRcs.append(m)
+                fgHeaderFooterRcs = ScreenFgHeaderFooter.objects.filter(screen=screenRc)
+                for n in fgHeaderFooterRcs:
+                    n.ik_set_status_delete()
+                    screenFgHeaderFooterRcs.append(n)
+    elif lastScreenRc.rev == newRev:
+        return Boolean2(False, 'New revision is the same as previous revision')
+
+    lastScreenRc.rev = newRev
+    lastScreenRc.ik_set_status_modified()
+
+    ptrn = IkTransaction(userID=userID)
+    ptrn.add(screenFileRcs)
+    ptrn.add(screenFgHeaderFooterRcs)
+    ptrn.add(screenFgLinkRcs)
+    ptrn.add(screenFieldRcs)
+    ptrn.add(screenFieldGroupRcs)
+    ptrn.add(screenRecordsetRcs)
+    ptrn.add(screenRcs)
+    ptrn.add(lastScreenRc)
+    b = ptrn.save()
+    if not b.value:
+        return b
+    return Boolean2(True, 'Revision successfully reset to [%s]' % newRev)
+
 
 ### Recordset
 # save Recordset Table
@@ -360,13 +418,16 @@ def saveFieldGroup(self, screenSn, isNew, currentBtnClick) -> Boolean2:
             # uniqueCheckList = []
             if fieldListFg:
                 fieldSeq = 1
+                fieldNmList = []
                 for rc in fieldListFg:
                     if not rc.ik_is_status_delete():
                         # auto set field name & field seq
                         rc.seq = strUtils.stripStr(rc.seq)
                         rc.field_nm = strUtils.stripStr(rc.field_nm)
-                        # if strUtils.isEmpty(rc.field_nm):
-                        #     rc.field_nm = fieldGroupDtlFg.fg_nm + "_" + str(fieldSeq) if strUtils.isEmpty(rc.seq) else str(rc.seq)
+                        if isNotNullBlank(rc.field_nm):
+                            if rc.field_nm in fieldNmList:
+                                return Boolean2(False, "Field name in the same field group must be unique.")
+                            fieldNmList.append(rc.field_nm)
                         # check field name unique
                         # if rc.field_nm in uniqueCheckList:
                         #     return Boolean2(False, "Field Name is unique. Please check: " + rc.field_nm)
@@ -377,7 +438,7 @@ def saveFieldGroup(self, screenSn, isNew, currentBtnClick) -> Boolean2:
                         else:
                             rc.seq = float(rc.seq) - 0.5
                         fieldSeq += 1
-                        if not rc.ik_is_status_retrieve():
+                        if not rc.ik_is_status_retrieve() and isNotNullBlank(rc.widget):
                             # rc.visible = not rc.visible  # page is hidden
                             # rc.editable = not rc.editable  # page is not editable
                             if rc.widget.widget_nm in PARAMETERS_NOT_REQUIRED_FOR_WIDGET:
@@ -693,29 +754,35 @@ def __createNewRevScreen(self,
                          fgHeaderFooterRc: ScreenFgHeaderFooter = None) -> Boolean2:
     try:
         modifyFlag = False
-        if isNotNullBlank(screenRc) and not screenRc.ik_is_status_retrieve():
+        isDeleteFieldGroup = True if self.getSessionParameterBool("isDeleteFieldGroup") else False  # delete current field group
+        isDeleteFgLink = True if self.getSessionParameterBool("isDeleteFgLink") else False  # delete current field group link
+        isDeleteFgHeaderFooter = True if self.getSessionParameterBool("isDeleteFgHeaderFooter") else False  # delete current header and footer table
+        if isDeleteFieldGroup or isDeleteFgLink or isDeleteFgHeaderFooter:
             modifyFlag = True
-        if isNotNullBlank(recordsetRcs) and not modifyFlag:
-            for i in recordsetRcs:
-                if not i.ik_is_status_retrieve():
-                    modifyFlag = True
-                    break
-        if isNotNullBlank(fieldGroupRc) and not fieldGroupRc.ik_is_status_retrieve():
-            modifyFlag = True
-        if isNotNullBlank(fieldRcs) and not modifyFlag:
-            for j in fieldRcs:
-                if not j.ik_is_status_retrieve():
-                    modifyFlag = True
-                    break
-        if isNotNullBlank(subScreenRcs) and not modifyFlag:
-            for k in subScreenRcs:
-                if not k.ik_is_status_retrieve():
-                    modifyFlag = True
-                    break
-        if isNotNullBlank(fgLinkRc) and not fgLinkRc.ik_is_status_retrieve():
-            modifyFlag = True
-        if isNotNullBlank(fgHeaderFooterRc) and not fgHeaderFooterRc.ik_is_status_retrieve():
-            modifyFlag = True
+        else:
+            if isNotNullBlank(screenRc) and not screenRc.ik_is_status_retrieve():
+                modifyFlag = True
+            if isNotNullBlank(recordsetRcs) and not modifyFlag:
+                for i in recordsetRcs:
+                    if not i.ik_is_status_retrieve():
+                        modifyFlag = True
+                        break
+            if isNotNullBlank(fieldGroupRc) and not fieldGroupRc.ik_is_status_retrieve():
+                modifyFlag = True
+            if isNotNullBlank(fieldRcs) and not modifyFlag:
+                for j in fieldRcs:
+                    if not j.ik_is_status_retrieve():
+                        modifyFlag = True
+                        break
+            if isNotNullBlank(subScreenRcs) and not modifyFlag:
+                for k in subScreenRcs:
+                    if not k.ik_is_status_retrieve():
+                        modifyFlag = True
+                        break
+            if isNotNullBlank(fgLinkRc) and not fgLinkRc.ik_is_status_retrieve():
+                modifyFlag = True
+            if isNotNullBlank(fgHeaderFooterRc) and not fgHeaderFooterRc.ik_is_status_retrieve():
+                modifyFlag = True
 
         if not modifyFlag:
             return Boolean2(True, 'No changes detected. Nothing to save.')
@@ -726,11 +793,11 @@ def __createNewRevScreen(self,
         #===== 1. new Screen
         if screenRc:
             __isValidClassNm(screenRc.class_nm, screenRc.screen_sn)
-            if screenRc.class_nm != lastRevScreenRc.class_nm:
-                lastScreenFileRc = ScreenFile.objects.filter(screen=lastRevScreenRc).first()
-                if isNotNullBlank(lastScreenFileRc):
-                    ikuidb._deleteExcelAndCSV(lastScreenFileRc)
             if lastRevScreenRc:
+                if screenRc.class_nm != lastRevScreenRc.class_nm:
+                    lastScreenFileRc = ScreenFile.objects.filter(screen=lastRevScreenRc).first()
+                    if isNotNullBlank(lastScreenFileRc):
+                        ikuidb._deleteExcelAndCSV(lastScreenFileRc)
                 screenRc.rev = lastRevScreenRc.rev + 1
             else:
                 screenRc.rev = 0  # the first rev screen
@@ -774,7 +841,7 @@ def __createNewRevScreen(self,
             #===== 3. new Field Group,  4. new Field records
             fieldGroupNewIdMap = {}
             fgFieldNewIdMap = {}
-            isDeleteFieldGroup = True if self.getSessionParameterBool("isDeleteFieldGroup") else False  # delete current field group
+            
             # copy the last rev screen's field group
             lastRevFieldGroupRcs = ScreenFieldGroup.objects.filter(screen=lastRevScreenRc).order_by("seq")
             currentFgId = self.getSessionParameterInt("currentFgID")
@@ -901,7 +968,6 @@ def __createNewRevScreen(self,
                     subScreenDBRcs.append(rc)
 
             #===== 6. new Field Table Link
-            isDeleteFgLink = True if self.getSessionParameterBool("isDeleteFgLink") else False  # delete current field group link
             # copy the last rev screen's field group link
             lastRevFgLinkRcs = ScreenFgLink.objects.filter(screen=lastRevScreenRc).order_by("id")
             currentFgLinkId = self.getSessionParameterInt("currentFgLinkID")
@@ -942,7 +1008,6 @@ def __createNewRevScreen(self,
             self.setSessionParameters({"currentFgLinkID": newCurrentFgLinkId})  # for get new current field group link id
 
             #===== 7. new Header And Footer Table
-            isDeleteFgHeaderFooter = True if self.getSessionParameterBool("isDeleteFgHeaderFooter") else False  # delete current header and footer table
             # copy the last rev screen's header footer table
             lastRevFgHeaderFooterRcs = ScreenFgHeaderFooter.objects.filter(screen=lastRevScreenRc).order_by("id")
             currentFgHeaderFooterId = self.getSessionParameterInt("currentFgHeaderFooterID")

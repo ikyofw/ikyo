@@ -14,15 +14,14 @@ from django.db.models.query import QuerySet
 import core.core.http as ikhttp
 import core.db.model as ikDbModels
 import core.models as ikModels
+import core.utils.djangoUtils as ikDjangoUtils
 import core.utils.httpUtils as ikHttpUtils
 import core.utils.modelUtils as modelUtils
-import core.utils.djangoUtils as ikDjangoUtils
 from core.core.exception import IkValidateException
-from core.utils.langUtils import convertStr2Json, isNotNullBlank, isNullBlank
 from core.models import ScreenFgType, ScreenFieldWidget
-from iktools import IkConfig
-
+from core.utils.langUtils import convertStr2Json, isNotNullBlank, isNullBlank
 from django_backend.settings import BASE_DIR
+from iktools import IkConfig
 
 from . import uiCache as ikuiCache
 from . import uidb as ikuidb
@@ -83,14 +82,18 @@ REFRESH_INTERVAL = 1  # seconds
 def getRelativeScreenFileFolder() -> Path:
     return Path(os.path.join('var', 'sys', 'screen'))
 
+
 def getScreenFileFolder() -> Path:
     return Path(os.path.join(BASE_DIR, 'var', 'sys', 'screen'))
+
 
 def getScreenCsvFileFolder() -> Path:
     return Path(os.path.join(BASE_DIR, 'var', 'sys', 'screen-csv'))
 
+
 def getScreenFileTemplateFolder() -> Path:
     return Path(os.path.join(BASE_DIR, 'var', 'sys', 'screen-template'))
+
 
 def getScreenFieldGroupType(typeName) -> str:
     if not isNullBlank(typeName) and type(typeName) == str:
@@ -148,9 +151,6 @@ def getResultTableEditFieldName(resultTableName) -> str:
 
 def getResultTableEditButonDefaultEventName(fieldName) -> str:
     return '%s_Click' % fieldName
-
-
-RESULT_TABLE_WIDGET_DEFAULT_PARAMETERS = 'iconCurrent:images/current_sbutton.gif\niconExpand:images/expand_sbutton.gif'
 
 
 def _getSceenFieldName(fieldName: str, actionName: str, parentFieldGroupName: str) -> str:
@@ -461,7 +461,8 @@ class ScreenFieldGroup:
                     jIcons.append(button.toJson())
             jFg = {'name': self.name,
                    'type': self.groupType,
-                   'icons': jIcons
+                   'icons': jIcons,
+                   'editable': editable
                    }
         elif self.groupType == SCREEN_FIELD_TYPE_HTML or self.groupType == SCREEN_FIELD_TYPE_IFRAME:
             jFg = {'name': self.name,
@@ -637,18 +638,20 @@ class Screen:
                 jScreen[fg.name] = fg.toJson()
         return jScreen
 
-    # TODO check.
     def setVisible(self, visible) -> None:
         for fg in self.fieldGroups:
             fg.visible = visible
 
+    def setEditable(self, editable) -> None:
+        self.setFieldGroupsEnable(self.fieldGroups, isInsertable=False, isDeletable=False, isEditable=False)
+
     def setTitle(self, value) -> None:
         self.title = value
-
 
     '''
         Field Groups
     '''
+
     def setFieldGroupsVisible(self, fieldGroupNames, visible) -> None:
         '''
             fieldGroupNames(str/list): field group names
@@ -659,10 +662,14 @@ class Screen:
             raise IkValidateException('Parameter "visible" should be a bool value.')
         if type(fieldGroupNames) == str:
             fieldGroupNames = [fieldGroupNames]
-        for name in fieldGroupNames:
-            fg = self.getFieldGroup(name)
+        for obj in fieldGroupNames:
+            fg = None
+            if type(obj) == ScreenFieldGroup:
+                fg = obj
+            elif type(obj) == str:
+                fg = self.getFieldGroup(obj)
             if fg is None:
-                raise IkValidateException('Field group [%s] is not found in screen [%s], please check.' % (name, self.id))
+                raise IkValidateException('Field group [%s] is not found in screen [%s], please check.' % (obj, self.id))
             fg.visible = visible
 
     def setFieldGroupsEnable(self, fieldGroupNames, isInsertable=None, isDeletable=None, isEditable=None) -> None:
@@ -677,10 +684,14 @@ class Screen:
             raise IkValidateException('Parameter "isDeletable" should be a bool value.')
         if isEditable is not None and type(isEditable) != bool:
             raise IkValidateException('Parameter "isEditable" should be a bool value.')
-        for name in fieldGroupNames:
-            fg = self.getFieldGroup(name)
+        for obj in fieldGroupNames:
+            fg = None
+            if type(obj) == ScreenFieldGroup:
+                fg = obj
+            elif type(obj) == str:
+                fg = self.getFieldGroup(obj)
             if fg is None:
-                raise IkValidateException('Field group [%s] is not found in screen [%s], please check.' % (name, self.id))
+                raise IkValidateException('Field group [%s] is not found in screen [%s], please check.' % (obj, self.id))
             if isInsertable is not None:
                 fg.insertable = isInsertable
             if isDeletable is not None:
@@ -724,11 +735,11 @@ class Screen:
             raise IkValidateException('Field group [%s] is not found in screen [%s], please check.' % (fieldGroupName, self.id))
         fg.pageSize = pageSize
 
-
     '''
         Field
     '''
     # YL.ikyo, 2022-12-21 set fields visible - start
+
     def setFieldsVisible(self, fieldGroupName, fieldNames, visible) -> None:
         '''
             fieldGroupName(str): field group name
@@ -1032,6 +1043,13 @@ class __ScreenManager:
             dfn['layoutParams'] = screenRc.layout_params
             dfn['viewName'] = screenRc.class_nm
             dfn['editable'] = screenRc.editable
+            # YL, 2024-02-28, Bugfix for auto refresh - start
+            if isNotNullBlank(screenRc.auto_refresh_interval):
+                dfn['autoRefresh'] = str(screenRc.auto_refresh_interval)
+                if isNotNullBlank(screenRc.auto_refresh_action):
+                    dfn['autoRefresh'] = dfn['autoRefresh'] + ";" + screenRc.auto_refresh_action
+            # YL, 2024-02-28 - end
+
             # Recordset
             dfn['recordsetTable'] = []
             recordsetRcs = ikModels.ScreenRecordset.objects.filter(screen=screenRc).order_by("id")
@@ -1502,7 +1520,6 @@ class __ScreenManager:
         field.eventHandlerParameter = eventHandlerPrms
 
         field.style = None
-        field.widgetParameter = self.__getWidgetPramsOnly(RESULT_TABLE_WIDGET_DEFAULT_PARAMETERS)
         return field
 
     def __isScreenExists(self, name) -> bool:
@@ -1739,15 +1756,17 @@ class __ScreenManager:
             for kv in parameters.split(";"):
                 if not isNullBlank(kv):
                     ss = kv.split(':')
-                    k = ss[0].strip()
-                    v = None
                     if len(ss) > 1:
+                        k = ss[0].strip()
                         v = ''
                         for j in range(1, len(ss)):
                             if j > 1:
                                 v += ':'
                             v += ss[j]
                         v = v.strip()
+                    elif len(ss) == 1:
+                        k = 'class'
+                        v = ss[0].strip()
                     prms[k] = v
         return prms
 
@@ -1760,10 +1779,17 @@ class __ScreenManager:
         interval = None
         action = None
         if not isNullBlank(autoRefreshDfn):
-            autoRefreshPrp = autoRefreshDfn.split(';')
-            interval = int(autoRefreshPrp[0])
-            if len(autoRefreshPrp) > 1:
-                action = autoRefreshPrp[1].strip()
+            # YL, 2024-02-28, Bugfix for auto refresh - start
+            autoRefreshPrp = []
+            if ";" in autoRefreshDfn:
+                autoRefreshPrp = autoRefreshDfn.split(';')
+            elif "," in autoRefreshDfn:
+                autoRefreshPrp = autoRefreshDfn.split(',')
+            if len(autoRefreshPrp) > 0:
+                interval = int(autoRefreshPrp[0].strip())
+                if len(autoRefreshPrp) > 1:
+                    action = autoRefreshPrp[1].strip()
+            # YL, 2024-02-28 - end
         return interval, action
 
     def getAutoRefreshInfo(self, interval=None, action=None) -> str:
@@ -1840,7 +1866,7 @@ class DialogMessage():
         '''
         j = {}
         j['title'] = self.title
-        j['dialogMessage'] = self.message
+        j['content'] = self.message
         return j
 
     def __str__(self) -> str:

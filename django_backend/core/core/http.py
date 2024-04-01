@@ -186,12 +186,12 @@ class IkJsonResponse(JsonResponse):
             elif type(data2) == list:
                 data3 = []
                 for item in data2:
-                    data3.append(self.__getJsonData(item))
+                    data3.append(self.__getJsonData(item, modelAdditionalFields))
                 data2 = data3
             elif type(data2) == dict:
                 data3 = {}
                 for key, value in data2.items():
-                    data3[key] = self.__getJsonData(value)
+                    data3[key] = self.__getJsonData(value, modelAdditionalFields)
                 data2 = data3
             else:
                 data2 = self.__object2Str(data2)

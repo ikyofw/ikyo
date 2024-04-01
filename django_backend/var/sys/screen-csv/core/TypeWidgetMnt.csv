@@ -9,10 +9,10 @@ t,fieldGroupLinkTable
 t,fieldGroupTable
 ,systemFgTypeFg,table,System Field Group Type,systemFgTypeRcs,,,,yes,,,,,,,,,,
 ,customFgTypeFg,table,Custom Field Group Type,customFgTypeRcs,yes,yes,yes,yes,,,,,,,,,,
-,fgTypeToolbar,iconBar,,,,,,,,,,,,,,,,
+,fgTypeToolbar,iconBar,,,,yes,,,,,,,,,,,,
 ,systemFieldWidgetFg,table,System Field Widget,systemFieldWidgetRcs,,,,yes,,,,,,,,,,
 ,customFieldWidgetFg,table,Custom Field Widget,customFieldWidgetRcs,yes,yes,yes,yes,,,,,,,,,,
-,fieldWidgetToolbar,iconBar,,,,,,,,,,,,,,,,
+,fieldWidgetToolbar,iconBar,,,,yes,,,,,,,,,,,,
 t,fieldTable
 ,systemFgTypeFg,sysTpNm,Type Name,,,,Label,,type_nm,,,,,
 ,systemFgTypeFg,sysTpRmk,Remark,,,,Label,,rmk,,,,,

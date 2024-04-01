@@ -345,7 +345,7 @@ class IkTransaction():
                         if isinstance(foreignValue, models.Model):
                             newValue = getattr(foreignValue, DEFAULT_FOREIGN_FIELD)
                         if originalValue != newValue:
-                            self.__setForeignFieldValue(rc, field, newValue)
+                            self.__setForeignFieldValue(rc, field, foreignValue, newValue)
                             if rc.ik_is_status_retrieve():
                                 rc.ik_set_status_modified()
             elif type(foreignKeys) == list and len(foreignKeys) > 0:
@@ -357,7 +357,7 @@ class IkTransaction():
                             originalValue = self.__getModelForeignField(rc, fk.modelFieldName)
                             newValue = self.__getModelForeignField(fk.foreignModelRecord, fk.foreignField)
                             if originalValue != newValue:
-                                self.__setForeignFieldValue(rc, fk.modelFieldName, newValue)
+                                self.__setForeignFieldValue(rc, fk.modelFieldName, fk.foreignModelRecord, newValue)
                                 if rc.ik_is_status_retrieve():
                                     rc.ik_set_status_modified()
             elif isinstance(foreignKeys, IkTransactionForeignKey):
@@ -368,7 +368,7 @@ class IkTransaction():
                     originalValue = self.__getModelForeignField(rc, fk.modelFieldName)
                     newValue = self.__getModelForeignField(fk.foreignModelRecord, fk.foreignField)
                     if originalValue != newValue:
-                        self.__setForeignFieldValue(rc, fk.modelFieldName, newValue)
+                        self.__setForeignFieldValue(rc, fk.modelFieldName, fk.foreignModelRecord, newValue)
                         if rc.ik_is_status_retrieve():
                             rc.ik_set_status_modified()
 
@@ -382,9 +382,12 @@ class IkTransaction():
             else:
                 raise e
 
-    def __setForeignFieldValue(self, rc, fieldName, value):
+    def __setForeignFieldValue(self, rc, fieldName, valueRc, value):
         try:
-            setattr(rc, fieldName, value)
+            if isinstance(valueRc, models.Model):
+                setattr(rc, fieldName, valueRc)
+            else:
+                setattr(rc, fieldName, value)
         except Exception as e:
             if type(e).__name__ == 'RelatedObjectDoesNotExist' \
                 and type(fieldName) == str and not fieldName.endswith('_' + DEFAULT_FOREIGN_FIELD):

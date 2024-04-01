@@ -59,7 +59,7 @@ class AuthAPIView(APIView):
     def __isUseSession(self) -> bool:
         return isSupportSession(self.request)
 
-    def __getSessionParameterName(self, name, isGlobal=False) -> str:
+    def __getSessionParameterName(self, name, isGlobal: bool =False) -> str:
         if self.__isUseSession():
             return name
         else:
@@ -67,6 +67,16 @@ class AuthAPIView(APIView):
                 return '%s%s' % (SESSION_DATA_NAME_PREFIX, name)
             className = self.__class__.__name__
             return '%s_%s' % (className, name)
+        
+    def __getSessionParameterOritinalName(self, name: str, isGlobal: bool =False) -> str:
+        # reference to __getSessionParameterName
+        if self.__isUseSession():
+            return name
+        else:
+            if isGlobal:
+                return name[len(SESSION_DATA_NAME_PREFIX):]
+            className = self.__class__.__name__
+            return name[len(className + '_'):]
 
     def __getSessionParameterTimestampName(self, name) -> str:
         return '%s%s' % (name, SESSION_DATA_TIMESTAMP_SUFFIX)
@@ -99,6 +109,26 @@ class AuthAPIView(APIView):
     def ____popSessionData(self, data, name, default=None) -> any:
         data.pop(self.__getSessionParameterTimestampName(name), None)
         return data.pop(name, default)
+
+    def getSessionParameters(self, isGlobal=False) -> dict:
+        '''
+            return object
+        '''
+        if self.__isUseSession():
+            sd = self.__getSessionData()
+            if sd:
+                prms = {}
+                for name, value in sd.items():
+                    prms[self.__getSessionParameterOritinalName(name, isGlobal)] = value
+                return prms
+        else:
+            sp = SessionManager.getPrms2(self.getCurrentUser())
+            if sp:
+                prms = {}
+                for name, value in sp.items():
+                    prms[self.__getSessionParameterOritinalName(name, isGlobal)] = value
+                return prms
+        return None
 
     def getSessionParameter(self, name, delete=False, default=None, isGlobal=False) -> any:
         '''

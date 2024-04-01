@@ -61,6 +61,18 @@ class __SessionManager:
         prmRc = UsrSessionPrm.objects.filter(token=tokenRc, key=name).first()
         v = prmRc.value if prmRc is not None else None
         return defaultValue if v is None else loads(v)
+    
+    def getPrms2(self, user) -> dict:
+        ''' Get all parameters.
+        '''
+        tokenRc = UsrToken.objects.filter(usr_id=user.id).first()
+        if tokenRc is None:
+            return None
+        prmRcs = UsrSessionPrm.objects.filter(token=tokenRc).order_by('key')
+        prms = {}
+        for rc in prmRcs:
+            prms[rc.key] = loads(rc.value) if rc.value else None
+        return prms
 
     def updatePrms(self, user, name, value):
         tokenRc = UsrToken.objects.filter(usr_id=user.id).first()

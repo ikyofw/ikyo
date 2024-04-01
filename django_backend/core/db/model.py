@@ -1,28 +1,22 @@
 '''
     2022-08-29
 '''
-import copy
-import logging
-import random
-import time
+import copy, logging, random, time
 from collections import OrderedDict
 from datetime import datetime
 from enum import Enum
-
-import core.utils.db as dbUtils
-from core.core.exception import IkException, IkValidateException
 from django.core.exceptions import ValidationError
 from django.db import connection, models, transaction
 from django.db.models.signals import pre_save
 from django.dispatch import receiver
-
 from django_backend.settings import DATABASES
+import core.utils.db as dbUtils
+from core.core.exception import IkException, IkValidateException
 
 logger = logging.getLogger('ikyo')
 
 MODEL_RECORD_DATA_STATUS_KEY_NAME = '__STT_'
 MODEL_RECORD_DATA_CURRENT_KEY_NAME = '__CRR_'
-
 
 FOREIGN_KEY_VALUE_FLAG = '.'
 """Foreign key value flag. 
@@ -333,6 +327,35 @@ class Model(models.Model):
             values: {'operatorID': operatorId2, 'updateTime': updateDate}
         '''
         pass
+
+    def save2(self) -> None:
+        """Use IkTransaction to save the current model for a new, updated or delete record.
+
+        Exception:
+            Raise core.core.exception.IkException if save failed.
+        """
+        from core.db.transaction import IkTransaction # fix circular import problem
+        trn = IkTransaction()
+        trn.add(self)
+        b = trn.save()
+        if not b.value:
+            raise IkException(b.value)
+        
+    def delete2(self) -> None:
+        """Use IkTransaction to delete the current model.
+
+        Exception:
+            Raise core.core.exception.IkException if save failed.
+        """
+        if self.ik_is_status_new():
+            return
+        from core.db.transaction import IkTransaction # fix circular import problem
+        trn = IkTransaction()
+        trn.delete(self)
+        b = trn.save()
+        if not b.value:
+            raise IkException(b.value)
+
 
     class Meta:
         abstract = True

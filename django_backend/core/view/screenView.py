@@ -1,16 +1,10 @@
-import datetime
-import inspect
-import logging
-import os
-import pathlib
-import random
-import string
-import traceback
+import datetime, inspect, logging, os, pathlib, random, string, traceback, json
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 import sqlparse
 from django.core.handlers.wsgi import WSGIHandler
 from django.db import connection
+from django.db.models import Model
 from django.db.models.query import QuerySet
 from django.db.utils import DatabaseError, DataError, IntegrityError, ProgrammingError
 from django.http.response import HttpResponseBase, StreamingHttpResponse
@@ -67,13 +61,18 @@ PARAMETER_KEY_NAME_SUB_SCREEN_NAME = 'SUB_SCREEN_NAME'
 _OPEN_SCREEN_KEY_NAME = 'OPEN_SCREEN'
 _OPEN_SCREEN_PARAM_KEY_NAME = 'OPEN_SCREEN_PARAM'
 
+_EDIT_INDEX_FIELD_NEW_RECORD_VALUE = 0
+
+_SESSION_NAME_API_CALL_REQUEST_DATA = 'API_CALL_REQUEST_DATA'
+
 
 class TableCursorInfo:
     '''
         used for result table
     '''
 
-    def __init__(self, requestData) -> None:
+    def __init__(self, requestData: dict) -> None:
+        self.__requestData = requestData
         fgName = requestData.get(PARAMETER_KEY_NAME_LAST_RESULT_TABLE_FIELD_GROUP_NAME, None) if requestData else None
         fieldName = requestData.get(PARAMETER_KEY_NAME_LAST_RESULT_TABLE_FIELD_GROUP_EDIT_FIELD_NAME, None) if requestData else None
         dataName = requestData.get(PARAMETER_KEY_NAME_LAST_RESULT_TABLE_FIELD_GROUP_EDIT_FIELD_DATA_NAME, None) if requestData else None
@@ -85,6 +84,7 @@ class TableCursorInfo:
         self.__fieldName = fieldName
         self.__dataName = dataName
         self.__dataValue = dataValue
+        self.__isCallViewAPI = False
 
     @property
     def fieldGroupName(self) -> str:
@@ -101,6 +101,14 @@ class TableCursorInfo:
     @property
     def dataValue(self) -> object:
         return self.__dataValue
+    
+    def clean(self, fieldGroupName: str = None) -> None:
+        if self.__requestData is not None:
+            if fieldGroupName is None or self.__fgName == fieldGroupName:
+                self.__requestData[PARAMETER_KEY_NAME_LAST_RESULT_TABLE_FIELD_GROUP_NAME] = None
+                self.__requestData[PARAMETER_KEY_NAME_LAST_RESULT_TABLE_FIELD_GROUP_EDIT_FIELD_NAME] = None
+                self.__requestData[PARAMETER_KEY_NAME_LAST_RESULT_TABLE_FIELD_GROUP_EDIT_FIELD_DATA_NAME] = None
+                self.__requestData[PARAMETER_KEY_NAME_LAST_RESULT_TABLE_FIELD_GROUP_EDIT_NAME] = None
 
 
 class ScreenAPIView(AuthAPIView):
@@ -173,15 +181,11 @@ class ScreenAPIView(AuthAPIView):
         menuName = self.getMenuName()
         if isNullBlank(menuName):
             screenName = self.__class__.__name__
-            menuNames = MenuManager.getMenuNamesByScreenName(screenName)
-            if len(menuNames) > 2:
-                logger.warning("Too many screen [%s] found in menu table for view class [%s]." % (screenName, self.__class__.__module__, self.__class__.__qualname__))
-            elif len(menuNames) == 0:
+            menuName = MenuManager.getMenuNameByScreenName(screenName)
+            if isNullBlank(menuName):
                 logger.warning("Screen [%s] doesn't find in menu table for view class [%s.%s]." % (screenName, self.__class__.__module__, self.__class__.__qualname__))
-            else: # find one screen
-                menuName = menuNames[0]
-                menuInfoDict = MenuManager.getMenuInfoByMenuName(menuName)
-                self._menuID = menuInfoDict['id']
+            else:
+                self._menuID = MenuManager.getMenuId(menuName=menuName)
         else:
             self._menuID = MenuManager.getMenuId(menuName=menuName)
         self.setMenuName(menuName)
@@ -190,18 +194,128 @@ class ScreenAPIView(AuthAPIView):
     def initial(self, request, *args, **kwargs):
         super().initial(request, *args, **kwargs)
 
-    def _getTableDataIndex(self, fieldGroupName) -> any:
-        return self.getSessionParameter(fieldGroupName + '_EditIndexField')
+    def __getEditIndexFieldGroupNames(self) -> tuple[str]:
+        """"""
+        sp = self.getSessionParameters()
+        fgNames = []
+        if sp:
+            tableNames = [fg.name for fg in self.getScreen().fieldGroups if fg.groupType == ikui.SCREEN_FIELD_TYPE_RESULT_TABLE]
+            for name, value in sp.items():
+                if name.endswith('_%s' % ikui.RESULT_TABLE_EDIT_COLUMN_PARAMETER_NAME):
+                    fieldGroupName = name[0:-len('_%s' % ikui.RESULT_TABLE_EDIT_COLUMN_PARAMETER_NAME)]
+                    if fieldGroupName in tableNames:
+                        fgNames.append(fieldGroupName)
+        return fgNames
 
-    def _removeTableDataIndex(self, fieldGroupName) -> None:
-        self.deleteSessionParameters(fieldGroupName + '_EditIndexField')
+    def _deleteEditIndexFieldValue(self, fieldGroupName: str = None) -> None:
+        if isNotNullBlank(fieldGroupName):
+            self.deleteSessionParameters(fieldGroupName + '_%s' % ikui.RESULT_TABLE_EDIT_COLUMN_PARAMETER_NAME)
+        else:
+            sp = self.getSessionParameters()
+            if sp is not None:
+                tableNames = [fg.name for fg in self.getScreen().fieldGroups if fg.groupType == ikui.SCREEN_FIELD_TYPE_RESULT_TABLE]
+                for name, _value in sp.items():
+                    if name.endswith('_%s' % ikui.RESULT_TABLE_EDIT_COLUMN_PARAMETER_NAME):
+                        fieldGroupName = name[0:-len('_%s' % ikui.RESULT_TABLE_EDIT_COLUMN_PARAMETER_NAME)]
+                        if fieldGroupName in tableNames:
+                            self.deleteSessionParameters(name)
+        self._cleanTableCurrentRecordInfo(fieldGroupName)
+    
+    def _setEditIndexFieldValue(self, value: any, fieldGroupName: str = None) -> None:
+        if fieldGroupName is None:
+            fieldGroupNames = self.__getEditIndexFieldGroupNames()
+            if len(fieldGroupNames) == 0:
+                raise IkException('Please fill in parameter [fieldGroupName]')
+            elif len(fieldGroupNames) > 1:
+                raise IkException('Too many field group found: %s' % fieldGroupNames)
+            fieldGroupName = fieldGroupNames[0]
+        self.setSessionParameter(fieldGroupName + '_%s' % ikui.RESULT_TABLE_EDIT_COLUMN_PARAMETER_NAME, value)
 
-    def _setTableDataIndex(self, fieldGroupName, value) -> None:
-        self.setSessionParameter(fieldGroupName + '_EditIndexField', value)
+    # def _getEditIndexField(self) -> int:
+    #     idStr = self.getRequestData().get(ikui.RESULT_TABLE_EDIT_COLUMN_PARAMETER_NAME)
+    #     return None if isNullBlank(idStr) else int(idStr)
+    
+    def _getEditIndexField(self, fieldGroupName: str = None) -> any:
+        """Get click value for a resultTable when the client call an API named %TableName%_EditIndexField_Click.
 
-    def _getEditIndexField(self) -> int:
-        idStr = self.getRequestData().get('EditIndexField')
-        return None if isNullBlank(idStr) else int(idStr)
+        If the parameter "fieldGroupName" is None, then return the first EditIndexField record.
+
+        Example:
+            "userTable_EditIndexField_Click".
+        
+        The request data name is "EditIndexField". 
+        
+        Example:
+            self.getRequestData().get("EditIndexField", None).
+
+        Args:
+            fieldGroupName(str, optional): Screen field group's name.
+
+        Returns:
+            object: Return value. Normally it's an integer (ID field).
+        """
+        v = None
+        if isNotNullBlank(fieldGroupName):
+            v = self.getSessionParameter(fieldGroupName + '_%s' % ikui.RESULT_TABLE_EDIT_COLUMN_PARAMETER_NAME)
+        else:
+            tableNames = self.__getEditIndexFieldGroupNames() # if more than 1 found, then ignore
+            if len(tableNames) == 1 and isNotNullBlank(tableNames[0]):
+                v = self.getSessionParameter(tableNames[0] + '_%s' % ikui.RESULT_TABLE_EDIT_COLUMN_PARAMETER_NAME)
+        if v is None:
+            # get index value directly for Plugin column
+            v = self.getRequestData().get(ikui.RESULT_TABLE_EDIT_COLUMN_PARAMETER_NAME, None)
+        try:
+            return int(v) if v is not None else None
+        except:
+            return v
+    
+    def _getTableSelectedIndexes(self, fieldGroupName: str = None) -> list[int]:
+        """Get resultTable's selected records' indexes. 
+
+        If the fieldGroupName is None, then this method return the first data if found.
+
+        Args:
+            fieldGroupName (str, optional): Field group name. If it
+            param2 (str): The second parameter.
+
+        Returns:
+            list[int]: selected records' index. The index starts from 0. None if the parameter is not exists.
+        """
+        if isNotNullBlank(fieldGroupName):
+            return self.getRequestData().get('__%s_selected_indexes' % fieldGroupName, None)
+        else:
+            # find the first selected indexes
+            tableNames = [fg.name for fg in self.getScreen().fieldGroups if fg.groupType == ikui.SCREEN_FIELD_TYPE_RESULT_TABLE]
+            for key, value in self.getRequestData().items():
+                if key.startswith('__') and key.endswith('_selected_indexes'):
+                    fieldGroupName = key[len('__'):-len('_selected_indexe')]
+                    if len(fieldGroupName) > 0 and fieldGroupName in tableNames:
+                        return value
+            return None
+
+    def _getTableSelectedRecords(self, fieldGroupName: str = None) -> list[Model]:
+        """Get resultTable's selected records. 
+
+        If the fieldGroupName is None, then this method return the first data if found.
+
+        Args:
+            fieldGroupName (str, optional): Field group name. If it
+            param2 (str): The second parameter.
+
+        Returns:
+            list[Model]: selected records. None if the parameter is not exists.
+        """
+        if isNotNullBlank(fieldGroupName):
+            return self.getRequestData().get('__%s_selected_selected_rcs' % fieldGroupName, None)
+        else:
+            # find the first selected indexes
+            tableNames = [fg.name for fg in self.getScreen().fieldGroups if fg.groupType == ikui.SCREEN_FIELD_TYPE_RESULT_TABLE]
+            for key, value in self.getRequestData().items():
+                if key.startswith('__') and key.endswith('_selected_rcs'):
+                    fieldGroupName = key[len('__'):-len('_selected_rcs')]
+                    if len(fieldGroupName) > 0 and fieldGroupName in tableNames:
+                        return value
+            return None
 
     def __updateFunctionInfoFromMenu(self) -> None:
         if not isNullBlank(self._menuName) and (isNullBlank(self._functionCategory) or isNullBlank(self._functionCode)):
@@ -225,13 +339,13 @@ class ScreenAPIView(AuthAPIView):
     # YL.ikyo, 2023-06-20 get user menu acl - start
     def isACLWriteable(self) -> bool:
         userID = self.getCurrentUserId()
-        if not userID:
+        if isNullBlank(userID):
             return False
         menuName = self.getMenuName()
         if isNullBlank(menuName):
             return False
         menuID = MenuManager.getMenuId(menuName)
-        if not menuID:
+        if isNullBlank(menuID):
             return False
         groupsIDs = ikModels.UserGroup.objects.filter(usr_id=userID).values_list('grp_id', flat=True)
         if len(groupsIDs) == 0:
@@ -241,13 +355,13 @@ class ScreenAPIView(AuthAPIView):
 
     def isACLReadOnly(self) -> bool:
         userID = self.getCurrentUserId()
-        if not userID:
+        if isNullBlank(userID):
             return False
         menuName = self.getMenuName()
         if isNullBlank(menuName):
             return False
         menuID = MenuManager.getMenuId(menuName)
-        if not menuID:
+        if isNullBlank(menuID):
             return False
         groupsIDs = ikModels.UserGroup.objects.filter(usr_id=userID).values_list('grp_id', flat=True)
         if len(groupsIDs) == 0:
@@ -304,7 +418,8 @@ class ScreenAPIView(AuthAPIView):
             logger.debug(screenJson)
             return ikhttp.IkSccJsonResponse(data=screenJson)
         except Exception as e:
-            logger.error('_getScreenResponse error. screen=%s, error=%s' % (self._menuID, str(e)))
+            screenClassName = '%s.%s.py:%s' % (self.__class__.__module__, self.__class__.__qualname__, self.__class__.__name__) if screen else None
+            logger.error('_getScreenResponse error. Screen=%s, menuID=%s, error=%s' % (screenClassName, self._menuID, str(e)))
             logger.error(e, exc_info=True)
             return ikhttp.IkErrJsonResponse(message='System error.')
         finally:
@@ -330,7 +445,7 @@ class ScreenAPIView(AuthAPIView):
                             except IkException as pye:
                                 self._addErrorMessage(str(pye))
                             break
-                if not getDataDone:
+                if getDataDone is None:
                     # if the method is not found, then get data from recordset defination
                     if recordsetName is not None:
                         r = self.__getRecordSetData(fieldGroup, field, recordsetName)
@@ -373,20 +488,39 @@ class ScreenAPIView(AuthAPIView):
             return table cursor data info(resultTable, user click the EditColumn)
         '''
         return TableCursorInfo(self.getLastRequestData())
+    
+    def _cleanTableCurrentRecordInfo(self, fieldGroupName: str = None) -> None:
+        '''
+            Clean table cursor information for resultTable
+        '''
+        data = self.getLastRequestData()
+        if data and len(data) > 0:
+            TableCursorInfo(self.getLastRequestData()).clean(fieldGroupName)
 
     def _getFieldGroupData(self, fieldGroupName) -> object:
         return self._fieldGroupData.get(fieldGroupName, None)
 
     def __updateDataCursor(self, fieldGroup, data) -> None:
         if data is not None and fieldGroup.groupType == ikui.SCREEN_FIELD_TYPE_RESULT_TABLE and fieldGroup.editable:
+            # 1. check upadte from client. E.g. user click the Edit button
+            cursorName = None
+            cursorValue = None
             cursorInfo = self._getTableCurrentRecordInfo()
             if cursorInfo.fieldGroupName == fieldGroup.name:
+                cursorName = cursorInfo.dataFieldName
+                cursorValue = cursorInfo.dataValue
+            # 2. check the server side. E.g. create a new record and saved.
+            if isNullBlank(cursorValue):
+                cursorName = ikui.RESULT_TABLE_EDIT_FIELD_RECORD_SET_FIELD_NAME
+                cursorValue = self._getEditIndexField(fieldGroup.name)
+            # 3. check the model records. Update the first matched record.
+            if isNotNullBlank(cursorValue):
                 if isinstance(data, Model):
-                    data.ik_set_cursor(isCursor=getattr(data, cursorInfo.dataFieldName) == cursorInfo.dataValue)
+                    data.ik_set_cursor(isCursor=getattr(data, cursorName) == cursorValue)
                 elif type(data) == list or isinstance(data, QuerySet):
                     for rc in data:
                         if isinstance(rc, Model):
-                            rc.ik_set_cursor(isCursor=getattr(rc, cursorInfo.dataFieldName) == cursorInfo.dataValue)
+                            rc.ik_set_cursor(isCursor=getattr(rc, cursorName) == cursorValue)
 
     def _initScreen(self) -> ikhttp.IkSccJsonResponse:
         '''
@@ -553,6 +687,7 @@ class ScreenAPIView(AuthAPIView):
     def __proecessRequest(self, httpMethod, *args, **kwargs):
         _startTime = datetime.datetime.now()
         r = None
+        self.__isCallViewAPI = False
         try:
             r = self.__proecessRequest__(httpMethod, *args, **kwargs)
             if isinstance(r, Boolean2):
@@ -581,6 +716,19 @@ class ScreenAPIView(AuthAPIView):
                 self._freeRequestResource()
             except Exception as e:
                 logger.error(e, exc_info=True)
+            if self.__isCallViewAPI:
+                # save the api request data for next get screen
+                requestData = self.getRequestData()
+                try:
+                    if requestData is not None:
+                        # test request data, because the session will convert data to string, if failed, system will get error.
+                        # reference to django.core.signing.py:JSONSerializer.dumps
+                        # TODO: fix performance problem.
+                        json.dumps(requestData, ensure_ascii=False)
+                    self.setSessionParameter(_SESSION_NAME_API_CALL_REQUEST_DATA, requestData)
+                except Exception as e:
+                    className = '%s.%s.py:%s' % (self.__class__.__module__, self.__class__.__qualname__, self.__class__.__name__)
+                    logger.warning('%s Object [%s] cannot convert to json string.' % (className, self.getRequestData()))
             self._logDuration(_startTime)
         return r
 
@@ -612,7 +760,15 @@ class ScreenAPIView(AuthAPIView):
             self._requestData = self._getRequestData()
             self._logDuration(_getScreenStartTime, description='_getRequestData, screen=%s' % (None if self._screen is None else self._screen.id))
             self._lastRequestData = self.getSessionParameter(PARAMETER_KEY_NAME_LAST_REQUEST_DATA, default=None)
-            action = self.getRequestAction(**kwargs)  # E.g. userFg_EditIndexField_Click
+            action = self.getRequestAction(**kwargs)
+            if httpMethod == 'post' and action not in [REQUEST_SYSTEM_ACTION_UNLOADED_SCREEN, REQUEST_SYSTEM_ACTION_LOAD_SCREEN_COMPLETED]:
+                self.deleteSessionParameters(_SESSION_NAME_API_CALL_REQUEST_DATA)
+            if isNotNullBlank(action) and str(action).endswith('_%s_Click' % ikui.RESULT_TABLE_EDIT_COLUMN_PARAMETER_NAME): # E.g. userFg_EditIndexField_Click
+                parameterName = action[0:-len('_Click')]
+                self.setSessionParameter(parameterName, self.getRequestData().get(ikui.RESULT_TABLE_EDIT_COLUMN_PARAMETER_NAME, None))
+            if isNotNullBlank(action) and ikui.RESULT_TABLE_EDIT_COLUMN_PARAMETER_NAME in self.getRequestData().keys():
+                self.setSessionParameter(ikui.RESULT_TABLE_EDIT_COLUMN_PARAMETER_NAME, self.getRequestData().get(ikui.RESULT_TABLE_EDIT_COLUMN_PARAMETER_NAME, None))
+            
             _loggerDesc = action
             self._requestAction = action
             if not isNullBlank(action):
@@ -649,13 +805,6 @@ class ScreenAPIView(AuthAPIView):
                             self.setSessionParameter(field.name, value)
                             break
 
-            # YL.ikyo, 2023-05-08 for forward screen - start
-            # delete session data before save request data
-            if httpMethod == 'get' and action == REQUEST_SYSTEM_ACTION_INIT_SCREEN and (isNullBlank(subScreenNm) or subScreenNm == ikui.MAIN_SCREEN_NAME):
-                # delete the old session parameters
-                self.cleanSessionParameters()
-            # YL.ikyo, 2023-05-08 - end
-
             # check the edit button function for result table - end
             self._saveRequestData(additionParameterDict=additionalRequestParameters)
 
@@ -664,6 +813,9 @@ class ScreenAPIView(AuthAPIView):
             if action is not None and len(action) > 0 and action[0] == '_':
                 return ikhttp.IkErrJsonResponse(message='%s process %s action:[%s]: permission deny.' % (className, httpMethod, action))
             if httpMethod == 'get' and action == REQUEST_SYSTEM_ACTION_INIT_SCREEN:
+                if isNullBlank(subScreenNm) or subScreenNm == ikui.MAIN_SCREEN_NAME:
+                    # delete the old session parameters
+                    self.cleanSessionParameters()
                 _initScreenStartTime = datetime.datetime.now()
                 try:
                     return self._initScreen()
@@ -672,11 +824,14 @@ class ScreenAPIView(AuthAPIView):
             elif httpMethod == 'get' and action == REQUEST_SYSTEM_ACTION_GET_SCREEN:
                 return self._getScreenResponse()
             elif httpMethod == 'post' and action == REQUEST_SYSTEM_ACTION_UNLOADED_SCREEN:
-                self.cleanSessionParameters()
-                return ikhttp.IkSccJsonResponse()
+                try:
+                    return self._unloadScreen()
+                finally:
+                    self.cleanSessionParameters()
             elif httpMethod == 'post' and action == REQUEST_SYSTEM_ACTION_LOAD_SCREEN_COMPLETED:
-                return self._afterLoadScreenCompleted()
+                return self._unloadScreenDone()
             else:
+                self.__isCallViewAPI = True
                 actionFn = None
                 # format:
                 # fieldGroupName%action
@@ -690,6 +845,7 @@ class ScreenAPIView(AuthAPIView):
                 actionPrms = action.split('$')
                 actionFnName = actionPrms[-1]
                 callViewFn = False
+                self._beforeProcessAction(actionFnName, {}) # TODO: actionParameters
                 try:
                     actionFn = getattr(self, actionFnName)
                     if len(inspect.getfullargspec(actionFn).args) > 1:
@@ -756,6 +912,10 @@ class ScreenAPIView(AuthAPIView):
         self._messages.clear()
         self._staticResources.clear()
 
+    def getUserRequestData(self) -> dict:
+        data = self.getSessionParameter(_SESSION_NAME_API_CALL_REQUEST_DATA, {})
+        return data if data else {}
+
     def getRequestData(self) -> ikhttp.IkRequestData:
         return self._requestData
 
@@ -820,7 +980,7 @@ class ScreenAPIView(AuthAPIView):
 
     def _saveRequestData(self, additionParameterDict=None):
         data = self.getRequestData()
-        if not data:
+        if data is None:
             return
         jData = {}
         for key, value in additionParameterDict.items():
@@ -838,29 +998,6 @@ class ScreenAPIView(AuthAPIView):
         v = self.getLastRequestData().get(name, None)
         return None if isNullBlank(v) else int(v)
 
-    def __updateSessionParameters(self, parameterNames=None) -> bool:
-        '''
-            parameterNames means all. Types (str (parameter name), list (parameter names), dict (prameter name, parameter value))
-        '''
-        if parameterNames is not None and type(parameterNames) == dict:
-            for key, value in parameterNames.items():
-                self.setSessionParameter(key, value)
-            return True
-        if parameterNames is not None:
-            if type(parameterNames) == list and len(parameterNames) == 0:
-                return True
-            if type(parameterNames) == str:
-                parameterNames = [parameterNames]
-        data = self.getRequestData()
-        foundNames = []
-        for name, value in data.items():
-            if parameterNames is not None and name not in parameterNames:
-                continue
-            self.setSessionParameter(name, value)
-            if parameterNames is not None and name not in foundNames:
-                foundNames.append(name)
-        return parameterNames is None or len(parameterNames) == len(foundNames)
-
     def readWebTemplateFile(self, filename) -> str:
         '''
             return file content with \n
@@ -874,11 +1011,17 @@ class ScreenAPIView(AuthAPIView):
         with open(f, newline='', encoding='utf-8') as f:
             content = f.read()
         return content
+    
+    def _beforeProcessAction(self, action:str, parameters: list[str]) -> None:
+        pass
 
-    def _afterLoadScreenCompleted(self) -> ikhttp.IkJsonResponse:
+    def _unloadScreen(self) -> ikhttp.IkJsonResponse:
+        return ikhttp.IkSccJsonResponse()
+    
+    def _unloadScreenDone(self) -> ikhttp.IkJsonResponse:
         if self._isCleanSessionDataWhenScreenLoadCompleted():
             self.cleanSessionParameters()
-        return ikhttp.IkSccJsonResponse()
+        return ikhttp.IkSccJsonResponse()       
 
     def _isCleanSessionDataWhenScreenLoadCompleted(self) -> bool:
         return False
@@ -903,7 +1046,7 @@ class ScreenAPIView(AuthAPIView):
 
     def _addMessages(self, messages) -> None:
         if messages is not None:
-            if type(messages) != list:
+            if type(messages) != list and type(messages) != tuple:
                 raise IkException('Parameter [messages] should be a list.')
             self._messages.extend(messages)
 
@@ -1051,7 +1194,7 @@ class ScreenAPIView(AuthAPIView):
 
         rcs = None if recordsetName is None else ikui.IkUI._getRecordSetData(fieldGroup, field, recordsetName)
         if rcs is not None:
-            currentRecordID = self._getTableDataIndex(fieldGroup.name)
+            currentRecordID = self._getEditIndexField(fieldGroup.name)
             if not isNullBlank(currentRecordID):
                 modelUtils.locateToFirstByID(rcs, int(currentRecordID))
         if field is None and fieldGroup.isDetail():
@@ -1112,37 +1255,46 @@ class ScreenAPIView(AuthAPIView):
         else:
             return ikhttp.IkErrJsonResponse(message='Unsupport system function [%s].' % functionName)
 
-    def _BIFNew(self, fieldGropName) -> ikhttp.IkJsonResponse:
+    def _BIFNew(self, fieldGropName: str = None) -> ikhttp.IkJsonResponse:
         '''
             build-in function: new
         '''
         if isNullBlank(fieldGropName):
-            return ikhttp.IkErrJsonResponse(message='Fieldgroup Name is mandatory for build-in function [new].')
+            resultTables = [fg.name for fg in self.getScreen().fieldGroups if fg.groupType == ikui.SCREEN_FIELD_TYPE_RESULT_TABLE]
+            if len(resultTables) == 1:
+                fieldGropName = resultTables[0]
+            if isNullBlank(fieldGropName):
+                return ikhttp.IkErrJsonResponse(message='Fieldgroup Name is mandatory for build-in function [new].')
         screen = self._screen
         fg = screen.getFieldGroup(fieldGropName)
         if fg is None:
             return ikhttp.IkErrJsonResponse(message='Fieldgroup [%s] is not found for build-in function [new].' % fieldGropName)
         if isNullBlank(fg.recordSetName):
             return ikhttp.IkErrJsonResponse(message='RecordSet is not found for field group [%s] for build-in function [new].' % fieldGropName)
-        self._setTableDataIndex(fg.name, 0)  # id = 0
+        self._setEditIndexFieldValue(_EDIT_INDEX_FIELD_NEW_RECORD_VALUE, fg.name)  # id = 0
         return ikhttp.IkSccJsonResponse()
 
-    def _BIFCancel(self, fieldGropName) -> ikhttp.IkJsonResponse:
+    def _BIFCancel(self, fieldGropName: str = None) -> ikhttp.IkJsonResponse:
         '''
             build-in function: cancel
         '''
         if isNullBlank(fieldGropName):
-            return ikhttp.IkErrJsonResponse(message='Fieldgroup Name is mandatory for build-in function [new].')
+            fieldGropNames = self.__getEditIndexFieldGroupNames()
+            if len(fieldGropNames) == 0:
+                return ikhttp.IkErrJsonResponse(message='Fieldgroup Name is mandatory for build-in function [new].')
+            elif len(fieldGropNames) > 1:
+                raise IkException('Too many fieldgroup Names found: %s' % fieldGropNames)
+            fieldGropName = fieldGropNames[1]
         screen = self._screen
         fg = screen.getFieldGroup(fieldGropName)
         if fg is None:
             return ikhttp.IkErrJsonResponse(message='Fieldgroup [%s] is not found for build-in function [new].' % fieldGropName)
         if isNullBlank(fg.recordSetName):
             return ikhttp.IkErrJsonResponse(message='RecordSet is not found for field group [%s] for build-in function [new].' % fieldGropName)
-        self._removeTableDataIndex(fg.name)
+        self._deleteEditIndexFieldValue(fg.name)
         return ikhttp.IkSccJsonResponse()
 
-    def _BIFDelete(self, __fieldGropName) -> ikhttp.IkJsonResponse:
+    def _BIFDelete(self) -> ikhttp.IkJsonResponse:
         '''
             build-in function: delete
         '''
@@ -1184,10 +1336,10 @@ class ScreenAPIView(AuthAPIView):
             for fgName, rc in detailDataList.items():
                 fgl = self._screen.getFieldGroupLink(fgName)
                 if fgl is not None:
-                    self._removeTableDataIndex(fgl.parentFieldGroup.name)
+                    self._deleteEditIndexFieldValue(fgl.parentFieldGroup.name)
         return b
 
-    def _BIFSave(self, __fieldGropName) -> ikhttp.IkJsonResponse:
+    def _BIFSave(self) -> ikhttp.IkJsonResponse:
         '''
             build-in function: save
         '''
@@ -1266,32 +1418,7 @@ class ScreenAPIView(AuthAPIView):
                     keyValue = None
                     if rc is not None:
                         keyValue = getattr(rc, fgl.localKey)
-                    self._setTableDataIndex(fgl.parentFieldGroup.name, keyValue)
-        return b
-
-    def save1(self):
-        '''
-            Save author and books table.
-        '''
-        # 1. get post data
-        reqData = self.getRequestData()
-        authorRc = reqData.get('authorDetailFg')
-        if authorRc is None:
-            return ikhttp.IkErrJsonResponse(message='Please select an author first.')
-        bookRcs = reqData.get('booksFg')
-
-        # 2. check the author is new or not
-        isSaveNewAuthor = authorRc.ik_is_status_new()
-        if isSaveNewAuthor:
-            authorRc.assignPrimaryID()
-
-        # 3. save
-        trn = IkTransaction(caller=self)
-        trn.add(authorRc)
-        trn.add(bookRcs, foreignKeys={'author': authorRc})
-        b = trn.save()
-        if b.value:
-            self._setTableDataIndex('authorFg', authorRc.id)
+                    self._setEditIndexFieldValue(keyValue, fgl.parentFieldGroup.name)
         return b
 
     # YL.ikyo, 2023-06-06 for table pagination - start
@@ -1374,6 +1501,56 @@ class ScreenAPIView(AuthAPIView):
             remarks (str, optional): Remarks.
         """    
         addAccessLog(request, menuID, pageName, actionName, remarks)
+
+    def _saveModels(self, models: any = None, modifyModels: any = None, deleteModels: any = None, successMessage: str = None, errorMessage: str = None) -> Boolean2:
+        """ Save models.
+
+        Save order: 1. delete models. 2. update models. 3. models.
+
+        Args:
+            models(any, optional): A model or model list/tuple.
+            modifyModels(any, optional): A model or model list/tuple.
+            deleteModels(any, optional): A model or model list/tuple.
+            successMessage(str, optional): Success message to replace the system success message.
+            errorMessage(str, optional): Save failed message to replace the system error message.
+
+        Returns:
+            Boolean2: Save success or not. None if total models is 0.
+        """
+        if models is None and modifyModels is None and deleteModels is None:
+            return None
+        totalRecords = 0
+        if models:
+            totalRecords = (len(models) if (type(models) == list or type(models) == tuple ) else 1)
+        if modifyModels:
+            totalRecords += (len(modifyModels) if (type(modifyModels) == list or type(modifyModels) == tuple ) else 1)
+        if deleteModels:
+            totalRecords += (len(deleteModels) if (type(deleteModels) == list or type(deleteModels) == tuple ) else 1)
+        if totalRecords == 0:
+            return None
+        trn = IkTransaction()
+        if deleteModels:
+            if type(deleteModels) == list or type(deleteModels) == tuple:
+                for m in deleteModels:
+                    trn.delete(m)
+            else:    
+                trn.delete(deleteModels)
+        if modifyModels:
+            if type(modifyModels) == list or type(modifyModels) == tuple:
+                for m in modifyModels:
+                    trn.modify(m)
+            else:
+                trn.modify(modifyModels)
+        if models:
+            if type(models) == list or type(models) == tuple:
+                for m in models:
+                    trn.add(m)
+            else:
+                trn.add(models)
+        rst = trn.save()
+        if rst.value:
+            return Boolean2(True, successMessage) if successMessage else rst
+        return Boolean2(False, errorMessage) if errorMessage else rst
 
 
 def getCurrentView() -> ScreenAPIView:
