@@ -6,6 +6,7 @@
  */
 import transform, { StyleTuple } from "css-to-react-native"
 import React, { forwardRef, Ref, useContext } from "react"
+import classnames from "classnames"
 import { DialogContext } from "./ConText"
 import ImageButton from "./ImageButton"
 import * as Loading from "./Loading"
@@ -59,12 +60,12 @@ const AdvancedSelection: React.FC<IAdvancedSelection> = forwardRef((props, ref: 
     try {
       const btnType = "normal"
       const dialogParams = getDialogParams(props.widgetParameter.dialog)
-      const dialogName = dialogParams["dialogName"]
-      const title = dialogParams["dialogTitle"]
-      const message = dialogParams["dialogMessage"]
-      const eventWithParams = dialogParams["dialogBeforeDisplayEvent"]
-      const continueNm = dialogParams["continueNm"] ? dialogParams["continueNm"] : "OK"
-      const cancelNm = dialogParams["cancelNm"] ? dialogParams["cancelNm"] : "Cancel"
+      const dialogName = dialogParams["name"]
+      const dialogTitle = dialogParams["title"]
+      const dialogContent = dialogParams["content"]
+      const eventWithParams = dialogParams["beforeDisplayEvent"]
+      const continueName = dialogParams["continueName"] ? dialogParams["continueName"] : "OK"
+      const cancelName = dialogParams["cancelName"] ? dialogParams["cancelName"] : "Cancel"
       const dialogWidth = dialogParams["width"]
       const dialogHeight = dialogParams["height"]
 
@@ -85,18 +86,18 @@ const AdvancedSelection: React.FC<IAdvancedSelection> = forwardRef((props, ref: 
           .then((response) => response.json())
           .then((result) => {
             if (validateResponse(result, false)) {
-              const dialogTitle = result.data && result.data["title"] ? result.data["title"] : ""
-              const dialogMessage = result.data && result.data["dialogMessage"] ? result.data["dialogMessage"] : ""
+              const dialogTitle = result.data && result.data["title"] ? result.data["title"] : dialogParams["title"]
+              const dialogContent = result.data && result.data["content"] ? result.data["content"] : dialogParams["content"]
               const params = {
                 dialogTitle: dialogTitle,
-                dialogMessage: dialogMessage,
+                dialogContent: dialogContent,
                 dialogType: btnType,
                 screenID: screenID,
                 dialogName: dialogName,
                 onCancel: () => closeDialog(),
                 onContinue: (dialogData) => onClickEvent(btnType, { ...buttonData, ...dialogData }),
-                continueNm: continueNm,
-                cancelNm: cancelNm,
+                continueName: continueName,
+                cancelName: cancelName,
                 dialogWidth: dialogWidth,
                 dialogHeight: dialogHeight,
               }
@@ -105,15 +106,15 @@ const AdvancedSelection: React.FC<IAdvancedSelection> = forwardRef((props, ref: 
           })
       } else {
         const params = {
-          dialogTitle: title,
-          dialogMessage: message,
+          dialogTitle: dialogTitle,
+          dialogContent: dialogContent,
           dialogType: btnType,
           screenID: screenID,
           dialogName: dialogName,
           onCancel: () => closeDialog(),
           onContinue: (dialogData) => onClickEvent(btnType, { ...buttonData, ...dialogData }),
-          continueNm: continueNm,
-          cancelNm: cancelNm,
+          continueName: continueName,
+          cancelName: cancelName,
           dialogWidth: dialogWidth,
           dialogHeight: dialogHeight,
         }
@@ -153,17 +154,22 @@ const AdvancedSelection: React.FC<IAdvancedSelection> = forwardRef((props, ref: 
   }
 
   let cellStyle: StyleTuple[] = []
+  let cellClass = []
   if (props.style) {
     const properties = Object.keys(props.style)
     properties.forEach((property) => {
-      cellStyle.push([property, props.style[property]])
-    })
-  }
+      if (property.toLocaleLowerCase() === 'class') {
+        cellClass = props.style[property].split(',').map(str => str.trim());
+      } else {
+        cellStyle.push([property, props.style[property]])
+      }
+    })          
+  }  
 
   return (
     <>
       <th className="property_key">{props.labelLabel}</th>
-      <td className="property_value tip_center">
+      <td className={classnames(cellClass, 'property_value', 'tip_center')}>
         <input ref={ref} type="hidden" name={props.name} id={props.name} value={selectValue}></input>
         <textarea
           rows={5}

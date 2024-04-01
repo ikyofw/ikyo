@@ -32,6 +32,23 @@ const pyiLocalStorage = {
     SELECTABLE_TABLE_ROW_STATUS: "__SLT_",
     PLUGIN_ACTIVE_STATUS: "__CRR_",
 
+    // field type
+    FIELD_TYPE_LABEL: "label",
+    FIELD_TYPE_TEXT_BOX:'textbox',
+    FIELD_TYPE_TEXTAREA:'textarea',
+    FIELD_TYPE_PASSWORD:'password',
+    FIELD_TYPE_DATE_BOX:'datebox',
+    FIELD_TYPE_COMBO_BOX: "combobox",
+    FIELD_TYPE_LIST_BOX: "listbox",
+    FIELD_TYPE_ADVANCED_COMBOBOX: "advancedcombobox",
+    FIELD_TYPE_ADVANCED_SELECTION: "advancedselection",
+    FIELD_TYPE_CHECK_BOX: "checkbox",
+    FIELD_TYPE_BUTTON: "button",
+    FIELD_TYPE_ICON_AND_TEXT: "iconandtext",
+    FIELD_TYPE_FILE: "file",
+    FIELD_TYPE_PLUGIN: "plugin",
+    FIELD_TYPE_HTML: "html",
+
     // dialog type
     DIALOG_TYPE_NORMAL: "normal",
     DIALOG_TYPE_HTML: "html",
@@ -78,7 +95,7 @@ const pyiLocalStorage = {
 
     // How to manipulate the secondary menu to display the tertiary menu.
     // Values: click/hover. Default to click.
-    SUBMENU_DISPLAY_MODE: 'click'
+    SUBMENU_DISPLAY_MODE: "click",
   },
 
   // cookie info

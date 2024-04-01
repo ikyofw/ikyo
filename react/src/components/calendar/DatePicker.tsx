@@ -1,4 +1,5 @@
 import transform, { StyleTuple } from "css-to-react-native"
+import classnames from "classnames"
 import moment from "moment"
 import React, { ChangeEvent, forwardRef, Ref, useEffect, useState } from "react"
 import pyiLogger from "../../utils/log"
@@ -15,10 +16,10 @@ export type Props = {
   calType: calendarTypes
   cid?: string
   textStr?: string
-  format?: number // LHH.ikyo 2022-05-09
+  format?: number // LHH 2022-05-09
   hideInputAndCal?: boolean
   editable: boolean
-  inCell?: boolean // LHH.ikyo 2022-04-26
+  inCell?: boolean // LHH 2022-04-26
   style?: any
 }
 
@@ -30,7 +31,7 @@ type calendarTypes = "flat" | "input" | "displayArea" | "button"
 
 var calendarGID: number = 0
 
-// LHH.ikyo 2022-05-09 start
+// LHH 2022-05-09 start
 // format option 1
 const dateStringFormat = "YYYY-MM-DD"
 // format option 2
@@ -38,19 +39,19 @@ const dateTimeStringFormat = "YYYY-MM-DD HH:mm:ss"
 // format option 3
 const timeStringFormat = "HH:mm:ss"
 const defaultFormat = dateStringFormat
-// LHH.ikyo 2022-05-09 end
+// LHH 2022-05-09 end
 
 export const Calendar: React.FC<Props> = forwardRef((props, ref: Ref<any>) => {
   const { calType, cid, textStr, format } = props
-  var stringFormat = getDateFormatStr(format) // LHH.ikyo 2022-05-09
+  var stringFormat = getDateFormatStr(format) // LHH 2022-05-09
 
   // YL, 2022-04-14 define date format - start
   let dateFormat = "%Y-%m-%d"
   if (stringFormat && String(stringFormat).trim() === dateTimeStringFormat) {
-    // LHH.ikyo 2022-05-09
+    // LHH 2022-05-09
     dateFormat = "%Y-%m-%d %H:%M:%S"
   } else if (String(stringFormat).trim() === timeStringFormat) {
-    // LHH.ikyo 2022-05-09
+    // LHH 2022-05-09
     dateFormat = "%H:%M:%S"
   }
 
@@ -61,7 +62,7 @@ export const Calendar: React.FC<Props> = forwardRef((props, ref: Ref<any>) => {
   const [spanClass, setSpanClass] = useState(hideInputAndCal ? "span_h" : "span_s")
 
   const [dtValue, setDtValue] = useState<string>(
-    textStr ? formatDate(textStr, stringFormat) : "" // LHH.ikyo 2022-05-09
+    textStr ? formatDate(textStr, stringFormat) : "" // LHH 2022-05-09
   )
 
   const [dtErrorMsg, setDtErrorMsg] = useState("")
@@ -144,10 +145,10 @@ export const Calendar: React.FC<Props> = forwardRef((props, ref: Ref<any>) => {
   }
 
   useEffect(() => {
-    setDtValue(textStr ? formatDate(textStr, stringFormat) : "") // LHH.ikyo 2022-05-09
+    setDtValue(textStr ? formatDate(textStr, stringFormat) : "") // LHH 2022-05-09
   }, [textStr])
 
-  // LHH.ikyo 2022-04-26 start
+  // LHH 2022-04-26 start
   var mRef = ref as React.MutableRefObject<any>
 
   // YL, 2022-07-13 add date validate - start
@@ -164,12 +165,12 @@ export const Calendar: React.FC<Props> = forwardRef((props, ref: Ref<any>) => {
         return
       }
       // YL, 2022-07-13 - end
-      var formatValue = formatDate(curValue, stringFormat) // LHH.ikyo 2022-05-09
+      var formatValue = formatDate(curValue, stringFormat) // LHH 2022-05-09
       setDtValue(formatValue)
       mRef.current.value = formatValue
     }
   }
-  // LHH.ikyo 2022-04-26 end
+  // LHH 2022-04-26 end
 
   if (calType.trim().toLocaleLowerCase() === "flat") {
     var divId = cid === undefined ? "div".concat(generateCalWidgetId()) : cid
@@ -202,12 +203,17 @@ export const Calendar: React.FC<Props> = forwardRef((props, ref: Ref<any>) => {
   } else if (calType.trim().toLocaleLowerCase() === "input") {
     var inputId = cid === undefined ? "input_".concat(generateCalWidgetId()) : cid
     var buttonId = cid === undefined ? "button".concat(generateCalWidgetId()) : "button".concat(cid)
-    // LHH.ikyo 2022-04-26 start
+    // LHH 2022-04-26 start
     var inputStyle: StyleTuple[] = []
+    let inputClass = []
     if (props.style) {
       const properties = Object.keys(props.style)
       properties.forEach((property) => {
-        inputStyle.push([property, props.style[property]])
+        if (property.toLocaleLowerCase() === "class") {
+          inputClass = props.style[property].split(",").map((str) => str.trim())
+        } else {
+          inputStyle.push([property, props.style[property]])
+        }
       })
     }
 
@@ -216,7 +222,7 @@ export const Calendar: React.FC<Props> = forwardRef((props, ref: Ref<any>) => {
     if (inCell) {
       cellStyle = { position: "absolute", right: "0px", width: "auto", bottom: "0px", top: "0px" }
     }
-    // LHH.ikyo 2022-04-26 end
+    // LHH 2022-04-26 end
 
     return (
       <>
@@ -224,8 +230,8 @@ export const Calendar: React.FC<Props> = forwardRef((props, ref: Ref<any>) => {
           <input
             type="text"
             id={inputId}
-            className={spanClass}
-            defaultValue={dtValue} // LHH.ikyo 2022-04-26
+            className={classnames(inputClass, spanClass)}
+            defaultValue={dtValue} // LHH 2022-04-26
             value={props.inCell ? null : dtValue} // YL, 2023-04-17 for simpleFg can set '' date and tableFg can select date.
             onChange={setDateValue}
             ref={(e: HTMLInputElement) => {
@@ -235,14 +241,14 @@ export const Calendar: React.FC<Props> = forwardRef((props, ref: Ref<any>) => {
             }}
             disabled={!props.editable}
             onFocus={handleFocus}
-            onBlur={handleBlur} // LHH.ikyo 2022-04-26
+            onBlur={handleBlur} // LHH 2022-04-26
             style={inputStyle.length > 0 ? transform(inputStyle) : null}
           />
-          {stringFormat == defaultFormat ? ( // LHH.ikyo 2022-05-09
+          {stringFormat == defaultFormat ? ( // LHH 2022-05-09
             <a
               id={buttonId}
               className={spanClass}
-              style={cellStyle} // LHH.ikyo 2022-04-26
+              style={cellStyle} // LHH 2022-04-26
             >
               <img
                 className="calendar_img"
@@ -292,7 +298,7 @@ export function formatDate(dateString: string, format: string) {
     return verifyIsDate(dateString) ? moment(dateString).format(format) : ""
   }
 }
-// LHH.ikyo 2022-05-09 end
+// LHH 2022-05-09 end
 export default Calendar
 
 function getValidatedDate(formatNumber: number | undefined, date: string) {

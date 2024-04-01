@@ -5,7 +5,9 @@
  * @Date: 2023-08-09 10:42:59
  */
 
+import transform, { StyleTuple } from "css-to-react-native"
 import React, { useImperativeHandle, Ref, forwardRef, useEffect, useState } from "react"
+import classnames from "classnames"
 import { useHttp } from "../utils/http"
 import pyiLocalStorage from "../utils/pyiLocalStorage"
 import { MultiSelect } from "react-multi-select-component"
@@ -105,19 +107,24 @@ const AdvancedComboBox: React.FC<IAdvancedComboBox> = forwardRef((props, ref: Re
     }
   }, [props.widgetParameter, data])
 
-  let cellStyle = []
+  let cellStyle: StyleTuple[] = []
+  let cellClass = []
   if (props.style) {
     const properties = Object.keys(props.style)
     properties.forEach((property) => {
-      cellStyle.push([property, props.style[property]])
-    })
-  }
+      if (property.toLocaleLowerCase() === 'class') {
+        cellClass = props.style[property].split(',').map(str => str.trim());
+      } else {
+        cellStyle.push([property, props.style[property]])
+      }
+    })          
+  }  
 
   const IAdvancedComboBoxNode = React.useMemo(
     () => (
       <>
         <th className="property_key">{props.advancedComboBoxLabel}</th>
-        <td>
+        <td className={classnames(cellClass, 'property_value', 'tip_center')}>
           <MultiSelect
             options={valueAndDisplay}
             value={selectValues}

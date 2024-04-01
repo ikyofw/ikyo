@@ -1,5 +1,12 @@
+/*
+ * @Description:
+ * @version:
+ * @Author: YL
+ * @Date: 2022-03-24 10:42:59
+ */
 import transform, { StyleTuple } from "css-to-react-native"
 import React, { ChangeEvent, Ref, forwardRef, useEffect, useState } from "react"
+import classnames from "classnames"
 import { useHttp } from "../utils/http"
 import pyiLocalStorage from "../utils/pyiLocalStorage"
 
@@ -112,18 +119,23 @@ const ListBox: React.FC<IListBox> = forwardRef((props, ref: Ref<any>) => {
   }
 
   let cellStyle: StyleTuple[] = []
+  let cellClass = []
   if (props.style) {
     const properties = Object.keys(props.style)
     properties.forEach((property) => {
-      cellStyle.push([property, props.style[property]])
+      if (property.toLocaleLowerCase() === "class") {
+        cellClass = props.style[property].split(",").map((str) => str.trim())
+      } else {
+        cellStyle.push([property, props.style[property]])
+      }
     })
   }
-
+  
   const IListBoxNode = React.useMemo(
     () => (
       <>
         <th className="property_key">{props.listBoxLabel}</th>
-        <td className="property_value">
+        <td className={classnames(cellClass, "property_value")}>
           <select
             multiple
             size={4}

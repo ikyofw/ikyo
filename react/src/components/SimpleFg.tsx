@@ -1,22 +1,30 @@
+/*
+ * @Description:
+ * @version:
+ * @Author: YL
+ * @Date: 2022-03-25 09:57:31
+ */
 import React, { Ref, forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react"
 import { useHttp } from "../utils/http"
 import pyiLogger from "../utils/log"
 import pyiLocalStorage from "../utils/pyiLocalStorage"
 import { showInfoMessage, validateResponse } from "../utils/sysUtil"
-import AdvancedComboBox from "./AdvancedComboBox"
-import AdvancedSelection from "./AdvancedSelection"
 import CheckBox from "./CheckBox"
 import ComboBox from "./ComboBox"
+import ListBox from "./ListBox"
+import AdvancedComboBox from "./AdvancedComboBox"
+import AdvancedSelection from "./AdvancedSelection"
 import DateBox from "./DateBox"
 import FileUpload from "./FileUpload"
 import ImageButton from "./ImageButton"
 import Label from "./Label"
-import ListBox from "./ListBox"
-import PasswordBox from "./PasswordBox"
 import TextArea from "./TextArea"
 import TextBox from "./TextBox"
+import PasswordBox from "./PasswordBox"
 
 import { formatData } from "./tableFg/reducer"
+
+const global = pyiLocalStorage.globalParams
 
 interface ISimpleFg {
   ref: any
@@ -26,7 +34,7 @@ interface ISimpleFg {
   editable: boolean
 }
 const SimpleFg: React.FC<ISimpleFg> = forwardRef((props, ref: Ref<any>) => {
-  const HttpGet = useHttp(pyiLocalStorage.globalParams.HTTP_TYPE_GET)
+  const HttpGet = useHttp(global.HTTP_TYPE_GET)
 
   const { simpleParams, editable: screenEditable } = props
   let refs: { [key: string]: React.MutableRefObject<any> } = {}
@@ -72,22 +80,21 @@ const SimpleFg: React.FC<ISimpleFg> = forwardRef((props, ref: Ref<any>) => {
         // get all form field data
         fields.forEach((field) => {
           let value = null
-          if (field.widget.trim().toLocaleLowerCase() === "listbox") {
+          const widget = field.widget.trim().toLocaleLowerCase()
+          if (widget === global.FIELD_TYPE_LIST_BOX) {
             value = Array.from(refs[field.name].current.options)
               .filter((option: any) => option.selected)
               .map((option: any) => option.value)
-          } else if (field.widget.trim().toLocaleLowerCase() === "advancedcombobox") {
+          } else if (widget === global.FIELD_TYPE_ADVANCED_COMBOBOX) {
             value = refs[field.name].current.getSelected()
-          } else if (field.widget.trim().toLocaleLowerCase() !== "button") {
+          } else if (widget !== global.FIELD_TYPE_BUTTON) {
             value = refs[field.name].current?.value
           }
 
-          if (value != null) {
-            if (field.dataField) {
-              formData.append(field.dataField, value)
-            } else if (field.name) {
-              formData.append(field.name, value)
-            }
+          if (field.dataField) {
+            formData.append(field.dataField, value)
+          } else if (field.name) {
+            formData.append(field.name, value)
           }
         })
 
@@ -102,7 +109,7 @@ const SimpleFg: React.FC<ISimpleFg> = forwardRef((props, ref: Ref<any>) => {
         const formData = new FormData()
         formData.append("id", data && data["id"] ? data["id"] : "")
         fields.forEach((field) => {
-          if (field.widget.trim().toLowerCase() === "file") {
+          if (field.widget.trim().toLowerCase() === global.FIELD_TYPE_FILE) {
             // TODO: pass a array to server (2022-11-03, Li)
             const files = refs[field.name].current?.files
             if (!files || files.length === 0) {
@@ -116,7 +123,7 @@ const SimpleFg: React.FC<ISimpleFg> = forwardRef((props, ref: Ref<any>) => {
                 const input = document.getElementById(field.name) as any
                 input.value = ""
               }
-              formData.append(field.name, files[0])
+              formData.append(field.name + "_FILES_0", files[0])
             } else {
               // TODO: temporary solution (2022-11-03, Li)
               for (let i = 0; i < files.length; i += 1) {
@@ -153,7 +160,7 @@ const SimpleFg: React.FC<ISimpleFg> = forwardRef((props, ref: Ref<any>) => {
     // init fields combox data
     if (fields && fields.length > 0) {
       fields.map(async (element, index) => {
-        if (element.widget.trim().toLowerCase() === "combobox") {
+        if (element.widget.trim().toLowerCase() === global.FIELD_TYPE_COMBO_BOX) {
           if (!element.widgetParameter.data || element.widgetParameter.data === null) {
             var comboxDataUrl = element.widgetParameter.dataUrl
             if (comboxDataUrl) {
@@ -191,7 +198,7 @@ const SimpleFg: React.FC<ISimpleFg> = forwardRef((props, ref: Ref<any>) => {
                     <>
                       {field.groupTitle !== undefined ? (
                         field.groupTitle
-                      ) : String(field.widget).trim().toLocaleLowerCase() === "label" ? (
+                      ) : String(field.widget).trim().toLocaleLowerCase() === global.FIELD_TYPE_LABEL ? (
                         <Label
                           key={index}
                           ref={refs[field.name]}
@@ -201,7 +208,7 @@ const SimpleFg: React.FC<ISimpleFg> = forwardRef((props, ref: Ref<any>) => {
                           tip={field.tooltip}
                           widgetParameter={field.widgetParameter}
                         />
-                      ) : String(field.widget).trim().toLocaleLowerCase() === "textbox" ? (
+                      ) : String(field.widget).trim().toLocaleLowerCase() === global.FIELD_TYPE_TEXT_BOX ? (
                         <TextBox
                           key={index}
                           ref={refs[field.name]}
@@ -213,7 +220,7 @@ const SimpleFg: React.FC<ISimpleFg> = forwardRef((props, ref: Ref<any>) => {
                           tip={field.tooltip}
                           widgetParameter={field.widgetParameter}
                         />
-                      ) : String(field.widget).trim().toLocaleLowerCase() === "textarea" ? (
+                      ) : String(field.widget).trim().toLocaleLowerCase() === global.FIELD_TYPE_TEXTAREA ? (
                         <TextArea
                           key={index}
                           ref={refs[field.name]}
@@ -225,7 +232,7 @@ const SimpleFg: React.FC<ISimpleFg> = forwardRef((props, ref: Ref<any>) => {
                           tip={field.tooltip}
                           widgetParameter={field.widgetParameter}
                         />
-                      ) : String(field.widget).trim().toLocaleLowerCase() === "password" ? (
+                      ) : String(field.widget).trim().toLocaleLowerCase() === global.FIELD_TYPE_PASSWORD ? (
                         <PasswordBox
                           key={index}
                           ref={refs[field.name]}
@@ -237,7 +244,7 @@ const SimpleFg: React.FC<ISimpleFg> = forwardRef((props, ref: Ref<any>) => {
                           tip={field.tooltip}
                           widgetParameter={field.widgetParameter}
                         />
-                      ) : String(field.widget).trim().toLocaleLowerCase() === "combobox" ? (
+                      ) : String(field.widget).trim().toLocaleLowerCase() === global.FIELD_TYPE_COMBO_BOX ? (
                         <ComboBox
                           key={index}
                           ref={refs[field.name]}
@@ -252,7 +259,7 @@ const SimpleFg: React.FC<ISimpleFg> = forwardRef((props, ref: Ref<any>) => {
                           style={field.style}
                           tip={field.tooltip}
                         />
-                      ) : String(field.widget).trim().toLocaleLowerCase() === "listbox" ? (
+                      ) : String(field.widget).trim().toLocaleLowerCase() === global.FIELD_TYPE_LIST_BOX ? (
                         <ListBox
                           key={index}
                           ref={refs[field.name]}
@@ -265,7 +272,7 @@ const SimpleFg: React.FC<ISimpleFg> = forwardRef((props, ref: Ref<any>) => {
                           style={field.style}
                           widgetParameter={field.widgetParameter}
                         />
-                      ) : String(field.widget).trim().toLocaleLowerCase() === "advancedcombobox" ? (
+                      ) : String(field.widget).trim().toLocaleLowerCase() === global.FIELD_TYPE_ADVANCED_COMBOBOX ? (
                         <AdvancedComboBox
                           key={index}
                           ref={refs[field.name]}
@@ -277,7 +284,7 @@ const SimpleFg: React.FC<ISimpleFg> = forwardRef((props, ref: Ref<any>) => {
                           style={field.style}
                           widgetParameter={field.widgetParameter}
                         />
-                      ) : String(field.widget).trim().toLocaleLowerCase() === "advancedselection" ? (
+                      ) : String(field.widget).trim().toLocaleLowerCase() === global.FIELD_TYPE_ADVANCED_SELECTION ? (
                         <AdvancedSelection
                           key={index}
                           ref={refs[field.name]}
@@ -290,7 +297,7 @@ const SimpleFg: React.FC<ISimpleFg> = forwardRef((props, ref: Ref<any>) => {
                           widgetParameter={field.widgetParameter}
                           style={field.style}
                         />
-                      ) : String(field.widget).trim().toLocaleLowerCase() === "checkbox" ? (
+                      ) : String(field.widget).trim().toLocaleLowerCase() === global.FIELD_TYPE_CHECK_BOX ? (
                         <CheckBox
                           key={index}
                           ref={refs[field.name]}
@@ -301,7 +308,7 @@ const SimpleFg: React.FC<ISimpleFg> = forwardRef((props, ref: Ref<any>) => {
                           tip={field.tooltip}
                           widgetParameter={field.widgetParameter}
                         />
-                      ) : String(field.widget).trim().toLocaleLowerCase() === "datebox" ? (
+                      ) : String(field.widget).trim().toLocaleLowerCase() === global.FIELD_TYPE_DATE_BOX? (
                         <DateBox
                           key={index}
                           ref={refs[field.name]}
@@ -312,7 +319,7 @@ const SimpleFg: React.FC<ISimpleFg> = forwardRef((props, ref: Ref<any>) => {
                           style={field.style}
                           tip={field.tooltip}
                         />
-                      ) : String(field.widget).trim().toLocaleLowerCase() === "button" ? (
+                      ) : String(field.widget).trim().toLocaleLowerCase() === global.FIELD_TYPE_BUTTON ? (
                         <ImageButton
                           key={index}
                           isField={true}
@@ -322,7 +329,7 @@ const SimpleFg: React.FC<ISimpleFg> = forwardRef((props, ref: Ref<any>) => {
                           clickEvent={() => props.btnClickEvent([field.eventHandler, field.eventHandlerParameter, field.widgetParameter])}
                           editable={editable && field.editable}
                         />
-                      ) : String(field.widget).trim().toLocaleLowerCase() === "file" ? (
+                      ) : String(field.widget).trim().toLocaleLowerCase() === global.FIELD_TYPE_FILE ? (
                         <FileUpload
                           key={index}
                           ref={refs[field.name]}
@@ -397,7 +404,7 @@ export function formatValue(data: any, field: any) {
   }
 
   const format = field.widgetParameter && field.widgetParameter["format"] ? field.widgetParameter["format"] : ""
-  if (value && format && field.widget.trim().toLocaleLowerCase() !== 'label') {
+  if (value && format && field.widget.trim().toLocaleLowerCase() !== global.FIELD_TYPE_LABEL) {
     value = formatData(value, format)
   }
   return value

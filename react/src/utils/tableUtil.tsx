@@ -1,3 +1,9 @@
+/*
+ * @Description:
+ * @version:
+ * @Author: YL
+ * @Date: 2022-04-06 16:31:50
+ */
 import { getDialogEvent, getDialogEventParamArr, getDialogParams } from "../components/Dialog"
 import pyiLocalStorage from "./pyiLocalStorage"
 
@@ -182,7 +188,7 @@ export function getTableComboBoxColNos(table: any) {
   if (table.fields) {
     for (let index = 0; index < table.fields.length; index++) {
       const field = table.fields[index]
-      if (field.widget?.trim().toLocaleLowerCase() === "combobox") {
+      if (field.widget?.trim().toLocaleLowerCase() === global.FIELD_TYPE_COMBO_BOX) {
         tableFgComboBoxColsArr.push(index + 2)
       }
     }
@@ -231,41 +237,40 @@ export function getTableComboBoxPrams(table: any) {
   if (table.fields) {
     for (let index = 0; index < table.fields.length; index++) {
       const field = table.fields[index]
-      if (field.widget?.trim().toLocaleLowerCase() === "combobox") {
+      const widget = field.widget?.trim().toLocaleLowerCase()
+      if ((widget === global.FIELD_TYPE_COMBO_BOX || widget === global.FIELD_TYPE_LABEL) && field.widgetParameter && field.widgetParameter.data) {
         columns.push(index + 2)
 
-        if (field.widgetParameter) {
-          let options = []
-          const data = field.widgetParameter.data
-          if (data) {
-            let values = field.widgetParameter.values
-            if (values) {
-              values = values.replace(/'/g, '"')
-              values = JSON.parse(values)
-            } else {
-              values = { value: "value", display: "display" }
-            }
+        let options = []
+        const data = field.widgetParameter.data
+        if (data) {
+          let values = field.widgetParameter.values
+          if (values) {
+            values = values.replace(/'/g, '"')
+            values = JSON.parse(values)
+          } else {
+            values = { value: "value", display: "display" }
+          }
 
-            if (typeof data === "string") {
-              options = JSON.parse(data)
-            } else if (Array.isArray(data)) {
-              if (typeof data[0] !== "object") {
-                data.forEach((option) => {
-                  options.push({ value: String(option), display: String(option) })
-                })
+          if (typeof data === "string") {
+            options = JSON.parse(data)
+          } else if (Array.isArray(data)) {
+            if (typeof data[0] !== "object") {
+              data.forEach((option) => {
+                options.push({ value: String(option), display: String(option) })
+              })
+            } else {
+              if ("value" in data[0] && "display" in data[0]) {
+                options = data
               } else {
-                if ("value" in data[0] && "display" in data[0]) {
-                  options = data
-                } else {
-                  data.forEach((option) => {
-                    options.push({ value: option[values.value], display: option[values.display] })
-                  })
-                }
+                data.forEach((option) => {
+                  options.push({ value: option[values.value], display: option[values.display] })
+                })
               }
             }
           }
-          comboData.push({ data: options })
         }
+        comboData.push({ data: options })
       }
     }
   }
@@ -282,7 +287,7 @@ export function getTableCheckBoxPrams(table: any) {
     for (let index = 0; index < table.fields.length; index++) {
       const field = table.fields[index]
       let prams = {}
-      if (field.widget?.trim().toLocaleLowerCase() === "checkbox") {
+      if (field.widget?.trim().toLocaleLowerCase() === global.FIELD_TYPE_CHECK_BOX) {
         if (field.widgetParameter.stateNumber) {
           let stateNumber = field.widgetParameter.stateNumber
           if (stateNumber.startsWith('"') || stateNumber.startsWith("'")) {
@@ -344,7 +349,7 @@ export function getTableDateBoxColsInfo(table: any) {
   if (table.type === global.TABLE_TYPE && table.fields) {
     for (let index = 0; index < table.fields.length; index++) {
       const field = table.fields[index]
-      if (field.widget?.trim().toLocaleLowerCase() === "datebox") {
+      if (field.widget?.trim().toLocaleLowerCase() === global.FIELD_TYPE_DATE_BOX) {
         let format = field.widgetParameter["format"]
         let flag = format
           ? format.trim().toLocaleLowerCase() === "yyyy-mm-dd"
@@ -375,12 +380,13 @@ export function getTableDisableColNos(table: any) {
   if (table.fields) {
     for (let index = 0; index < table.fields.length; index++) {
       const field = table.fields[index]
+      const widget = field.widget?.trim().toLocaleLowerCase()
       if (
-        field.widget?.trim().toLocaleLowerCase() === "label" ||
-        field.widget?.trim().toLocaleLowerCase() === "checkbox" ||
-        field.widget?.trim().toLocaleLowerCase() === "button" ||
-        field.widget?.trim().toLocaleLowerCase() === "html" ||
-        field.widget?.trim().toLocaleLowerCase() === "advancedselection" ||
+        widget === global.FIELD_TYPE_LABEL ||
+        widget === global.FIELD_TYPE_CHECK_BOX ||
+        widget === global.FIELD_TYPE_BUTTON ||
+        widget === global.FIELD_TYPE_HTML ||
+        widget === global.FIELD_TYPE_ADVANCED_SELECTION ||
         !field.editable
       ) {
         tableFgDisableColNosArr.push(index + 2)
@@ -420,7 +426,7 @@ export function getTableTextAreaColNos(table: any) {
   if (table.type === global.TABLE_TYPE && table.fields) {
     for (let index = 0; index < table.fields.length; index++) {
       const field = table.fields[index]
-      if (field.widget?.trim().toLocaleLowerCase() === "textarea") {
+      if (field.widget?.trim().toLocaleLowerCase() === global.FIELD_TYPE_TEXTAREA) {
         tableFgTextAreaColNosArr.push(index + 2)
       }
     }
@@ -439,7 +445,7 @@ export function getTableHtmlColNos(table: any) {
   if (table.fields) {
     for (let index = 0; index < table.fields.length; index++) {
       const field = table.fields[index]
-      if (field.widget?.trim().toLocaleLowerCase() === "html") {
+      if (field.widget?.trim().toLocaleLowerCase() === global.FIELD_TYPE_HTML) {
         tableFgHtmlColNosArr.push(index + 2)
       }
     }
@@ -466,21 +472,18 @@ export function getTableDialogPrams(fields: any, table: any) {
   if (table.fields) {
     for (let index = 0; index < table.fields.length; index++) {
       const field = table.fields[index]
-      if (
-        field.widget?.trim().toLocaleLowerCase() === "button" ||
-        field.widget?.trim().toLocaleLowerCase() === "advancedselection" ||
-        field.widget?.trim().toLocaleLowerCase() === "html"
-      ) {
+      const widget = field.widget?.trim().toLocaleLowerCase()
+      if (widget === global.FIELD_TYPE_BUTTON || widget === global.FIELD_TYPE_ADVANCED_SELECTION || widget === global.FIELD_TYPE_HTML) {
         columns.push(index + 2)
 
         const dialogParams = getDialogParams(field.widgetParameter.dialog)
         if (Object.keys(dialogParams).length !== 0) {
-          const dialogName = dialogParams["dialogName"]
-          const title = dialogParams["dialogTitle"]
-          const message = dialogParams["dialogMessage"]
-          const eventWithParams = dialogParams["dialogBeforeDisplayEvent"]
-          const continueNm = dialogParams["continueNm"] ? dialogParams["continueNm"] : "OK"
-          const cancelNm = dialogParams["cancelNm"] ? dialogParams["cancelNm"] : "Cancel"
+          const dialogName = dialogParams["name"]
+          const dialogTitle = dialogParams["title"]
+          const dialogContent = dialogParams["content"]
+          const eventWithParams = dialogParams["beforeDisplayEvent"]
+          const continueName = dialogParams["continueName"] ? dialogParams["continueName"] : "OK"
+          const cancelName = dialogParams["cancelName"] ? dialogParams["cancelName"] : "Cancel"
           const dialogWidth = dialogParams["width"]
           const dialogHeight = dialogParams["height"]
           let eventName
@@ -502,12 +505,12 @@ export function getTableDialogPrams(fields: any, table: any) {
           }
           dialog.push({
             dialogName: dialogName,
-            title: title,
-            message: message,
+            dialogTitle: dialogTitle,
+            dialogContent: dialogContent,
             eventName: eventName,
             dialogGroups: dialogGroups,
-            continueNm: continueNm,
-            cancelNm: cancelNm,
+            continueName: continueName,
+            cancelName: cancelName,
             dialogWidth: dialogWidth,
             dialogHeight: dialogHeight,
           })
@@ -545,7 +548,7 @@ export function getTableButtonPrams(fields: any, table: any) {
   if (table.fields) {
     for (let index = 0; index < table.fields.length; index++) {
       const field = table.fields[index]
-      if (field.widget?.trim().toLocaleLowerCase() === "button") {
+      if (field.widget?.trim().toLocaleLowerCase() === global.FIELD_TYPE_BUTTON) {
         columns.push(index + 2)
 
         if (field.widgetParameter && field.widgetParameter.icon) {
@@ -585,7 +588,7 @@ export function getTableAdvancedSelectionPrams(fields: any, table: any) {
   if (table.fields) {
     for (let index = 0; index < table.fields.length; index++) {
       const field = table.fields[index]
-      if (field.widget?.trim().toLocaleLowerCase() === "advancedselection") {
+      if (field.widget?.trim().toLocaleLowerCase() === global.FIELD_TYPE_ADVANCED_SELECTION) {
         columns.push(index + 2)
 
         if (field.widgetParameter && field.widgetParameter.icon) {

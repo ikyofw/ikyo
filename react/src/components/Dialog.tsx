@@ -4,8 +4,9 @@ import "../../public/static/css/Dialog-v2.css"
 import { useHttp } from "../utils/http"
 import pyiLogger from "../utils/log"
 import pyiLocalStorage from "../utils/pyiLocalStorage"
-import { getScreenDfn } from "../utils/sysUtil"
+import { showInfoMessage, showErrorMessage, getScreenDfn } from "../utils/sysUtil"
 import ImageButton from "./ImageButton"
+import FileUpload from "./FileUpload"
 import Screen from "./Screen"
 
 const pyiGlobal = pyiLocalStorage.globalParams
@@ -22,8 +23,10 @@ export default function CustomDialog(props: CustomDialogProps) {
   const { open, dialogPrams } = props
 
   const screenRef = React.useRef<any>(null)
+  const uploadRef = React.useRef<any>(null)
   const [fgNames, setFgNames] = React.useState([])
   const [dialogName, setDialogName] = React.useState(dialogPrams.dialogName)
+  const [uploadMsg, setUploadMsg] = React.useState("")
 
   React.useEffect(() => {
     if (open) {
@@ -38,6 +41,42 @@ export default function CustomDialog(props: CustomDialogProps) {
   }
   const handleContinue = () => {
     let data = {}
+    if (uploadRef.current) {
+      // data = uploadRef.current.getData(dialogPrams.dialogType)
+      const formData = new FormData()
+      const files = uploadRef.current?.files
+      if (!files || files.length === 0) {
+        setUploadMsg("Please select file(s) to upload.")
+        return
+      }
+      if (files.length === 1) {
+        const reader = new FileReader()
+        reader.readAsDataURL(files[0])
+        reader.onerror = () => {
+          showInfoMessage("The requested file [" + files[0].name + "] could not be read, please reselect")
+          const input = document.getElementById("uploadField") as any
+          input.value = ""
+        }
+        formData.append("uploadField_FILES_0", files[0])
+      } else {
+        // TODO: temporary solution (2022-11-03, Li)
+        for (let i = 0; i < files.length; i += 1) {
+          const fileReader = new FileReader()
+          const currentFile = files[i]
+          fileReader.readAsDataURL(currentFile)
+
+          fileReader.onerror = () => {
+            showInfoMessage("The requested file [" + currentFile.name + "] could not be read, please reselect")
+            const input = document.getElementById("uploadField") as HTMLInputElement
+            input.value = ""
+          }
+
+          formData.append("uploadField_FILES_" + i, currentFile)
+        }
+      }
+      setUploadMsg('')
+      data = formData
+    }
     if (screenRef.current) {
       data = screenRef.current.getData(dialogPrams.dialogType)
     }
@@ -94,16 +133,42 @@ export default function CustomDialog(props: CustomDialogProps) {
           style={{
             paddingLeft: "4px",
             whiteSpace: "pre-wrap",
-            fontSize: dialogPrams.dialogType === localStorage.DIALOG_TYPE_HOME_INBOX ? "9pt" : "8pt",
+            fontSize: "9pt",
           }}
         >
-          {dialogPrams.dialogMessage}
+          {dialogPrams.dialogContent}
         </div>
+
+        {/* Upload Dialog  */}
+        {dialogPrams.dialogType === pyiGlobal.DIALOG_TYPE_UPLOAD ? (
+          <>
+            <br />
+            <FileUpload
+              key={"dialog"}
+              ref={uploadRef}
+              fileBoxLabel={"Select File(s)"}
+              name={"uploadField"}
+              widgetParameter={{ multiple: true }}
+              editable={true}
+            />
+            <br />
+            <div
+              style={{
+                paddingLeft: "4px",
+                whiteSpace: "pre-wrap",
+                fontSize: "9pt",
+                color: "red",
+              }}
+            >
+              {uploadMsg}
+            </div>
+          </>
+        ) : null}
 
         {fgNames.length !== 0 ? <Screen ref={screenRef} subScreenNm={dialogName} fgNames={fgNames} screenID={dialogPrams.screenID} /> : null}
 
         {/* Home Inbox Dialog  */}
-        {dialogPrams.dialogType === localStorage.DIALOG_TYPE_HOME_INBOX ? (
+        {dialogPrams.dialogType === pyiGlobal.DIALOG_TYPE_HOME_INBOX ? (
           <>
             <br />
             <br />
@@ -118,20 +183,20 @@ export default function CustomDialog(props: CustomDialogProps) {
         ) : null}
       </DialogContent>
 
-      {dialogPrams.dialogType === localStorage.DIALOG_TYPE_HOME_INBOX ? null : (
+      {dialogPrams.dialogType === pyiGlobal.DIALOG_TYPE_HOME_INBOX ? null : (
         <div className="dialog_button">
           <ImageButton
             key={0}
-            caption={dialogPrams.cancelNm + "  "}
-            name={dialogPrams.cancelNm}
+            caption={dialogPrams.cancelName + "  "}
+            name={dialogPrams.cancelName}
             widgetParameter={{ icon: "images/cancel_button.gif" }}
             clickEvent={handleCancel}
             editable={true}
           />
           <ImageButton
             key={1}
-            caption={dialogPrams.continueNm}
-            name={dialogPrams.continueNm}
+            caption={dialogPrams.continueName}
+            name={dialogPrams.continueName}
             widgetParameter={{ icon: "images/action_button.gif" }}
             clickEvent={handleContinue}
             editable={true}

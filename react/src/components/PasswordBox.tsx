@@ -7,6 +7,7 @@
 
 import React, { forwardRef, Ref, useState } from "react"
 import transform, { StyleTuple } from "css-to-react-native"
+import classnames from "classnames"
 
 interface IPasswordBox {
   ref: any
@@ -22,7 +23,7 @@ const PasswordBox: React.FC<IPasswordBox> = forwardRef((props, ref: Ref<any>) =>
   const [tooltip, setTooltip] = useState(String)
 
   React.useEffect(() => {
-    const inputElement: HTMLInputElement | null = document.getElementById(props.name + "_psw") as HTMLInputElement;
+    const inputElement: HTMLInputElement | null = document.getElementById(props.name + "_psw") as HTMLInputElement
     if (props.value && inputElement) {
       inputElement.value = props.value
     }
@@ -42,17 +43,22 @@ const PasswordBox: React.FC<IPasswordBox> = forwardRef((props, ref: Ref<any>) =>
   }, [props.value, props.tip, props.name])
 
   let cellStyle: StyleTuple[] = []
+  let cellClass = []
   if (props.style) {
     const properties = Object.keys(props.style)
     properties.forEach((property) => {
-      cellStyle.push([property, props.style[property]])
+      if (property.toLocaleLowerCase() === "class") {
+        cellClass = props.style[property].split(",").map((str) => str.trim())
+      } else {
+        cellStyle.push([property, props.style[property]])
+      }
     })
   }
 
   return (
     <>
       <th className="property_key">{props.label}</th>
-      <td className="property_value tip_center">
+      <td className={classnames(cellClass, "property_value", "tip_center")}>
         <input
           ref={ref}
           type="password"

@@ -5,11 +5,13 @@ import pyiLocalStorage from "../utils/pyiLocalStorage"
 import { validateResponse } from "../utils/sysUtil"
 import CheckBox from "./CheckBox"
 import ComboBox from "./ComboBox"
-import DateBox from "./DateBox"
-import Label from "./Label"
 import ListBox from "./ListBox"
+import DateBox from "./DateBox"
 import * as simpleFg from "./SimpleFg"
 import TextBox from "./TextBox"
+import Label from "./Label"
+
+const global = pyiLocalStorage.globalParams
 
 interface ISearchFg {
   ref: any
@@ -19,7 +21,7 @@ interface ISearchFg {
   editable: boolean
 }
 const SearchFg: React.FC<ISearchFg> = forwardRef((props, ref: Ref<any>) => {
-  const HttpGet = useHttp(pyiLocalStorage.globalParams.HTTP_TYPE_GET)
+  const HttpGet = useHttp(global.HTTP_TYPE_GET)
 
   let refs: { [key: string]: React.MutableRefObject<any> } = {}
   const _useRef = useRef
@@ -30,7 +32,7 @@ const SearchFg: React.FC<ISearchFg> = forwardRef((props, ref: Ref<any>) => {
   const cols = searchParams.cols
   const fields = searchParams.fields
   const editable = screenEditable && searchParams.editable
-  const searchBtn = pyiLocalStorage.globalParams.PUBLIC_URL + "images/search_button.gif"
+  const searchBtn = global.PUBLIC_URL + "images/search_button.gif"
   const [updateFields, setUpdateFields] = useState<Boolean>(false)
   const [searchData, setSearchData] = useState(Object)
 
@@ -50,7 +52,7 @@ const SearchFg: React.FC<ISearchFg> = forwardRef((props, ref: Ref<any>) => {
         const formData = new FormData()
         fields.forEach((field) => {
           let value = null
-          if (field.widget.trim().toLocaleLowerCase() === "listbox") {
+          if (field.widget.trim().toLocaleLowerCase() === global.FIELD_TYPE_LIST_BOX) {
             value = Array.from(refs[field.name].current.options)
               .filter((option: any) => option.selected)
               .map((option: any) => option.value)
@@ -83,7 +85,7 @@ const SearchFg: React.FC<ISearchFg> = forwardRef((props, ref: Ref<any>) => {
     // init fields comboBox data
     if (fields && fields.length > 0) {
       await fields.map(async (element, index) => {
-        if (element.widget.trim().toLowerCase() === "combobox") {
+        if (element.widget.trim().toLowerCase() === global.FIELD_TYPE_COMBO_BOX) {
           if (!element.widgetParameter.data || element.widgetParameter.data === null) {
             var comboBoxDataUrl = element.widgetParameter.dataUrl
             if (comboBoxDataUrl) {
@@ -137,7 +139,7 @@ const SearchFg: React.FC<ISearchFg> = forwardRef((props, ref: Ref<any>) => {
                           <>
                             {field.groupTitle !== undefined ? (
                               field.groupTitle
-                            ) : String(field.widget).trim().toLocaleLowerCase() === "label" ? (
+                            ) : String(field.widget).trim().toLocaleLowerCase() === global.FIELD_TYPE_LABEL ? (
                               <Label
                                 key={index}
                                 ref={refs[field.name]}
@@ -147,7 +149,7 @@ const SearchFg: React.FC<ISearchFg> = forwardRef((props, ref: Ref<any>) => {
                                 tip={field.tooltip}
                                 widgetParameter={field.widgetParameter}
                               />
-                            ) : String(field.widget).trim().toLocaleLowerCase() === "textbox" ? (
+                            ) : String(field.widget).trim().toLocaleLowerCase() === global.FIELD_TYPE_TEXT_BOX ? (
                               <TextBox
                                 key={index}
                                 ref={refs[field.name]}
@@ -158,7 +160,7 @@ const SearchFg: React.FC<ISearchFg> = forwardRef((props, ref: Ref<any>) => {
                                 style={field.style}
                                 widgetParameter={field.widgetParameter}
                               />
-                            ) : String(field.widget).trim().toLocaleLowerCase() === "combobox" ? (
+                            ) : String(field.widget).trim().toLocaleLowerCase() === global.FIELD_TYPE_COMBO_BOX ? (
                               <ComboBox
                                 key={index}
                                 ref={refs[field.name]}
@@ -172,7 +174,7 @@ const SearchFg: React.FC<ISearchFg> = forwardRef((props, ref: Ref<any>) => {
                                 style={field.style}
                                 widgetParameter={field.widgetParameter}
                               />
-                            ) : String(field.widget).trim().toLocaleLowerCase() === "listbox" ? (
+                            ) : String(field.widget).trim().toLocaleLowerCase() === global.FIELD_TYPE_LIST_BOX ? (
                               <ListBox
                                 key={index}
                                 ref={refs[field.name]}
@@ -185,7 +187,7 @@ const SearchFg: React.FC<ISearchFg> = forwardRef((props, ref: Ref<any>) => {
                                 style={field.style}
                                 widgetParameter={field.widgetParameter}
                               />
-                            ) : String(field.widget).trim().toLocaleLowerCase() === "checkbox" ? (
+                            ) : String(field.widget).trim().toLocaleLowerCase() === global.FIELD_TYPE_CHECK_BOX ? (
                               <CheckBox
                                 key={index}
                                 ref={refs[field.name]}
@@ -195,7 +197,7 @@ const SearchFg: React.FC<ISearchFg> = forwardRef((props, ref: Ref<any>) => {
                                 editable={editable && field.editable}
                                 widgetParameter={field.widgetParameter}
                               />
-                            ) : String(field.widget).trim().toLocaleLowerCase() === "datebox" ? (
+                            ) : String(field.widget).trim().toLocaleLowerCase() === global.FIELD_TYPE_DATE_BOX ? (
                               <DateBox
                                 key={index}
                                 ref={refs[field.name]}

@@ -5,9 +5,11 @@ import pyiLocalStorage from "../utils/pyiLocalStorage"
 import { validateResponse } from "../utils/sysUtil"
 import useWindowSize from "../utils/useWindowSize"
 
+const global = pyiLocalStorage.globalParams
+
 const Help = () => {
-  const HttpGet = useHttp(pyiLocalStorage.globalParams.HTTP_TYPE_GET)
-  const HttpDownload = useHttp(pyiLocalStorage.globalParams.HTTP_TYPE_DOWNLOAD)
+  const HttpGet = useHttp(global.HTTP_TYPE_GET)
+  const HttpDownload = useHttp(global.HTTP_TYPE_DOWNLOAD)
 
   const { width, height } = useWindowSize()
   const [textData, setTextData] = useState(null)
@@ -32,7 +34,7 @@ const Help = () => {
   const getData = async () => {
     if (helpUrl) {
       helpUrl = "/api/help/" + helpUrl
-      if (helpDocType.trim().toLocaleLowerCase() === "html") {
+      if (helpDocType.trim().toLocaleLowerCase() === global.FIELD_TYPE_HTML) {
         await HttpGet(helpUrl)
           .then((response) => response.text())
           .then((result) => {

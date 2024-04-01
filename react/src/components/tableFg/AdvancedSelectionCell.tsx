@@ -79,11 +79,11 @@ const AdvancedSelection: React.FC<IAdvancedSelection> = (props) => {
       const dialog = props.dialogPrams.dialog[dialogIndex]
       const btnType = "normal"
       const dialogName = dialog.dialogName
-      const title = dialog.title
-      const message = dialog.message
+      const dialogTitle = dialog.dialogTitle
+      const dialogContent = dialog.dialogContent
       const eventName = dialog.eventName
-      const continueNm = dialog.continueNm
-      const cancelNm = dialog.cancelNm
+      const continueName = dialog.continueName
+      const cancelName = dialog.cancelName
       const dialogWidth = dialog.dialogWidth
       const dialogHeight = dialog.dialogHeight
 
@@ -111,18 +111,18 @@ const AdvancedSelection: React.FC<IAdvancedSelection> = (props) => {
           .then((response) => response.json())
           .then((result) => {
             if (validateResponse(result, false)) {
-              const dialogTitle = result.data && result.data["title"] ? result.data["title"] : ""
-              const dialogMessage = result.data && result.data["dialogMessage"] ? result.data["dialogMessage"] : ""
+              const dialogTitle = result.data && result.data["title"] ? result.data["title"] : dialog.dialogTitle
+              const dialogContent = result.data && result.data["content"] ? result.data["content"] : dialog.dialogContent
               const params = {
                 dialogTitle: dialogTitle,
-                dialogMessage: dialogMessage,
+                dialogContent: dialogContent,
                 dialogType: btnType,
                 screenID: screenID,
                 dialogName: dialogName,
                 onCancel: () => closeDialog(),
                 onContinue: (dialogData) => onClickEvent(btnType, eventHandler, { ...buttonData, ...dialogData }),
-                continueNm: continueNm,
-                cancelNm: cancelNm,
+                continueName: continueName,
+                cancelName: cancelName,
                 dialogWidth: dialogWidth,
                 dialogHeight: dialogHeight,
               }
@@ -131,15 +131,15 @@ const AdvancedSelection: React.FC<IAdvancedSelection> = (props) => {
           })
       } else {
         const params = {
-          dialogTitle: title,
-          dialogMessage: message,
+          dialogTitle: dialogTitle,
+          dialogContent: dialogContent,
           dialogType: btnType,
           screenID: screenID,
           dialogName: dialogName,
           onCancel: () => closeDialog(),
           onContinue: (dialogData) => onClickEvent(btnType, eventHandler, { ...buttonData, ...dialogData }),
-          continueNm: continueNm,
-          cancelNm: cancelNm,
+          continueName: continueName,
+          cancelName: cancelName,
           dialogWidth: dialogWidth,
           dialogHeight: dialogHeight,
         }

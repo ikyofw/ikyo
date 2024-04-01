@@ -1,3 +1,9 @@
+/*
+ * @Description: ToolBar
+ * @version:
+ * @Author: YL
+ * @Date: 2022-03-17 15:43:05
+ */
 import React from "react"
 import ImageButton from "./ImageButton"
 
@@ -10,6 +16,7 @@ interface IToolBar {
 const ToolBar: React.FC<IToolBar> = (props) => {
   const name = props.params.name
   const btnArr = props.params.icons
+  const editable = props.editable && props.params.editable
 
   return (
     <div id={name} className="bar_layout">
@@ -22,7 +29,7 @@ const ToolBar: React.FC<IToolBar> = (props) => {
               name={imgBtn.name}
               widgetParameter={imgBtn.widgetParameter}
               clickEvent={() => props.clickEvent([imgBtn.eventHandler, imgBtn.eventHandlerParameter, imgBtn.widgetParameter])}
-              editable={props.editable && imgBtn.enable}
+              editable={editable && imgBtn.enable}
             />
           ))
         : null}

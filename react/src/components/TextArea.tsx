@@ -1,5 +1,12 @@
+/*
+ * @Description:
+ * @version:
+ * @Author: YL
+ * @Date: 2022-03-17 17:03:45
+ */
 import transform, { StyleTuple } from "css-to-react-native"
 import React, { ChangeEvent, Ref, forwardRef, useEffect, useState } from "react"
+import classnames from "classnames"
 
 interface ITextArea {
   ref: any
@@ -43,17 +50,22 @@ const TextArea: React.FC<ITextArea> = forwardRef((props, ref: Ref<any>) => {
     ["overflow", "auto"],
     ["resize", "vertical"],
   ]
+  let cellClass = []
   if (props.style) {
     const properties = Object.keys(props.style)
     properties.forEach((property) => {
-      cellStyle.push([property, props.style[property]])
+      if (property.toLocaleLowerCase() === "class") {
+        cellClass = props.style[property].split(",").map((str) => str.trim())
+      } else {
+        cellStyle.push([property, props.style[property]])
+      }
     })
   }
 
   return (
     <>
       <th className="property_key">{props.textAreaLabel}</th>
-      <td className="property_value tip_center">
+      <td className={classnames(cellClass, "property_value", "tip_center")}>
         <textarea
           rows={5}
           cols={40}

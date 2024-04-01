@@ -39,10 +39,10 @@ const Home = () => {
       .then((result) => {
         if (result.data && result.data > 0) {
           // dialog
-          const dialogMessage = "You have " + result.data + " unread message" + (result.data == 1 ? "" : "s") + " in your inbox."
+          const dialogContent = "You have " + result.data + " unread message" + (result.data === 1 ? "" : "s") + " in your inbox."
           const params = {
-            dialogMessage: dialogMessage,
-            dialogType: localStorage.DIALOG_TYPE_HOME_INBOX,
+            dialogContent: dialogContent,
+            dialogType: pyiLocalStorage.globalParams.DIALOG_TYPE_HOME_INBOX,
             onCancel: () => closeDialog(),
             openInbox: () => openInbox(),
           }

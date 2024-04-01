@@ -1,5 +1,13 @@
+/*
+ * @Description:
+ * @version:
+ * @Author: YL
+ * @Date: 2022-03-17 13:45:01
+ */
+
 import transform, {StyleTuple} from "css-to-react-native"
 import React, { forwardRef, Ref } from "react"
+import classnames from "classnames"
 
 interface ITextbox {
   ref: any
@@ -35,18 +43,26 @@ const TextBox: React.FC<ITextbox> = forwardRef((props, ref: Ref<any>) => {
     }
   }, [props, props.textBoxValue])
 
-  let cellStyle: StyleTuple[] = []
+  let cellStyle: StyleTuple[] = [
+    ["overflow", "auto"],
+    ["resize", "vertical"],
+  ]
+  let cellClass = []
   if (props.style) {
     const properties = Object.keys(props.style)
     properties.forEach((property) => {
-      cellStyle.push([property, props.style[property]])
+      if (property.toLocaleLowerCase() === "class") {
+        cellClass = props.style[property].split(",").map((str) => str.trim())
+      } else {
+        cellStyle.push([property, props.style[property]])
+      }
     })
   }
 
   return (
     <>
       <th className="property_key">{props.textBoxLabel}</th>
-      <td className="property_value tip_center">
+      <td className={classnames(cellClass, "property_value", "tip_center")}>
         <input
           ref={ref}
           type="Textbox"

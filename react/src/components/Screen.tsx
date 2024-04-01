@@ -1,5 +1,6 @@
 import transform from "css-to-react-native"
 import React, { Ref, forwardRef, useImperativeHandle, useState } from "react"
+import { createIconColumn } from "../components/TableFg"
 import { useHttp } from "../utils/http"
 import pyiLogger from "../utils/log"
 import pyiLocalStorage from "../utils/pyiLocalStorage"
@@ -10,7 +11,7 @@ import FileViewer from "./FileViewer"
 import * as Loading from "./Loading"
 import SearchFg from "./SearchFg"
 import SimpleFg from "./SimpleFg"
-import TableFg, { createIconColumn } from "./TableFg"
+import TableFg from "./TableFg"
 import ToolBar from "./ToolBar"
 import Html from "./html/Html"
 import IFrame from "./html/IFrame"
@@ -233,16 +234,19 @@ const Screen: React.FC<IScreenBox> = forwardRef((props, ref: Ref<any>) => {
     window.open("/help?" + urlSuffix)
   }
 
+  const [intervalId, setIntervalId] = useState<any>(null)
   React.useEffect(() => {
-    if (autoRefresh["autoRefreshInterval"] || String(autoRefresh["autoRefreshInterval"]) === "0") {
+    if (autoRefresh["autoRefreshInterval"] && Number(autoRefresh["autoRefreshInterval"]) > 0) {
       const autoRefreshInterval = Number(autoRefresh["autoRefreshInterval"])
-      const second = autoRefreshInterval === 0 ? 1 : autoRefreshInterval * 1000
+      const second = autoRefreshInterval * 1000 // 1000 = 1s
 
       Loading.show()
-      if (!autoRefresh["autoRefreshAction"]) {
-        setInterval(function () {
-          refreshList()
-        }, second)
+      const id = setInterval(function () {
+        refreshList()
+      }, second)
+      setIntervalId(id)
+      return () => {
+        clearInterval(intervalId) // Clear timer during component un-installation
       }
     }
   }, [autoRefresh]) // page refresh
@@ -521,12 +525,12 @@ const Screen: React.FC<IScreenBox> = forwardRef((props, ref: Ref<any>) => {
   const showDialog = async (dialogParams, btnType, eventHandler, buttonData) => {
     Loading.show()
     try {
-      const dialogName = dialogParams["dialogName"]
-      const title = dialogParams["dialogTitle"]
-      const message = dialogParams["dialogMessage"]
-      const eventWithParams = dialogParams["dialogBeforeDisplayEvent"]
-      const continueNm = dialogParams["continueNm"] ? dialogParams["continueNm"] : "OK"
-      const cancelNm = dialogParams["cancelNm"] ? dialogParams["cancelNm"] : "Cancel"
+      const dialogName = dialogParams["name"]
+      const dialogTitle = dialogParams["title"]
+      const dialogContent = dialogParams["content"]
+      const eventWithParams = dialogParams["beforeDisplayEvent"]
+      const continueName = dialogParams["continueName"] ? dialogParams["continueName"] : "OK"
+      const cancelName = dialogParams["cancelName"] ? dialogParams["cancelName"] : "Cancel"
       const dialogWidth = dialogParams["width"]
       const dialogHeight = dialogParams["height"]
       // YL, 2022-10-08 BUGFIX if no dialog will error - start
@@ -548,11 +552,11 @@ const Screen: React.FC<IScreenBox> = forwardRef((props, ref: Ref<any>) => {
               window.location.href = result.data[pyiGlobal.OPEN_SCREEN_KEY_NAME]
             }
             if (validateResponse(result, false)) {
-              const dialogTitle = result.data && result.data["title"] ? result.data["title"] : ""
-              const dialogMessage = result.data && result.data["dialogMessage"] ? result.data["dialogMessage"] : ""
+              const dialogTitle = result.data && result.data["title"] ? result.data["title"] : dialogParams["title"]
+              const dialogContent = result.data && result.data["content"] ? result.data["content"] : dialogParams["content"]
               const params = {
                 dialogTitle: dialogTitle,
-                dialogMessage: dialogMessage,
+                dialogContent: dialogContent,
                 dialogType: btnType,
                 screenID: props.screenID,
                 dialogName: dialogName,
@@ -564,8 +568,8 @@ const Screen: React.FC<IScreenBox> = forwardRef((props, ref: Ref<any>) => {
                     onClickEvent(btnType, eventHandler, { ...buttonData, ...dialogData })
                   }
                 },
-                continueNm: continueNm,
-                cancelNm: cancelNm,
+                continueName: continueName,
+                cancelName: cancelName,
                 dialogWidth: dialogWidth,
                 dialogHeight: dialogHeight,
               }
@@ -574,8 +578,8 @@ const Screen: React.FC<IScreenBox> = forwardRef((props, ref: Ref<any>) => {
           })
       } else {
         const params = {
-          dialogTitle: title,
-          dialogMessage: message,
+          dialogTitle: dialogTitle,
+          dialogContent: dialogContent,
           dialogType: btnType,
           screenID: props.screenID,
           dialogName: dialogName,
@@ -587,8 +591,8 @@ const Screen: React.FC<IScreenBox> = forwardRef((props, ref: Ref<any>) => {
               onClickEvent(btnType, eventHandler, { ...buttonData, ...dialogData })
             }
           },
-          continueNm: continueNm,
-          cancelNm: cancelNm,
+          continueName: continueName,
+          cancelName: cancelName,
           dialogWidth: dialogWidth,
           dialogHeight: dialogHeight,
         }
@@ -768,11 +772,11 @@ const Screen: React.FC<IScreenBox> = forwardRef((props, ref: Ref<any>) => {
 
 export default Screen
 
-function getPluginParams(screenDfn: any) {
+export function getPluginParams(screenDfn: any) {
   const fields = screenDfn.fields
   let pluginParams = []
   for (let i = fields.length - 1; i >= 0; i--) {
-    if (fields[i].widget.trim().toLowerCase() === "plugin") {
+    if (fields[i].widget.trim().toLowerCase() === pyiGlobal.FIELD_TYPE_PLUGIN) {
       const field = fields.pop()
       pluginParams.push(field)
     }

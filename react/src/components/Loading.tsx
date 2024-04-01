@@ -1,14 +1,14 @@
 import ReactDOM from "react-dom"
-import pyiLocalStorage from "../utils/pyiLocalStorage"
 import "../../public/static/css/Loading.css"
+import pyiLocalStorage from "../utils/pyiLocalStorage"
 
 const pyiGlobal = pyiLocalStorage.globalParams
-const loadingImgUrl = pyiGlobal.PUBLIC_URL + "images/loading.gif"
+const loadingImgUrl = pyiGlobal.PUBLIC_URL + "images/loading2.gif"
 
 const Loading = () => {
   return (
     <div className="loading-container">
-      <img className="img" src={loadingImgUrl} alt="loading" />
+      <img className="img" src={loadingImgUrl} title="loading" />
     </div>
   )
 }

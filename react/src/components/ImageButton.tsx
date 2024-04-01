@@ -40,24 +40,24 @@ const ImageButton: React.FC<IImageButton> = (props) => {
               src={imgUrl}
               alt=""
               onClick={props.editable ? props.clickEvent : null}
-              style={props.editable ? { cursor: "pointer" } : { cursor: "not-allowed" }}
+              style={props.editable ? { cursor: "pointer" } : { cursor: "not-allowed", filter: "grayscale(1)" }}
             />
           </a>
           &nbsp;{props.caption}
           {props.tooltip ? (
-              <>
-                <img
-                  src={img_tip}
-                  alt="tooltip img"
-                  style={{ paddingLeft: "3px", paddingBottom: "2px" }}
-                  data-tooltip-id={props.name}
-                  data-tooltip-place="top"
-                  data-tooltip-content={props.tooltip}
-                ></img>
-                <Tooltip id={props.name} />
-              </>
-            ) : null}
-            &nbsp;&nbsp;&nbsp;&nbsp;
+            <>
+              <img
+                src={img_tip}
+                alt="tooltip img"
+                style={{ paddingLeft: "3px", paddingBottom: "2px" }}
+                data-tooltip-id={props.name}
+                data-tooltip-place="top"
+                data-tooltip-content={props.tooltip}
+              ></img>
+              <Tooltip id={props.name} />
+            </>
+          ) : null}
+          &nbsp;&nbsp;&nbsp;&nbsp;
         </>
       )}
     </>

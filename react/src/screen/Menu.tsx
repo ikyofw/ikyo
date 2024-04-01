@@ -8,6 +8,7 @@ import { useHttp } from "../utils/http"
 import pyiLogger from "../utils/log"
 import pyiLocalStorage from "../utils/pyiLocalStorage"
 import { getScreenDfn, validateResponse } from "../utils/sysUtil"
+import { getPluginParams } from "../components/Screen"
 
 const pyiGlobal = pyiLocalStorage.globalParams
 const img_goto = pyiGlobal.PUBLIC_URL + "images/goto_sbutton.gif"
@@ -212,17 +213,4 @@ function createGotoColumn(myCallback: any, icon0: any, icon1: any, icon2: any, r
     </th>
   )
   return { IconHeader, IconCell }
-}
-
-function getPluginParams(screenDfn: any) {
-  const fields = screenDfn.fields
-  let pluginParams = []
-  for (let i = fields.length - 1; i >= 0; i--) {
-    if (fields[i].widget.trim().toLowerCase() === "plugin") {
-      const field = fields.pop()
-      pluginParams.push(field)
-    }
-  }
-  pluginParams.reverse()
-  return pluginParams
 }

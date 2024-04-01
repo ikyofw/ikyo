@@ -135,11 +135,11 @@ const Button: React.FC<IButton> = (props) => {
   const showDialog = async (dialog, beforeDisplayData, btnType, eventHandler, buttonData) => {
     try {
       const dialogName = dialog.dialogName
-      const title = dialog.title
-      const message = dialog.message
+      const dialogTitle = dialog.dialogTitle
+      const dialogContent = dialog.dialogContent
       const eventName = dialog.eventName
-      const continueNm = dialog.continueNm
-      const cancelNm = dialog.cancelNm
+      const continueName = dialog.continueName
+      const cancelName = dialog.cancelName
       const dialogWidth = dialog.dialogWidth
       const dialogHeight = dialog.dialogHeight
 
@@ -152,11 +152,11 @@ const Button: React.FC<IButton> = (props) => {
               window.location.href = result.data[pyiGlobal.OPEN_SCREEN_KEY_NAME]
             }
             if (validateResponse(result, false)) {
-              const dialogTitle = result.data && result.data["title"] ? result.data["title"] : ""
-              const dialogMessage = result.data && result.data["dialogMessage"] ? result.data["dialogMessage"] : ""
+              const dialogTitle = result.data && result.data["title"] ? result.data["title"] : dialog.dialogTitle
+              const dialogContent = result.data && result.data["content"] ? result.data["content"] : dialog.dialogContent
               const params = {
                 dialogTitle: dialogTitle,
-                dialogMessage: dialogMessage,
+                dialogContent: dialogContent,
                 dialogType: btnType,
                 screenID: screenID,
                 dialogName: dialogName,
@@ -168,8 +168,8 @@ const Button: React.FC<IButton> = (props) => {
                     onClickEvent(btnType, eventHandler, { ...buttonData, ...dialogData })
                   }
                 },
-                continueNm: continueNm,
-                cancelNm: cancelNm,
+                continueName: continueName,
+                cancelName: cancelName,
                 dialogWidth: dialogWidth,
                 dialogHeight: dialogHeight,
               }
@@ -178,8 +178,8 @@ const Button: React.FC<IButton> = (props) => {
           })
       } else {
         const params = {
-          dialogTitle: title,
-          dialogMessage: message,
+          dialogTitle: dialogTitle,
+          dialogContent: dialogContent,
           dialogType: btnType,
           screenID: screenID,
           dialogName: dialogName,
@@ -191,8 +191,8 @@ const Button: React.FC<IButton> = (props) => {
               onClickEvent(btnType, eventHandler, { ...buttonData, ...dialogData })
             }
           },
-          continueNm: continueNm,
-          cancelNm: cancelNm,
+          continueName: continueName,
+          cancelName: cancelName,
           dialogWidth: dialogWidth,
           dialogHeight: dialogHeight,
         }
@@ -209,8 +209,6 @@ const Button: React.FC<IButton> = (props) => {
   const onClickEvent = async (btnType, eventHandler, buttonData) => {
     let removeLoadingDiv = true
     Loading.show()
-    console.log(btnType)
-
     try {
       if (btnType && btnType.toLocaleLowerCase() === pyiGlobal.TABLE_BTN_TYPE_NORMAL) {
         await HttpPost(eventHandler, JSON.stringify(buttonData))
