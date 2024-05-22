@@ -1,10 +1,10 @@
 from django.db.models import QuerySet
 
 import core.models as ikModels
+from core.menu.menuManager import MenuManager
 from core.session.user import UserManager
 from core.sys.accessLog import getLatestAccessLog
-from core.utils.langUtils import isNullBlank, isNotNullBlank
-from core.menu.menuManager import MenuManager
+from core.utils.langUtils import isNotNullBlank, isNullBlank
 
 
 class Menu:
@@ -41,10 +41,14 @@ class Menu:
         return self.title
 
 
-MENU_ACTION_FILTER = None
+MENU_FILTERS = None
 '''
-Global menu action filter function: <br />
-Invoke:  MENU_ACTION_FILTER(ikModels.Menu) -> str
+Global menu filter function: <br />
+Invoke:
+    {"actionFilter" : getMenuActionFilter, "menuFilter": getPyiMenuFilter}
+    
+    getMenuActionFilter(userID, ikModels.Menu) -> str
+    getPyiMenuFilter (screenNm) -> ikModels.Menu
 '''
 
 
@@ -57,7 +61,7 @@ def getUserMenus(request) -> list:
         currentPath = request.GET.get('currentPath', None)
         if isNotNullBlank(currentPath):
             currentPath = currentPath[1:]
-            currentMenu = ikModels.Menu.objects.filter(menu_nm__iexact=currentPath).first()
+            currentMenu = ikModels.Menu.objects.filter(screen_nm__iexact=currentPath).order_by('-id').first()
             if isNotNullBlank(currentMenu):
                 currentTopMenu = MenuManager.getTopMenu(currentMenu)
                 if isNotNullBlank(currentMenu.sub_menu_lct):
@@ -66,14 +70,22 @@ def getUserMenus(request) -> list:
         # add top menu
         usrTopMenus = MenuManager.getUserAclMenus(usrID)
         for menu in usrTopMenus:  # top menu
-            subdirectoryNum = ikModels.Menu.objects.filter(parent_menu_id=menu.id).count()
+            subdirectoryRcs = ikModels.Menu.objects.filter(parent_menu_id=menu.id)
+            showSubMenusInMenuBar = True
+            for i in subdirectoryRcs:
+                if isNullBlank(i.sub_menu_lct):
+                    showSubMenusInMenuBar = False
+                    continue
             action = None
-            if subdirectoryNum > 0:
-                action = "menu"
+            if len(subdirectoryRcs) > 0:
+                if showSubMenusInMenuBar:
+                    action = MenuManager.getFirstValidSubMenu(usrID, menu.id)
+                else:
+                    action = "menu"
             else:
                 # for open wci1
-                if MENU_ACTION_FILTER:
-                    action = MENU_ACTION_FILTER(menu)
+                if MENU_FILTERS:
+                    action = MENU_FILTERS.get("actionFilter")(usrID, menu)
                 if not action:
                     action = menu.screen_nm
 
@@ -92,7 +104,7 @@ def getUserMenus(request) -> list:
                         topMenu = __addSubMenu(usrID, topMenu, subMenus2, parentMenuRc1)
                     else:
                         topMenu = __addSubMenu(usrID, topMenu, subMenus1, currentMenu)
-                        
+
                     for secondaryMenu in topMenu.subMenus:
                         subMenus = MenuManager.getUserMenus(usrID, secondaryMenu.id)
                         secondaryMenu = __addSubMenu(usrID, secondaryMenu, subMenus, currentMenu)
@@ -112,7 +124,7 @@ def __addSubMenu(usrID: int, parentMenu: Menu, subMenus: QuerySet[ikModels.Menu]
             subMenuIDstr = ", ".join(subMenuIDList)
             latestAccessMenu = getLatestAccessLog(usrID, subMenuIDstr)
             if len(latestAccessMenu) == 0:
-                menuAction = MenuManager.getFirstValidSubMenu(usrID, parentMenu.id)
+                menuAction = MenuManager.getFirstValidSubMenu(usrID, subMenu.id)
             else:
                 menuAction = latestAccessMenu[0]['screen_nm']
         else:

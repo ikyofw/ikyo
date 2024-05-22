@@ -8,7 +8,7 @@ INSERT INTO ik_menu (version_no, menu_nm, menu_caption, screen_nm, parent_menu_i
 VALUES 
 (0, 'Menu', 'Menu', 'Menu', null, true, -1, true, null, null),
 (0, 'Home', 'Home', 'Home', null, true, 0, true, null, null);
-
+INSERT INTO ik_menu(version_no, menu_nm, menu_caption, screen_nm, parent_menu_id, enable, order_no, is_free_access) VALUES(0, 'Inbox', 'Inbox', 'Inbox', 21, true, 40, true);
 
 --- Group Management Menus
 INSERT INTO ik_menu (version_no, menu_nm, menu_caption, screen_nm, parent_menu_id, enable, order_no, is_free_access, sub_menu_lct, dsc)

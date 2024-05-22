@@ -1,14 +1,12 @@
 import json
 import logging
-from datetime import datetime
 from importlib import import_module
-
-from core.core.exception import IkValidateException
-from core.db.model import IDModel, Model
 from django.core import serializers
 from django.db.models import QuerySet
+import django.db.models as models
+from core.core.exception import IkValidateException
+from core.db.model import Model, DummyModel
 from iktools import IkConfig
-
 from .langUtils import isNullBlank
 
 logger = logging.getLogger('ikyo')
@@ -39,7 +37,7 @@ def redcordsets2List(recordsets, fields: list[str], removeDumpItemFields=None) -
                 if '.' in field:  # for foreign key. e.g. user.usr_nm
                     v2 = rc
                     for field2 in field.split('.'):
-                        v2 = v2[field2] if type(v2) == dict else getattr(v2, field2)
+                        v2 = v2[field2] if type(v2) == dict else getModelAttr(v2, field2)
                         if v2 is None:
                             break
                     v = v2
@@ -47,7 +45,7 @@ def redcordsets2List(recordsets, fields: list[str], removeDumpItemFields=None) -
                     if type(rc) == dict:
                         v = rc[field]
                     else:
-                        v = getattr(rc, field)
+                        v = getModelAttr(rc, field)
                 r.append(v)
             data .append(r)
 
@@ -96,6 +94,8 @@ def queryModel(modelNames, queryFields=None, distinct=False, queryWhere=None, or
     if ',' in modelNames:
         raise IkValidateException('Screen recordset supports one model only at the moment: %s' % modelNames)
     modelClass = getModelClass(modelNames)
+    if modelClass == DummyModel:
+        return None
     meta = modelClass._meta
 
     sql = 'SELECT '
@@ -107,13 +107,13 @@ def queryModel(modelNames, queryFields=None, distinct=False, queryWhere=None, or
         if 'id' not in queryFields:
             sql += '0 AS id,'   # Raw query must include the primary key
         sql += queryFields + ' '
-    sql += 'FROM ' + meta.db_table + ' '
+    sql += 'FROM %s ' % meta.db_table
     if not isNullBlank(queryWhere):
-        sql += 'WHERE ' + queryWhere + ' '
+        sql += 'WHERE %s ' % queryWhere
     if not isNullBlank(orderBy):
-        sql += 'ORDER BY ' + orderBy + ' '
+        sql += 'ORDER BY %s ' % orderBy
     if not isNullBlank(limit):
-        sql += 'LIMIT ' + limit + ' '
+        sql += 'LIMIT %s ' % limit
     if not isNullBlank(pageSize):
         if isNullBlank(page):
             page = 1
@@ -129,7 +129,7 @@ def queryModel(modelNames, queryFields=None, distinct=False, queryWhere=None, or
     rcs = []
     for j in json.loads(dataStr):
         r = modelClass()
-        if isinstance(r, IDModel):
+        if 'pk' in j and hasattr(r, 'id'):
             id = j['pk']
             if id:
                 setattr(r, 'id', id)
@@ -153,7 +153,7 @@ def locateToFirst(recordset, fieldName, fieldValue) -> Model:
         if cursorRc is not None:
             rc.ik_set_cursor(isCursor=False)
         else:
-            value = getattr(rc, fieldName)
+            value = getModelAttr(rc, fieldName)
             isCursor = (value == fieldValue)
             if isCursor:
                 cursorRc = rc
@@ -183,3 +183,27 @@ def dictsToModels(dictDataList: list[dict], modelClass: Model) -> list[Model]:
     for dd in dictDataList:
         rcs.append(dictToModel(dd, modelClass))
     return rcs
+
+
+def getModelAttr(modrlRecord: Model, attrName: str) -> any:
+    """attrName can be a foreign key. E.g. usr__usr_nm (it's the same as usr.usr_nm)
+    """
+    fields = attrName.replace('__', '.').split('.')
+    attr = None
+    for i in range(0, len(fields)):
+        attr = getattr(modrlRecord if i == 0 else attr, fields[i])
+        if attr is None:
+            break
+    return attr
+
+
+def getModelPropertyValues(instance: Model) -> dict:
+    """Get the model's property values which the function defined with @property.
+    """
+    properties = vars(instance.__class__)
+    property_methods = [name for name, value in properties.items() if isinstance(value, property)]
+    
+    values = {}
+    for name in property_methods:
+        values[name] = getattr(instance, name)
+    return values

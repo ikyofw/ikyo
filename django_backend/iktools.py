@@ -18,9 +18,13 @@ REACT_2_DJANGO_IGNORE_STATIC_FOLDERS = []
 def getDjangoReactFolder() -> Path:
     return Path(os.path.join(os.path.dirname(__file__), REACT_BUILD_OUTPUT_FOLDER))
 
+def getDjangoAppStaticFolder() -> Path:
+    return Path(os.path.join(os.path.dirname(__file__), TEMPLATE_FOLDER, 'apps'))
 
-def getStaticFolder() -> str:
-    return Path(os.path.join(getDjangoReactFolder().absolute(), 'static')).absolute()
+def getStaticFolders() -> list:
+    return [Path(os.path.join(getDjangoReactFolder().absolute(), 'static')).absolute(),
+            getDjangoAppStaticFolder().absolute()
+    ]
 
 
 def __getAppNames() -> list:
@@ -55,8 +59,6 @@ def getDjangoAppConfigs() -> list:
             configClassName = appName + '.apps.' + className
             # check the class is exists or not
             try:
-                if appName == 'wci':
-                    print('sdfsdf')
                 data = []
                 with open(appFile, 'r', encoding='utf-8') as file:
                     data = file.readlines()
@@ -111,7 +113,7 @@ class __IkConfig():
     def get(self, section, name, defaultValue=None) -> str:
         try:
             v = self.conf.get(section, name)
-            return v if v is not None else defaultValue
+            return v if v is not None and str(v).strip() != '' else defaultValue
         except:
             return defaultValue
 

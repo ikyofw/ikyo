@@ -4,16 +4,16 @@ version:
 Author: XH.ikyo
 Date: 2023-09-18 13:16:34
 '''
-from django.forms import model_to_dict
 from django.core.paginator import Paginator
+from django.forms import model_to_dict
 
 import core.ui.ui as ikui
-from core.db.transaction import IkTransaction
 from core.core.http import *
-from core.view.screenView import ScreenAPIView
-from core.user import UsrMntManager
-
+from core.db.transaction import IkTransaction
 from core.models import *
+from core.user import UsrMntManager
+from core.view.screenView import ScreenAPIView
+
 
 class UsrMntView(ScreenAPIView):
 
@@ -55,13 +55,13 @@ class UsrMntView(ScreenAPIView):
 
         totalLen = usrRcs.count()
         paginator = Paginator(usrRcs, pageSize)
-        results = paginator.get_page(pageNum)
+        results = usrRcs if pageNum == 0 else paginator.get_page(pageNum)
 
         data = [model_to_dict(instance) for instance in results]
         for i in data:
             i['grps'] = self.__getGroups(usr_id=i['id'])
             # i['company'] = self.__getCompany(usr_id=i['id'])
-        return IkSccJsonResponse(data={"usrListFg": data, "__dataLen__": totalLen})
+        return self.getSccJsonResponse(data=data, paginatorDataAmount=totalLen)
 
     def showDtl(self):
         currentUsrID = self._getEditIndexField()
@@ -81,6 +81,7 @@ class UsrMntView(ScreenAPIView):
             self.setSessionParameters({'oldPsw': data['psw']})
         elif createNew:
             data['enable'] = 'Y'
+        data['psw'] = ''
         return IkSccJsonResponse(data=data)
 
     def getGrpNm(self):

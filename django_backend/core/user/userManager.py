@@ -23,9 +23,8 @@ def getSystemID() -> int:
     return SYSTEM_USER_ID
 
 
-def getUser(userID) -> str:
-    rc = User.objects.filter(id=userID).first()
-    return None if dbUtils.isEmpty(rc) else rc
+def getUser(userID: int) -> User:
+    return User.objects.filter(id=userID).first()
 
 
 def getUserName(userID) -> str:

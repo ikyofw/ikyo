@@ -6,7 +6,8 @@ from django.db import connection
 import core.core.fs as ikfs
 from core.core.exception import IkException
 
-logger = logging.getLogger('pyi')
+logger = logging.getLogger('ikyo')
+
 
 NEW_SQL_FILE_FOLDER = 'new'
 PROCESSED_SQL_FILE_FOLDER = 'processed'

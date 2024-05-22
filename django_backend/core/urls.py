@@ -81,7 +81,7 @@ def getScreenUrlFromDatabase() -> list[URLPattern]:
             except Exception as e:
                 logger.error('Auto add URL from DB failed: Url=[%s], screen=[%s], title=[%s], classs=[%s], error: %s' % (
                     apiUrl, screenSN, screenTitle, screenClassName, str(e)))
-                # logger.error(e,exc_info=True)
+                logger.error(e,exc_info=True)
     return urlpatterns
 
 if ikDjangoUtils.isRunDjangoServer():

@@ -225,7 +225,10 @@ class _Mailer():
         content = t.render({} if templateParameters is None else templateParameters)
         return self.send(subject=subject, content=content, contentType=contentType, sendFrom=sendFrom, to=to, cc=cc, attachments=attachments)
 
-Mailer = du.instanceClass(_Mailer)
+Mailer = None
+import core.utils.djangoUtils as ikDjangoUtils
+if ikDjangoUtils.isRunDjangoServer():
+    Mailer = du.instanceClass(_Mailer)
 
 class _MailQueueData:
     """mail data class.

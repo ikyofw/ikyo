@@ -33,7 +33,7 @@ class AuthAPIView(APIView):
 
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
-        self.__viewUUID = None  # client request ID. E.g. SUUID, each screen instance has its own suuid
+        self._SUUID = None  # client request ID. E.g. SUUID, each screen instance has its own suuid
         self.__instanceID = int(datetime.now().timestamp() * 1e6)
 
     def initial(self, request, *args, **kwargs):
@@ -92,7 +92,7 @@ class AuthAPIView(APIView):
             del self.request.session[self.__getSessionParameterTimestampName(name)]
             del self.request.session[name]
         if not isGlobal:
-            dataSetName = self.__viewUUID
+            dataSetName = self._SUUID
             if dataSetName is None or dataSetName == '':
                 dataSetName = '%s.%s' % (inspect.getmodule(self).__name__, self.__class__.__name__)
             screenData = data.get(dataSetName, None)
@@ -182,6 +182,8 @@ class AuthAPIView(APIView):
                 self.setSessionParameter(key, value, isGlobal)
 
     def setSessionParameter(self, name, value, isGlobal=False) -> None:
+        if value is not None and isinstance(value, Path):
+            value = str(value)
         if self.__isUseSession():
             data = self.__getSessionData(isGlobal)
             name2 = self.__getSessionParameterName(name, isGlobal)

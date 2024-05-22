@@ -72,3 +72,12 @@ class Boolean2:
 
     def __str__(self):
         return 'bool=' + str(self.__trueFalse) + ', data=' + str(self.dataStr)
+
+    @staticmethod
+    def TRUE(data: any = None) -> 'Boolean2':
+        return Boolean2(True, data)
+    
+    @staticmethod
+    def FALSE(data: any = None) -> 'Boolean2':
+        return Boolean2(False, data)
+    

@@ -28,7 +28,6 @@ from . import uidb as ikuidb
 
 logger = logging.getLogger('ikyo')
 
-
 SCREEN_FIELD_TYPE_TABLE                 = 'table'
 SCREEN_FIELD_TYPE_RESULT_TABLE          = 'resultTable'
 SCREEN_FIELD_TYPE_FIELDS                = 'fields'
@@ -81,6 +80,10 @@ REFRESH_INTERVAL = 1  # seconds
 
 def getRelativeScreenFileFolder() -> Path:
     return Path(os.path.join('var', 'sys', 'screen'))
+
+
+def getRelativeScreenCsvFileFolder() -> Path:
+    return Path(os.path.join('var', 'sys', 'screen-csv'))
 
 
 def getScreenFileFolder() -> Path:
@@ -206,8 +209,6 @@ class ScreenField:
         self.dataField = None
         # YL.ikyo, 2023-04-20 database no use - start
         # self.dataKeyField = None
-        self.dataFormat = None
-        self.dataValidation = None
         self.eventHandler = None
         self.eventHandlerParameter = None
         self.style = None
@@ -241,10 +242,9 @@ class ScreenField:
                       'editable': isEditable,
                       'visible': self.visible,
                       'required': self.required,
+                      'unique': self.unique,
                       'dataField': self.dataField,
                       # 'dataKeyField': self.dataKeyField,
-                      'dataFormat': self.dataFormat,
-                      'dataValidation': self.dataValidation,
                       'eventHandler': self.eventHandler,
                       'eventHandlerParameter': self.eventHandlerParameter,
                       'style': self.style,
@@ -355,7 +355,7 @@ class ScreenFieldGroup:
         for field in self.fields:
             if field.name == name:
                 return field
-        raise IkValidateException('Field does not exist. Screen=[%s], fieldGroup=[%s], field=[%s].' % (self.parent.parent.id, self.parent.name, name))
+        raise IkValidateException('Field does not exist. Screen=[%s], fieldGroup=[%s], field=[%s].' % (self.parent.id, self.name, name))
 
     def getFields(self, fieldNames) -> list:
         return [self.getField(name) for name in fieldNames]
@@ -395,8 +395,8 @@ class ScreenFieldGroup:
             if getFieldGroupDataFn is not None:
                 fgData, fgDataUrl = getFieldGroupDataFn(self)
             if isTableFieldGroup(self.groupType) and isinstance(fgData, dict):
-                self.data = fgData[self.name] if self.name in fgData else []
-                self.style = fgData['style'] if 'style' in fgData else []
+                self.data = fgData['data'] if 'data' in fgData else []
+                self.style = fgData['cssStyle'] if 'cssStyle' in fgData else []
             else:
                 self.data = fgData
                 self.__dataUrl = fgDataUrl
@@ -536,6 +536,7 @@ class Screen:
         self.apiVersion = None
         self.id = None
         self.title = None
+        self.caption = None
         self.description = None
         self.layoutType = None
         self.layoutParams = None
@@ -624,6 +625,7 @@ class Screen:
         jScreen = {}
         jScreen['viewID'] = screenId
         jScreen['viewTitle'] = self.title
+        jScreen['viewCaption'] = self.caption
         jScreen['viewDesc'] = self.description
         jScreen['layoutType'] = self.layoutType
         jScreen['layoutParams'] = self.layoutParams
@@ -647,6 +649,9 @@ class Screen:
 
     def setTitle(self, value) -> None:
         self.title = value
+
+    def setCaption(self, value) -> None:
+        self.caption = value
 
     '''
         Field Groups
@@ -1108,11 +1113,11 @@ class __ScreenManager:
                 data.append(rc.tooltip)
                 data.append(rc.visible)
                 data.append(rc.editable)
+                data.append(rc.db_unique)
+                data.append(rc.db_required)
                 data.append(rc.widget.widget_nm if rc.widget else None)
                 data.append(rc.widget_parameters)
                 data.append(rc.db_field)
-                data.append(rc.md_format)
-                data.append(rc.md_validation)
                 data.append(rc.event_handler)
                 data.append(rc.styles)
                 data.append(rc.rmk)
@@ -1265,7 +1270,7 @@ class __ScreenManager:
 
         currentFieldGroupName = None
         for fieldDfn in dfn['fieldTable']:
-            fieldGroupName, name, caption, tooltip, visible, editable, widget, widgetPrms, dataField, dataFormat, dataValidation, eventHandler, style, rmk = fieldDfn
+            fieldGroupName, name, caption, tooltip, visible, editable, unique, required, widget, widgetPrms, dataField, eventHandler, style, rmk = fieldDfn
             if displayFgs is not None and fieldGroupName not in displayFgs:
                 continue
             if currentFieldGroupName is None or not isNullBlank(fieldGroupName) and fieldGroupName != currentFieldGroupName:
@@ -1293,8 +1298,8 @@ class __ScreenManager:
             field.required = self.__toBool(None, default=False)  # TODO: reference to recordset
             field.dataField = dataField
             # field.dataKeyField = dataKeyField # XH, 2023-04-20 old from excel
-            field.dataFormat = dataFormat
-            field.dataValidation = dataValidation
+            field.unique = unique
+            field.required = required
             field.eventHandler = ikHttpUtils.setQueryParameter(eventHandlerUrl, globalRequestUrlParameters)
             field.eventHandlerParameter = eventHandlerPrms
             field.style = self.__getStylePrms(style)
@@ -1510,8 +1515,6 @@ class __ScreenManager:
         field.required = False
         field.dataField = RESULT_TABLE_EDIT_FIELD_RECORD_SET_FIELD_NAME
         field.dataKeyField = None
-        field.dataFormat = None
-        field.dataValidation = None
 
         eventHandlerUrl, eventHandlerPrms = self.__getEventHandler(screen,
                                                                    getResultTableEditButonDefaultEventName(field.name)
@@ -1716,11 +1719,11 @@ class __ScreenManager:
                         comboxData2 = []
                         if isinstance(comboxData, QuerySet):
                             for rc in comboxData:
-                                comboxData2.append({'value': getattr(rc, valueField), 'display': getattr(rc, displayField)})
+                                comboxData2.append({'value': modelUtils.getModelAttr(rc, valueField), 'display': modelUtils.getModelAttr(rc, displayField)})
                         else:
                             for rc in comboxData:
                                 if isinstance(comboxData[0], models.Model):
-                                    comboxData2.append({'value': getattr(rc, valueField), 'display': getattr(rc, displayField)})
+                                    comboxData2.append({'value': modelUtils.getModelAttr(rc, valueField), 'display': modelUtils.getModelAttr(rc, displayField)})
                                 else:
                                     comboxData2.append({'value': rc.get(valueField, None), 'display': rc.get(displayField, None)})
                         comboxData = comboxData2

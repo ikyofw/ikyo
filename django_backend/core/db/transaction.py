@@ -17,7 +17,7 @@ logger = logging.getLogger('ikyo')
 
 
 class IkTransactionModel():
-    def __init__(self, modelData, updateFields=None, validateExclude=None, validateUnique=True, foreignKeys=None) -> None:
+    def __init__(self, modelData, updateFields=None, validateExclude=None, validateUnique=True, foreignKeys=None, bulkCreate: bool = False) -> None:
         '''
             modelData: a Model object or Model list [modelRc1, modeRc2...]
         '''
@@ -26,6 +26,7 @@ class IkTransactionModel():
         self.validateExclude = validateExclude
         self.validateUnique = validateUnique
         self.foreignKeys = foreignKeys
+        self.bulkCreate = bulkCreate
 
 
 DEFAULT_FOREIGN_FIELD = 'id'
@@ -168,9 +169,15 @@ class IkTransaction():
                 try:
                     with transaction.atomic():
                         savePoint = transaction.savepoint()
+                        logger.debug("save models ...")
                         if beforeSave is not None:
+                            logger.debug("save models before save ...")
                             beforeSave(self, transaction)
+                        modelSeq = 0
+                        totalModels = len(self.__modelDataList)
                         for ikTransactionModel in self.__modelDataList:
+                            modelSeq += 1
+                            logger.debug('save models %s of %s ...' % (modelSeq, totalModels))
                             if beforeSaveModels is not None:
                                 beforeSaveModels(self, transaction, ikTransactionModel)
                             data = ikTransactionModel.modelData
@@ -185,10 +192,14 @@ class IkTransaction():
                             else:
                                 raise IkValidateException('Unsupport data: %s' % type(data))
                             if afterSaveModels is not None:
+                                logger.debug("save models afterSaveModels ...")
                                 afterSaveModels(self, transaction, ikTransactionModel)
                         if beforeCommit is not None:
+                            logger.debug("save models beforeCommit ...")
                             beforeCommit(self, transaction)
+                        logger.debug("save models savepoint_commit ...")
                         transaction.savepoint_commit(savePoint)
+                        logger.debug("save models savepoint_commit done")
                 except Exception as e:
                     if savePoint is not None:
                         transaction.savepoint_rollback(savePoint)
@@ -290,7 +301,11 @@ class IkTransaction():
             #    modelClass.objects.bulk_update(updatedRcs, updateFields)
         if len(newRcs) > 0:
             self.__validateNewRecords(newRcs, ikTransactionModel, dataWithoutDeletedRcs)
-            modelClass.objects.bulk_create(newRcs)
+            if ikTransactionModel.bulkCreate:
+                modelClass.objects.bulk_create(newRcs)
+            else:
+                for newRc in newRcs:
+                    newRc.save()
 
     def __getUpdateFieldNames(self, ikTransactionModel, rc) -> list:
         updateFields = ikTransactionModel.updateFields

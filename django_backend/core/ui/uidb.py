@@ -1,6 +1,7 @@
 import hashlib
 import logging
 import os
+import threading
 from datetime import datetime as datetime_
 from pathlib import Path
 
@@ -23,6 +24,8 @@ logger = logging.getLogger('ikyo')
 
 
 def syncScreenDefinitions(userID: int = None):
+    if IkConfig.getSystem('supportSpreadsheetScreenDefinition', 'true').lower() == 'false':
+        return
 
     # excel to database
     screenFileFolder = ikui.getScreenFileFolder()
@@ -80,9 +83,8 @@ def syncScreenDefinitions(userID: int = None):
 
     # database to excel: Screen Dfn CSV
     if not IkConfig.get("production", False):
-        b2 = createCSVFileWithDatabase()
-        if not b2.value:
-            return b2
+        thread = threading.Thread(target=createCSVFileWithDatabase)
+        thread.start()
     return Boolean2(True, "Reloaded")
 
 
@@ -92,17 +94,28 @@ def createCSVFileWithDatabase(screenSN: str = None):
             screenSNs = [{'screen_sn': screenSN}]
         else:
             screenSNs = Screen.objects.values('screen_sn').distinct().order_by('screen_sn')
-        for screenSN in screenSNs:
-            latestScreen = Screen.objects.filter(screen_sn__iexact=screenSN['screen_sn']).order_by('-rev').first()
+            logger.info('Export all screen definition to csv file start ...')
+        for screenSNDict in screenSNs:
+            latestScreen = Screen.objects.filter(screen_sn__iexact=screenSNDict['screen_sn']).order_by('-rev').first()
 
             if isNotNullBlank(latestScreen):
-                filePath = _getImportScreenFilePath(latestScreen.class_nm, isCSV=True)
+                filePath = __getImportScreenFilePath(latestScreen.class_nm)
                 filename = '%s.csv' % latestScreen.screen_sn
-                outputFile = os.path.join(filePath, filename)
+                outputFile = os.path.join(ikui.getRelativeScreenCsvFileFolder(), filePath, filename)
+                if isNotNullBlank(screenSN):
+                    logger.info('Export screen definition [%s] to csv file [%s] start ...' % (screenSN, outputFile))
                 if os.path.isfile(outputFile):
-                    os.remove(outputFile)
+                    try:
+                        os.remove(outputFile)
+                    except PermissionError:
+                        raise IkException("PermissionError: Please check File [%s] is already open. If it is open, please close it and try again." % filename)
 
-                expData = __getExpDataFromDB(latestScreen, isCSV=True)
+                try:
+                    expData = __getExpDataFromDB(latestScreen, isCSV=True)
+                except Exception as exc:
+                    logger.error('Get screen=%s (Rev %s) data from database failed: %s' % (latestScreen.screen_sn, latestScreen.rev, str(exc)))
+                    logger.error(exc, exc_info=True)
+                    continue
 
                 # change \n to \r\n for compate the files using git tools.
                 # ( The new line flag in a excel cell is \r\n.)
@@ -118,9 +131,14 @@ def createCSVFileWithDatabase(screenSN: str = None):
                         expData[key] = value
 
                 csv.Write2CsvFile(outputFile, expData, comments="This is a comment line.")
+
+        if isNotNullBlank(screenSN):
+            logger.info('Export screen definition [%s] to csv file [%s] success.' % (screenSN, outputFile))
+        else:
+            logger.info('Export all screen definition to csv file success.')
         return Boolean2(True, 'Create CSV File Success.')
     except Exception as e:
-        logger.error(e)
+        logger.error(e, exc_info=True)
         return Boolean2(False, 'Create CSV File error! Screen ID: [%s]' % screenSN)
 
 
@@ -151,38 +169,26 @@ def updateDatabaseWithImportExcel(ImportScreen: djangoUploadedfile.UploadedFile,
 def screenDbWriteToExcel(screenRc: Screen, fileRmk: str = None) -> Boolean2:
     if isNullBlank(screenRc):
         return Boolean2(False, 'Screen does not exist. Please check.')
-    templateFileFolder = ikui.getScreenFileTemplateFolder()
-    templateFile = ikfs.getLastRevisionFile(templateFileFolder, 'template.xlsx')
-    if isNullBlank(templateFile):
-        return Boolean2(False, 'Screen template file is not found. Please check.')
 
-    filePath = _getImportScreenFilePath(screenRc.class_nm)
+    filePath = __getImportScreenFilePath(screenRc.class_nm)
     filename = '%s.xlsx' % screenRc.screen_sn
     outputFile = os.path.join(ikui.getRelativeScreenFileFolder(), filePath, filename)
-    if os.path.isfile(outputFile):
-        try:
-            os.remove(outputFile)
-        except PermissionError:
-            raise IkException("PermissionError: Please check File [%s] is already open. If it is open, please close it and try again." % filename)
-
-    expData = __getExpDataFromDB(screenRc)
-
-    # write to file and download if success
-    sw = ikSpreadsheet.SpreadsheetWriter(parameters=expData, templateFile=templateFile, outputFile=outputFile)
-    b = sw.write()
-    if not b.value:
-        return b
 
     # ik_screen_file
     if isNotNullBlank(fileRmk):
-        screenFileRc = ScreenFile()
-        screenFileRc.screen = screenRc
-        screenFileRc.file_nm = filename
-        screenFileRc.file_size = os.path.getsize(outputFile)
-        screenFileRc.file_path = filePath
-        screenFileRc.file_dt = datetime_.now()
-        screenFileRc.file_md5 = _getExcelMD5(outputFile)
-        screenFileRc.rmk = fileRmk
+        screenFileRc = ScreenFile.objects.filter(screen=screenRc).order_by('-file_dt').first()
+        if isNotNullBlank(screenFileRc) and 'Delete last Screen' in fileRmk:
+            screenFileRc.rmk = fileRmk
+            screenFileRc.ik_set_status_modified()
+        else:
+            screenFileRc = ScreenFile()
+            screenFileRc.screen = screenRc
+            screenFileRc.file_nm = filename
+            screenFileRc.file_size = 0
+            screenFileRc.file_path = filePath
+            screenFileRc.file_dt = datetime_.now()
+            screenFileRc.file_md5 = ''
+            screenFileRc.rmk = fileRmk + ' (Export excel failed.)'
         ptrn = IkTransaction()
         ptrn.add(screenFileRc)
         c = ptrn.save()
@@ -192,6 +198,42 @@ def screenDbWriteToExcel(screenRc: Screen, fileRmk: str = None) -> Boolean2:
         d = createCSVFileWithDatabase(screenSN=screenRc.screen_sn)
         if not d.value:
             return d
+
+    templateFileFolder = ikui.getScreenFileTemplateFolder()
+    templateFile = ikfs.getLastRevisionFile(templateFileFolder, 'template.xlsx')
+    if isNullBlank(templateFile):
+        return Boolean2(False, 'Screen template file is not found. Please check.')
+
+    logger.info('Export screen definition [%s] to excel file [%s] start ...' % (screenRc.screen_sn, outputFile))
+    if os.path.isfile(outputFile):
+        try:
+            os.remove(outputFile)
+        except PermissionError:
+            raise IkException("PermissionError: Please check File [%s] is already open. If it is open, please close it and try again." % filename)
+
+    # write to file if success
+    def spreadsheetWriter(expData, templateFile, outputFile):
+        sw = ikSpreadsheet.SpreadsheetWriter(parameters=expData, templateFile=templateFile, outputFile=outputFile)
+        b = sw.write()
+        if not b.value:
+            raise b.dataStr
+        logger.info('Export screen definition [%s] to excel file [%s] success' % (screenRc.screen_sn, outputFile))
+
+        screenFileRc = ScreenFile.objects.filter(screen=screenRc).order_by('-file_dt').first()
+        screenFileRc.file_size = os.path.getsize(outputFile)
+        screenFileRc.file_md5 = _getExcelMD5(outputFile)
+        screenFileRc.rmk = fileRmk
+        screenFileRc.ik_set_status_modified()
+        ptrn = IkTransaction()
+        ptrn.add(screenFileRc)
+        c = ptrn.save()
+        if not c.value:
+            raise c.dataStr
+
+    expData = __getExpDataFromDB(screenRc)
+    thread = threading.Thread(target=spreadsheetWriter, args=(expData, templateFile, outputFile))
+    thread.start()
+        
     return Boolean2(True, outputFile)
 
 
@@ -211,6 +253,8 @@ def __getExpDataFromDB(screenRc, isCSV: bool = None):
     for rc in fgFieldRcs:
         rc.visible = None if rc.visible == True else 'yes'  # column title: hide
         rc.editable = None if rc.editable == True else 'no'
+        rc.db_unique = 'yes' if rc.db_unique == True else 'no' if rc.db_unique == False else None
+        rc.db_required = 'yes' if rc.db_required == True else 'no' if rc.db_required == False else None
         if isCSV:
             if isNotNullBlank(rc.widget_parameters) and "\r\n" in rc.widget_parameters:
                 rc.widget_parameters = rc.widget_parameters.replace("\r\n", "\n")
@@ -259,7 +303,7 @@ def __getExpDataFromDB(screenRc, isCSV: bool = None):
         'data_page_size', 'outer_layout_params', 'inner_layout_type', 'inner_layout_params', 'html', 'additional_props', 'rmk'
     ])
     expData['fieldTable'] = ikModelUtils.redcordsets2List(fgFieldRcs, [
-        'field_group.fg_nm', 'field_nm', 'caption', 'tooltip', 'visible', 'editable', 'widget.widget_nm', 'widget_parameters', 'db_field', 'md_format', 'md_validation',
+        'field_group.fg_nm', 'field_nm', 'caption', 'tooltip', 'visible', 'editable', 'db_unique', 'db_required', 'widget.widget_nm', 'widget_parameters', 'db_field',
         'event_handler', 'styles', 'rmk'
     ])
     expData['subScreenTable'] = ikModelUtils.redcordsets2List(dfnRcs, ['sub_screen_nm', 'field_group_nms', 'rmk'])
@@ -306,10 +350,9 @@ def _updateDatabaseWithExcelFiles(screenDefinition, userID) -> Boolean2:
                 rmk = 'Import from spreadsheet.'
             b = screenDbWriteToExcel(latestScreen, rmk)
             if not b.value:
-                logger.error('Import screen definition [%s] from file [%s], create excel and csv failed: [%s]' % (screenDefinition.fullName, screenDefinition.filePath, b.dataStr))
+                logger.error('Import screen definition [%s] from file [%s], create excel failed: [%s]' % (screenDefinition.fullName, screenDefinition.filePath, b.dataStr))
                 processResult = Boolean2(False, b.data)
                 return b
-            logger.info('Import screen definition [%s] from file [%s]: export data to file [%s] success' % (screenDefinition.fullName, screenDefinition.filePath, b.data))
             processResult = Boolean2(True, 'Success')
             return processResult
         except Exception as e:
@@ -351,6 +394,8 @@ def __toBool(yesNo, default=None) -> bool:
     if isinstance(yesNo, bool):
         return yesNo
     if isNullBlank(yesNo) and default is not None:
+        if default == "":
+            return None
         return default
     return yesNo is not None and yesNo.lower() == 'yes'
 
@@ -384,21 +429,26 @@ def _deleteExcelAndCSV(screenFileRc: ScreenFile):
         return
     fp = os.path.join(ikui.getRelativeScreenFileFolder(), screenFileRc.file_path, screenFileRc.file_nm)
     if os.path.isfile(fp):
-        ikfs.deleteEmptyFolderAndParentFolder(fp)
+        try:
+            ikfs.deleteEmptyFolderAndParentFolder(fp)
+        except PermissionError:
+            raise IkException("PermissionError: Please check File [%s] is already open. If it is open, please close it and try again." % fp)
     index = fp.find("screen")
     if index != -1:
         fp2 = fp[:index] + "screen-csv" + fp[index + 6:-5] + ".csv"
         if os.path.isfile(fp2):
-            ikfs.deleteEmptyFolderAndParentFolder(fp2)
+            try:
+                ikfs.deleteEmptyFolderAndParentFolder(fp2)
+            except PermissionError:
+                raise IkException("PermissionError: Please check File [%s] is already open. If it is open, please close it and try again." % fp2)
 
 
-def _getImportScreenFilePath(classNm, isCSV: bool = None):
+def __getImportScreenFilePath(classNm):
     if isNullBlank(classNm):
         raise IkValidateException("The Class Name of [%s] is None." % (classNm))
     ss = classNm.split('.')
     if len(ss) > 1:
-        return os.path.join(ikui.getScreenCsvFileFolder(), ss[0]) if isCSV else Path(ss[0])
-        # return Path(os.path.join(ikui.getScreenCsvFileFolder() if isCSV else ikui.getScreenFileFolder()), ss[0])  # add app name as screen's sub-folder name
+        return Path(ss[0])
     else:
         raise IkValidateException("The format of Class Name in [%s] is error." % (classNm))
 
@@ -536,11 +586,11 @@ def __updateScreenDatabase(dfn, userID):
             screenFieldRc.tooltip = k[3]
             screenFieldRc.visible = not __toBool(k[4])
             screenFieldRc.editable = __toBool(k[5], default=True)
-            screenFieldRc.widget = ScreenFieldWidget.objects.filter(widget_nm__iexact=k[6]).first()
-            screenFieldRc.widget_parameters = k[7]
-            screenFieldRc.db_field = k[8]
-            screenFieldRc.md_format = k[9]
-            screenFieldRc.md_validation = k[10]
+            screenFieldRc.db_unique = __toBool(k[6], default='')
+            screenFieldRc.db_required = __toBool(k[7], default='')
+            screenFieldRc.widget = ScreenFieldWidget.objects.filter(widget_nm__iexact=k[8]).first()
+            screenFieldRc.widget_parameters = k[9]
+            screenFieldRc.db_field = k[10]
             screenFieldRc.event_handler = k[11]
             screenFieldRc.styles = k[12]
             screenFieldRc.rmk = k[13]

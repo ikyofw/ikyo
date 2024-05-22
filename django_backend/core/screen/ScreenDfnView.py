@@ -1,6 +1,6 @@
 '''
 Description: PYI Screen Definition
-version: 
+version:
 Author: YL
 Date: 2023-04-18 15:36:52
 '''
@@ -20,7 +20,7 @@ from core.utils.langUtils import isNotNullBlank, isNullBlank
 from core.screen import ScreenDfnManager
 from core.view.screenView import ScreenAPIView
 
-logger = logging.getLogger('pyi')
+logger = logging.getLogger('ikyo')
 
 
 class ScreenDfnView(ScreenAPIView):
@@ -39,8 +39,8 @@ class ScreenDfnView(ScreenAPIView):
                 widgetNm = self.getSessionParameter('widgetNm')
                 screen.setFieldsVisible(fieldGroupName='dialogWidgetPramsFg',
                                         fieldNames=[
-                                            'formatField1', 'formatField2', 'stateNumField', 'multipleField', 'dataField', 'recordsetField', 'dataUrlField', 'valueField',
-                                            'displayField', 'onChangeField', 'iconField', 'typeField'
+                                            'placeholderField', 'formatField1', 'formatField2', 'stateNumField', 'captionPositionField', 'multipleField', 'dataField', 
+                                            'recordsetField', 'dataUrlField', 'valueField', 'displayField', 'onChangeField', 'iconField', 'typeField'
                                         ],
                                         visible=False)
                 screen.setFieldGroupsVisible(fieldGroupNames='dialogWidgetDialogPramsFg', visible=False)
@@ -51,7 +51,9 @@ class ScreenDfnView(ScreenAPIView):
                                             fieldNames=['formatField1', 'dataField', 'recordsetField', 'dataUrlField', 'valueField', 'displayField'],
                                             visible=True)
                 elif widgetNm == ikui.SCREEN_FIELD_WIDGET_TEXT_BOX:
-                    screen.setFieldsVisible(fieldGroupName='dialogWidgetPramsFg', fieldNames=['formatField1'], visible=True)
+                    screen.setFieldsVisible(fieldGroupName='dialogWidgetPramsFg', fieldNames=['placeholderField', 'formatField1'], visible=True)
+                elif widgetNm == ikui.SCREEN_FIELD_WIDGET_TEXT_AREA:
+                    screen.setFieldsVisible(fieldGroupName='dialogWidgetPramsFg', fieldNames=['placeholderField'], visible=True)
                 elif widgetNm == ikui.SCREEN_FIELD_WIDGET_DATE_BOX:
                     screen.setFieldsVisible(fieldGroupName='dialogWidgetPramsFg', fieldNames=['formatField2'], visible=True)
                 elif widgetNm == ikui.SCREEN_FIELD_WIDGET_COMBO_BOX or widgetNm == ikui.SCREEN_FIELD_WIDGET_LIST_BOX or widgetNm == ikui.SCREEN_FIELD_WIDGET_ADVANCED_COMBOBOX:
@@ -64,10 +66,14 @@ class ScreenDfnView(ScreenAPIView):
                                             visible=True)
                     screen.setFieldGroupsVisible(fieldGroupNames='dialogWidgetDialogPramsFg', visible=True)
                 elif widgetNm == ikui.SCREEN_FIELD_WIDGET_CHECK_BOX:
-                    screen.setFieldsVisible(fieldGroupName='dialogWidgetPramsFg', fieldNames=['stateNumField'], visible=True)
+                    screen.setFieldsVisible(fieldGroupName='dialogWidgetPramsFg', fieldNames=['stateNumField', 'captionPositionField'], visible=True)
                 elif widgetNm == ikui.SCREEN_FIELD_WIDGET_BUTTON or widgetNm == ikui.SCREEN_FIELD_WIDGET_ICON_AND_TEXT:
-                    screen.setFieldsVisible(fieldGroupName='dialogWidgetPramsFg', fieldNames=['iconField', 'typeField'], visible=True)
+                    screen.setFieldsVisible(fieldGroupName='dialogWidgetPramsFg', fieldNames=['iconField', 'typeField', 'multipleField'], visible=True)
                     screen.setFieldGroupsVisible(fieldGroupNames='dialogWidgetDialogPramsFg', visible=True)
+                    dialogWidgetPramsRc = self.getSessionParameter('dialogWidgetPramsRc')
+                    if isNullBlank(dialogWidgetPramsRc) or dialogWidgetPramsRc.get('type', '') != 'uploadDialog':
+                        screen.setFieldsVisible(fieldGroupName='dialogWidgetPramsFg', fieldNames=['multipleField'], visible=False)
+                        screen.setFieldsVisible(fieldGroupName='dialogWidgetDialogPramsFg', fieldNames=['dialogUploadTipField'], visible=False)
                 elif widgetNm == ikui.SCREEN_FIELD_WIDGET_FILE:
                     screen.setFieldsVisible(fieldGroupName='dialogWidgetPramsFg', fieldNames=['multipleField'], visible=True)
                 return
@@ -95,7 +101,9 @@ class ScreenDfnView(ScreenAPIView):
             # XH 2023-05-04 START
             # import and export
             # screen.setFieldGroupsVisible(fieldGroupNames=['importFg'], visible= not isSelectedScreenSn)
-            screen.setFieldsVisible(fieldGroupName='screenToolbar2', fieldNames=['bttExportScreen', 'bttDeleteScreen', 'bttCopyScreen'], visible=isSelectedScreenSn)
+            screen.setFieldsVisible(fieldGroupName='screenToolbar2',
+                                    fieldNames=['bttExportScreen', 'bttDeleteScreen', 'bttDeleteLastRev', 'bttCopyScreen', 'bttResetRev', 'bttRefresh'],
+                                    visible=isSelectedScreenSn)
             # screen.setFieldsVisible(fieldGroupName='screenToolbar', fieldNames=['bttImportScreen'], visible=not isSelectedScreenSn)
             # XH 2023-05-04 END
 
@@ -167,7 +175,7 @@ class ScreenDfnView(ScreenAPIView):
             snFlag = q['screen_sn']
             sn = q['screen_sn']
             screenRc = Screen.objects.filter(screen_sn__iexact=sn).order_by('-rev').first()
-            screenFileRc = ScreenFile.objects.filter(screen=screenRc).first()
+            screenFileRc = ScreenFile.objects.filter(screen=screenRc).order_by('-file_dt').first()
             if isNullBlank(screenFileRc):
                 dt = ''
             else:
@@ -295,6 +303,9 @@ class ScreenDfnView(ScreenAPIView):
             return IkErrJsonResponse(message="New screen revision must be a number.")
         b = ScreenDfnManager.resetRev(userID, screenSn, newRev)
         return b.toIkJsonResponse1()
+
+    def refresh(self):
+        return IkSccJsonResponse(message='Refreshed.')
 
     # XH 2023-05-04 END
 
@@ -426,9 +437,6 @@ class ScreenDfnView(ScreenAPIView):
         data = []
         if fieldGroupId and not isNewFg:
             data = ScreenField.objects.filter(field_group__id=fieldGroupId).order_by("seq")
-            # for d in data:
-            #     d.visible = not d.visible  # just show in page table
-            #     d.editable = not d.editable  # just show in page table
         return IkSccJsonResponse(data=data)
 
     # get field all widget
@@ -443,11 +451,11 @@ class ScreenDfnView(ScreenAPIView):
         return IkSccJsonResponse(data=[*sysWidgetList, *usrWidgetList])
 
     def getUnique(self):
-        uniqueRcs = [{'unique': None}, {'unique': 'True'}, {'unique': 'False'}]
+        uniqueRcs = [{'unique': None}, {'unique': 'true'}, {'unique': 'false'}]
         return IkSccJsonResponse(data=uniqueRcs)
 
     def getRequired(self):
-        requiredRcs = [{'required': None}, {'required': 'True'}, {'required': 'False'}]
+        requiredRcs = [{'required': None}, {'required': 'true'}, {'required': 'false'}]
         return IkSccJsonResponse(data=requiredRcs)
 
     # events
@@ -835,16 +843,22 @@ class ScreenDfnView(ScreenAPIView):
     def getDialogWidgetPramsRc(self):
         widgetNm = self.getSessionParameter('widgetNm')
         widgetPrams = self.getSessionParameter('widgetPrams')
+        dialogWidgetPramsRc = self.getSessionParameter('dialogWidgetPramsRc')
+        if isNotNullBlank(dialogWidgetPramsRc):
+            self.deleteSessionParameters('dialogWidgetPramsRc')
+            return IkSccJsonResponse(data=dialogWidgetPramsRc)
+
         if widgetNm == ikui.SCREEN_FIELD_WIDGET_DATE_BOX and widgetPrams == {}:
             widgetPrams = {'format': 'yyyy-MM-dd'}
         elif widgetNm == ikui.SCREEN_FIELD_WIDGET_CHECK_BOX and widgetPrams == {}:
-            widgetPrams = {'stateNumber': '2'}
-        elif widgetNm == ikui.SCREEN_FIELD_WIDGET_ICON_AND_TEXT and 'type' not in widgetPrams:
-            widgetPrams['type'] = 'normal'
+            widgetPrams = {'stateNumber': '2', 'captionPosition': 'left'}
+        elif (widgetNm == ikui.SCREEN_FIELD_WIDGET_ICON_AND_TEXT or widgetNm == ikui.SCREEN_FIELD_WIDGET_BUTTON):
+            if 'type' not in widgetPrams:
+                widgetPrams['type'] = 'normal'
         elif (widgetNm in ikui.SCREEN_FIELD_SELECT_WIDGETS or widgetNm == ikui.SCREEN_FIELD_WIDGET_LABEL):
-            if 'values' not in widgetPrams:
-                widgetPrams['value'] = "value"
-                widgetPrams['display'] = "display"
+            # if 'values' not in widgetPrams:
+            #     widgetPrams['value'] = "value"
+            #     widgetPrams['display'] = "display"
             if 'recordset' in widgetPrams:
                 screenSn = self.getSessionParameter("screenSN")
                 screenRc = Screen.objects.filter(screen_sn__iexact=screenSn).order_by("-rev").first()
@@ -862,9 +876,11 @@ class ScreenDfnView(ScreenAPIView):
                 dialog = {}
                 for d in dialogs:
                     if isNotNullBlank(d):
-                        dialog[d.split(":")[0]] = d.split(":")[1]
+                        parts = d.split(":", 1)
+                        dialog[parts[0]] = parts[1]
                 widgetPrams['name'] = dialog["name"] if 'name' in dialog else ''
                 widgetPrams['title'] = dialog["title"] if 'title' in dialog else ''
+                widgetPrams['uploadTip'] = dialog["uploadTip"] if 'uploadTip' in dialog else ''
                 widgetPrams['beforeDisplayEvent'] = dialog["beforeDisplayEvent"] if 'beforeDisplayEvent' in dialog else ''
                 widgetPrams['continueName'] = dialog["continueName"] if 'continueName' in dialog else ''
                 widgetPrams['cancelName'] = dialog["cancelName"] if 'cancelName' in dialog else ''
@@ -873,17 +889,11 @@ class ScreenDfnView(ScreenAPIView):
                 widgetPrams['content'] = dialog["content"] if 'content' in dialog else ''
         return IkSccJsonResponse(data=widgetPrams)
 
-    def getHtmlDialogWidgetPramsHtml(self):
-        widgetNm = self.getSessionParameter('widgetNm')
-        html = ''
-        if isNotNullBlank(widgetNm) and widgetNm not in ScreenDfnManager.NO_PARAMETERS_WIDGET:
-            html = '<div style="color: gray; font-size: 12px; font-style: italic; padding-top: 5px;"> See the wiki for detailed parameterization rules: https://pyiwiki.ddns.net/index.php/Widget_Parameters </div>'
-        return IkSccJsonResponse(data=html)
-
     def postRow(self):
         row = self.getRequestData().get('row', {})
         widgetID = row.get('widget_id', '')
         widgetPrams = row.get('widget_parameters', '')
+        self.deleteSessionParameters('dialogWidgetPramsRc')
         self.setSessionParameters({'widgetPrams': ikui.IkUI.parseWidgetPrams(widgetPrams)})
 
         message = ''
@@ -916,36 +926,63 @@ class ScreenDfnView(ScreenAPIView):
         return IkSccJsonResponse(data=data)
 
     def getBttType(self):
-        data = [{'value': 'normal', 'display': 'normal (default)'}, {'value': 'upload', 'display': 'upload'}, {'value': 'download', 'display': 'download'}]
+        widgetNm = self.getSessionParameter('widgetNm')
+        data = [{'value': 'normal', 'display': 'normal (default)'}, {'value': 'download', 'display': 'download'}]
+        if widgetNm == ikui.SCREEN_FIELD_WIDGET_BUTTON:
+            data.append({'value': 'uploadDialog', 'display': 'upload dialog'})
+        if widgetNm == ikui.SCREEN_FIELD_WIDGET_ICON_AND_TEXT:
+            data.append({'value': 'uploadDialog', 'display': 'upload dialog'})
+            data.append({'value': 'uploadButton', 'display': 'upload button'})
+        return IkSccJsonResponse(data=data)
+
+    def saveBttType(self):
+        resData = self.getRequestData()
+        dialogWidgetPramsFg = resData.get('dialogWidgetPramsFg', {})
+        dialogWidgetDialogPramsFg = resData.get('dialogWidgetDialogPramsFg', {})
+        return self.setSessionParameters({'dialogWidgetPramsRc': {**dialogWidgetPramsFg, **dialogWidgetDialogPramsFg}})
+
+    def getCaptionPosition(self):
+        data = [{'value': 'left', 'display': 'left (default)'}, {'value': 'right', 'display': 'right'}]
         return IkSccJsonResponse(data=data)
 
     def uploadWidgetPrams(self):
         resData = self.getRequestData()
         widgetPrams = resData.get('dialogWidgetPramsFg', '')
         widgetDialogPrams = resData.get('dialogWidgetDialogPramsFg', '')
-        data = {'value': '', 'display': ''}
+        cleanedDict = {}
         if isNotNullBlank(widgetPrams):
-            cleanedDict = {k: v for k, v in widgetPrams.items() if isNotNullBlank(v) and (k != 'multiple' or v != 'false')}
+            cleanedDict = {k: v for k, v in widgetPrams.items() if isNotNullBlank(v)}
             if 'recordset' in cleanedDict and isNotNullBlank(cleanedDict['recordset']):
                 recordsetRc = ScreenRecordset.objects.filter(id=cleanedDict['recordset']).first()
+                recordsetClass = modelUtils.getModelClass(recordsetRc.sql_models)
+                if 'value' in cleanedDict and not hasattr(recordsetClass, cleanedDict['value']):
+                    return IkErrJsonResponse(message='The recordset [%s] does not have the field [%s].' % (recordsetRc.recordset_nm, cleanedDict['value']))
+                if 'display' in cleanedDict and not hasattr(recordsetClass, cleanedDict['display']):
+                    return IkErrJsonResponse(message='The recordset [%s] does not have the field [%s].' % (recordsetRc.recordset_nm, cleanedDict['display']))
                 cleanedDict['recordset'] = recordsetRc.recordset_nm
             if 'value' in cleanedDict and 'display' in cleanedDict and (cleanedDict['value'] != 'value' or cleanedDict['display'] != 'display'):
-                cleanedDict['values'] = '{"value": "%s", "display": "%s"}' %(cleanedDict['value'], cleanedDict['display'])
+                cleanedDict['values'] = '{"value": "%s", "display": "%s"}' % (cleanedDict['value'], cleanedDict['display'])
             if 'value' in cleanedDict:
                 cleanedDict.pop('value')
             if 'display' in cleanedDict:
                 cleanedDict.pop('display')
             if 'type' in cleanedDict and isNotNullBlank(cleanedDict['type']) and cleanedDict['type'] == 'normal':
                 cleanedDict.pop('type')
-            if isNotNullBlank(widgetDialogPrams):
-                dialogPrams = []
-                for k, v in widgetDialogPrams.items():
-                    if isNotNullBlank(v):
-                        dialogPrams.append(f"{k}:{v}")
-                if len(dialogPrams) > 0:
-                    cleanedDict['dialog'] = ";".join(dialogPrams)
-            newWidgetPrams = '\n'.join(f"{k}: {v}" for k, v in cleanedDict.items())
-            data = {'value': newWidgetPrams, 'display': newWidgetPrams}
+            if 'multiple' in cleanedDict and cleanedDict['multiple'] == 'false':
+                cleanedDict.pop('multiple')
+            if 'stateNumber' in cleanedDict and cleanedDict['stateNumber'] == '2':
+                cleanedDict.pop('stateNumber')
+            if 'captionPosition' in cleanedDict and cleanedDict['captionPosition'] == 'left':
+                cleanedDict.pop('captionPosition')
+        if isNotNullBlank(widgetDialogPrams):
+            dialogPrams = []
+            for k, v in widgetDialogPrams.items():
+                if isNotNullBlank(v):
+                    dialogPrams.append(f"{k}:{v}")
+            if len(dialogPrams) > 0:
+                cleanedDict['dialog'] = ";".join(dialogPrams)
+        newWidgetPrams = '\n'.join(f"{k}: {v}" for k, v in cleanedDict.items())
+        data = {'value': newWidgetPrams, 'display': newWidgetPrams}
         return IkSccJsonResponse(data=data)
 
     def postPreAdditionalProps(self):

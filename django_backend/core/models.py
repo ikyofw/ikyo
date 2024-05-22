@@ -1,5 +1,7 @@
 from django.db import models
+
 from core.db.model import IDModel
+from core.db.model import addModelHistoryFilter
 
 
 class Menu(IDModel):
@@ -11,6 +13,8 @@ class Menu(IDModel):
     order_no = models.DecimalField(max_digits=20, decimal_places=0, null=True, blank=True, verbose_name='Order No')
     is_free_access = models.BooleanField(null=True, blank=True, verbose_name='Is Free Access')
     sub_menu_lct = models.CharField(max_length=255, null=True, blank=True, verbose_name='Sub Menu Location')
+    ctg = models.CharField(max_length=255, null=True, blank=True, verbose_name='Category')
+    code = models.CharField(max_length=255, null=True, blank=True, verbose_name='Code')
     dsc = models.TextField(null=True, blank=True, verbose_name='Description')
 
     class Meta:
@@ -220,11 +224,11 @@ class ScreenField(IDModel):
     tooltip = models.TextField(blank=True, null=True, verbose_name='Tooltip')
     visible = models.BooleanField(default=True, verbose_name='Visible')
     editable = models.BooleanField(default=True, verbose_name='Editable')
+    db_unique = models.BooleanField(default=None, blank=True, null=True, verbose_name='Unique')
+    db_required = models.BooleanField(default=None, blank=True, null=True, verbose_name='Required')
     widget = models.ForeignKey(ScreenFieldWidget, models.CASCADE, blank=True, null=True, verbose_name='Widget')
     widget_parameters = models.TextField(blank=True, null=True, verbose_name='Widget Parameters')
     db_field = models.CharField(max_length=50, blank=True, null=True, verbose_name='Database Field')
-    md_format = models.CharField(max_length=255, blank=True, null=True, verbose_name='Format')
-    md_validation = models.TextField(blank=True, null=True, verbose_name='Validation')
     event_handler = models.CharField(max_length=255, blank=True, null=True, verbose_name='Event Handler')
     styles = models.CharField(max_length=255, blank=True, null=True, verbose_name='Styles')
     rmk = models.CharField(max_length=255, blank=True, null=True, verbose_name='Remark')
@@ -232,7 +236,6 @@ class ScreenField(IDModel):
     class Meta:
         managed = True
         db_table = 'ik_screen_field'
-        unique_together = (('screen', 'field_group', 'field_nm'), )
         verbose_name = 'Screen Field Groups Fields'
 
 
@@ -276,7 +279,7 @@ class ScreenFile(IDModel):
     file_size = models.IntegerField(verbose_name='File Size')
     file_path = models.CharField(max_length=255, verbose_name='File Path')
     file_dt = models.DateTimeField(verbose_name='File Last Modify Date')
-    file_md5 = models.CharField(default='', max_length=255, verbose_name='File MD5 String')
+    file_md5 = models.CharField(default='', blank=True, null=True, max_length=255, verbose_name='File MD5 String')
     rmk = models.CharField(max_length=255, blank=True, null=True, verbose_name='Remark')
 
     class Meta:
@@ -296,3 +299,40 @@ class ScreenDfn(IDModel):
         db_table = 'ik_screen_dfn'
         unique_together = (('screen', 'sub_screen_nm'), )
         verbose_name = "Screen Definition"
+
+
+class IkInbox(IDModel):
+    STATUS_NEW = 'new'
+    STATUS_READ = 'read'
+    STATUS_DELETED = 'deleted'
+    STATUS_CHOOSES = ((STATUS_NEW, STATUS_NEW), (STATUS_READ, STATUS_READ), (STATUS_DELETED, STATUS_DELETED))
+
+    owner = models.ForeignKey(User, models.CASCADE, related_name="owner_user", verbose_name='Owner ID')
+    sender = models.ForeignKey(User, models.DO_NOTHING, related_name="sender_user", verbose_name='Sender ID')
+    send_dt = models.DateTimeField(verbose_name='Send Time')
+    module = models.CharField(max_length=255, verbose_name='Send From')
+    sts = models.CharField(max_length=10, verbose_name='Status', choices=STATUS_CHOOSES, default=STATUS_NEW)
+    summary = models.TextField(verbose_name='Summary')
+    usr_rmk = models.TextField(blank=True, null=True, verbose_name='User Remark')
+
+    class Meta:
+        managed = True
+        db_table = 'ik_inbox'
+        verbose_name = 'Inbox Table'
+
+
+class IkInboxPrm(IDModel):
+    inbox = models.ForeignKey(IkInbox, models.CASCADE, verbose_name='Inbox key')
+    k = models.CharField(max_length=50, blank=True, null=True, verbose_name='Parameter Name')
+    v = models.CharField(max_length=255, blank=True, null=True, verbose_name='Parameter Value')
+
+    class Meta:
+        managed = True
+        db_table = 'ik_inbox_prm'
+        verbose_name = 'Inbox Parameters'
+        unique_together = (('inbox', 'k'), )
+
+
+def accessLogHisotryFilder(sender, instance, **kwargs) -> bool:
+    return not isinstance(instance, AccessLog)
+addModelHistoryFilter(accessLogHisotryFilder)

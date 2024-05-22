@@ -6,12 +6,18 @@ from collections import OrderedDict
 from datetime import datetime
 from enum import Enum
 from django.core.exceptions import ValidationError
-from django.db import connection, models, transaction
-from django.db.models.signals import pre_save
+from django.db import models, transaction
+from django.db.models.signals import pre_save, post_save, post_delete
 from django.dispatch import receiver
 from django_backend.settings import DATABASES
+from django.contrib.contenttypes.models import ContentType
+from django.contrib.contenttypes.fields import GenericForeignKey
+from django.core.serializers import serialize
 import core.utils.db as dbUtils
 from core.core.exception import IkException, IkValidateException
+from core.utils.langUtils import isNotNullBlank
+from iktools import IkConfig
+
 
 logger = logging.getLogger('ikyo')
 
@@ -388,7 +394,7 @@ class IDModel(Model):
         The models has id field
     '''
     id = models.AutoField(primary_key=True)
-    version_no = models.SmallIntegerField(default=0, verbose_name='Version No.')
+    version_no = models.IntegerField(default=0, verbose_name='Version No.')
     __original_version_no = None
 
     def assignPrimaryID(self) -> int:
@@ -421,12 +427,18 @@ class IDModel(Model):
         return self.__str__()
 
     # overwrite
-    def ik_set_status_modified(self):
+    def ik_set_status_modified(self, forceUpgradeVersionNo: bool = False):
         if not self.ik_is_status_modified():
             super().ik_set_status_modified()
-            if self.__original_version_no is None:  # prevention version_no multiple times +1
-                self.__original_version_no = self.version_no
-                self.version_no += 1
+            if forceUpgradeVersionNo:
+                self.version_no += 1   
+            else:
+                if self.__original_version_no is None:  # prevention version_no multiple times +1
+                    self.__original_version_no = self.version_no
+                    self.version_no += 1
+        elif forceUpgradeVersionNo is True:
+            super().ik_set_status_modified()
+            self.version_no += 1
 
     def concurrencyCheck(self, beforeUpdate=True) -> None:
         '''
@@ -525,3 +537,231 @@ class DummyModel(OrderedDict):
         v = copy.deepcopy(self)
         v.update(self.__dict__)
         return toRecordJson(v)
+
+
+class ModelHistory(Model):
+    ACTION_CHOICES = (
+        ('insert', 'Insert'),
+        ('update', 'Update'),
+        ('delete', 'Delete'),
+    )
+    
+    id = models.AutoField(primary_key=True)
+    action = models.CharField(max_length=10, choices=ACTION_CHOICES)
+    timestamp = models.DateTimeField(auto_now_add=True)
+    operator_id = models.BigIntegerField(blank=True, null=True)
+    operator_name = models.CharField(max_length=50, blank=True, null=True)
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    content_object = GenericForeignKey('content_type', 'object_id')
+    object_id = models.PositiveIntegerField()
+    model_name = models.CharField(max_length=255)
+    db_table = models.CharField(max_length=255)
+    old_data = models.TextField(null=True, blank=True)
+    new_data = models.TextField(null=True, blank=True)    
+    
+
+ENABLE_MODEL_HISTORY = str(IkConfig.get('System', 'modelHistoryEnable', 'false')).lower().strip() == 'true'
+"""Enable model history.
+"""
+
+MODEL_HISTORY_MODEL_NAMES = []
+""" Model history name exclude filter.
+"""
+modelHistoryNameExclude = IkConfig.get('System', 'modelHistoryNames', None)
+if isNotNullBlank(modelHistoryNameExclude):
+    for modelName in str(modelHistoryNameExclude).split(','):
+        modelName = modelName.strip()
+        if modelName != '':
+            MODEL_HISTORY_MODEL_NAMES.append(modelName)
+
+
+MODEL_HISTORY_MODEL_NAMES_EXCLUDE = []
+""" Model history name exclude filter.
+"""
+modelHistoryNameExclude = IkConfig.get('System', 'modelHistoryNamesExclude', None)
+if isNotNullBlank(modelHistoryNameExclude):
+    for modelName in str(modelHistoryNameExclude).split(','):
+        modelName = modelName.strip()
+        if modelName != '':
+            MODEL_HISTORY_MODEL_NAMES_EXCLUDE.append(modelName)
+
+__MODEL_HISTORY_FILTERS = []
+""" Model history filters are funtions to filter the model save/delete signals.
+
+    Function API:
+        fn(sender, instance, **kwargs) -> bool.
+
+        return False will ignore the signal.
+
+    Usage:
+        from core.db.model import addModelHistoryFilter
+
+        addModelHistoryFilter(fn)
+
+    Reference to django pre_save, post_save and post_delete in django.db.models.signals module.
+"""
+
+def addModelHistoryFilter(fn):
+    """ Add model history filter.
+
+    Parameters:
+        fn(function): fn(sender, instance, **kwargs) -> bool.
+            
+                        return False will ignore the signal.
+
+    Usage:
+        from core.db.model import addModelHistoryFilter
+
+        addModelHistoryFilter(fn)
+
+    Reference:
+        Function django pre_save, post_save and post_delete in django.db.models.signals module.
+    """
+    global __MODEL_HISTORY_FILTERS
+    if fn is not None and fn not in __MODEL_HISTORY_FILTERS:
+        __MODEL_HISTORY_FILTERS.append(fn)
+
+def removeModelHistoryFilter(fn) -> bool:
+    """
+        Return True if fn exists in the filter list, otherwise False.
+    """
+    global __MODEL_HISTORY_FILTERS
+    if fn is not None and fn in __MODEL_HISTORY_FILTERS:
+        del __MODEL_HISTORY_FILTERS[fn]
+        return True
+    return False
+
+
+def ignoreModelHistoryFilter(sender, instance, **kwargs):
+    return not instance.__module__.startswith('django.contrib.') # Ignore django models.
+
+def ignoreDjangoModelsFilter(sender, instance, **kwargs):
+    return not isinstance(instance, ModelHistory)
+
+addModelHistoryFilter(ignoreModelHistoryFilter)
+addModelHistoryFilter(ignoreDjangoModelsFilter)
+
+# Save the old data before saving models
+@receiver(pre_save)
+def preSaveModelSignalHandler(sender, instance, **kwargs):
+    """Signal handler when saving models.
+    """
+    if ENABLE_MODEL_HISTORY is not True:
+        return
+    modelFullName = f"{sender.__module__}.{sender.__name__}"
+    if MODEL_HISTORY_MODEL_NAMES_EXCLUDE is not None and modelFullName in MODEL_HISTORY_MODEL_NAMES_EXCLUDE:
+        return
+    elif MODEL_HISTORY_MODEL_NAMES is not None and modelFullName not in MODEL_HISTORY_MODEL_NAMES:
+        return
+    elif __MODEL_HISTORY_FILTERS is not None and type(__MODEL_HISTORY_FILTERS) == list:
+        for filter in __MODEL_HISTORY_FILTERS:
+            try:
+                if filter is not None:
+                    if not filter(sender, instance, **kwargs):
+                        return
+            except Exception as e:
+                logger.error("Process filter [%s] failed: %s" % (str(filter), str(e)), e, exc_info=True)
+    try:
+        instance._old_data = instance.__class__.objects.get(pk=instance.pk)
+    except Exception as e:
+        #logger.debug("Add history old data failed: %s" % (str(e)), e, exc_info=True)
+        pass
+
+
+# Process model insert and update events.
+@receiver(post_save)
+def postSaveModelSignalHandler(sender, instance, created, **kwargs):
+    """Signal handler when saving models.
+    """
+    if ENABLE_MODEL_HISTORY is not True:
+        return
+    modelFullName = f"{sender.__module__}.{sender.__name__}"
+    if MODEL_HISTORY_MODEL_NAMES_EXCLUDE is not None and modelFullName in MODEL_HISTORY_MODEL_NAMES_EXCLUDE:
+        return
+    elif MODEL_HISTORY_MODEL_NAMES is not None and modelFullName not in MODEL_HISTORY_MODEL_NAMES:
+        return
+    elif __MODEL_HISTORY_FILTERS is not None and type(__MODEL_HISTORY_FILTERS) == list:
+        for filter in __MODEL_HISTORY_FILTERS:
+            try:
+                if filter is not None:
+                    if not filter(sender, instance, **kwargs):
+                        return
+            except Exception as e:
+                logger.error("Process filter [%s] failed: %s" % (str(filter), str(e)), e, exc_info=True)
+    
+    from core.core.requestMiddleware import getCurrentUser
+    from core.models import User
+    userRc = getCurrentUser()
+    userID = None
+    userName = None
+    if isinstance(userRc, User):
+        userID = userRc.id
+        userName = userRc.usr_nm
+        
+    if created: # insert
+        try:
+            contentType=ContentType.objects.get_for_model(instance)
+            newDataJson = serialize('json', [instance])
+            dbTable = instance._meta.db_table
+            ModelHistory.objects.create(action='INSERT', operator_id=userID, operator_name=userName, content_type=contentType, 
+                                        model_name=modelFullName, db_table=dbTable, object_id=instance.pk, old_data=None, new_data=newDataJson)
+        except Exception as e:
+            logger.error("Add insert history failed: %s" % (str(e)), e, exc_info=True)
+    else: # update
+        try:        
+            oldData = instance._old_data
+            newData = instance
+
+            oldDataJson = serialize('json', [oldData]) if oldData is not None else None
+            newDataJson = serialize('json', [newData])
+
+            contentType=ContentType.objects.get_for_model(instance)
+            dbTable = instance._meta.db_table
+
+            ModelHistory.objects.create(action='UPDATE', content_type=contentType, operator_id=userID, operator_name=userName, 
+                                        model_name=modelFullName, db_table=dbTable, object_id=instance.pk, old_data=oldDataJson, new_data=newDataJson)
+        except Exception as e:
+            logger.error("Add update history failed: %s" % (str(e)), e, exc_info=True)
+
+
+# Process model delete events.
+@receiver(post_delete)
+def postDeleteModelSignalHandler(sender, instance, **kwargs):
+    """Signal handler when deleting models.
+    """
+    if ENABLE_MODEL_HISTORY is not True:
+        return
+    modelFullName = f"{sender.__module__}.{sender.__name__}"
+    if MODEL_HISTORY_MODEL_NAMES_EXCLUDE is not None and modelFullName in MODEL_HISTORY_MODEL_NAMES_EXCLUDE:
+        return
+    elif MODEL_HISTORY_MODEL_NAMES is not None and modelFullName not in MODEL_HISTORY_MODEL_NAMES:
+        return
+    elif __MODEL_HISTORY_FILTERS is not None and type(__MODEL_HISTORY_FILTERS) == list:
+        for filter in __MODEL_HISTORY_FILTERS:
+            try:
+                if filter is not None:
+                    if not filter(sender, instance, kwargs):
+                        return
+            except Exception as e:
+                logger.error("Process filter [%s] failed: %s" % (str(filter), str(e)), e, exc_info=True)
+
+    from core.core.requestMiddleware import getCurrentUser
+    from core.models import User
+    userRc = getCurrentUser()
+    userID = None
+    userName = None
+    if isinstance(userRc, User):
+        userID = userRc.id
+        userName = userRc.usr_nm
+
+    try:
+        oldData = instance
+        oldDataJson = serialize('json', [oldData])
+
+        content_type=ContentType.objects.get_for_model(instance)
+        dbTable = instance._meta.db_table
+        
+        ModelHistory.objects.create(action='DELETE', content_type=content_type, operator_id=userID, operator_name=userName, 
+                                    model_name=modelFullName, db_table=dbTable, object_id=instance.pk, old_data=oldDataJson, new_data=None)
+    except Exception as e:
+            logger.error("Add delete history failed: %s" % (str(e)), e, exc_info=True)

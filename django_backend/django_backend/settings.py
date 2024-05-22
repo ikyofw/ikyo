@@ -16,7 +16,7 @@ import threading
 from pathlib import Path
 
 from iktools import (TEMPLATE_FOLDER, IkConfig, getDjangoAppConfigs,
-                     getStaticFolder)
+                     getStaticFolders)
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -57,6 +57,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'core.log.logMiddleware.RequestLogMiddleware',
     'core.core.requestMiddleware.IkRequestMiddleware',
+    'core.core.requestMiddleware.RequestMiddleware',
 ]
 
 # CORS_ALLOW_ALL_ORIGINS = True
@@ -148,9 +149,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/4.2/howto/static-files/
 
 STATIC_URL = '/static/'
-STATICFILES_DIRS = [
-    getStaticFolder()
-]
+STATICFILES_DIRS = getStaticFolders()
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
@@ -190,8 +189,7 @@ class DjangoLogFilter(logging.Filter):
         record.path = getattr(local, 'path', "?")
         record.username = getattr(local, 'username', "system")
         if record.funcName == 'debug_sql' and record.levelname == 'DEBUG':
-            if 'ik_screen_field_widget' in record.sql:
-                print(record.sql)
+            pass
         return True
 
 

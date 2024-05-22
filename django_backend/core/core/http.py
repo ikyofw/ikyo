@@ -89,11 +89,18 @@ class IkResponseForwarder:
         if self.httpMethod is not None:
             j['method'] = self.httpMethod
         return j
+    
+
+class IkyoJSONEncoder(DjangoJSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, type(NotImplemented)):
+            return None
+        return super().default(obj)
 
 
 class IkJsonResponse(JsonResponse):
-
-    def __init__(self, code=IkCode.I0, message=None, messageType=None, data=None, forwarder=None, encoder=DjangoJSONEncoder, safe=False, json_dumps_params=None, **kwargs):
+    def __init__(self, code=IkCode.I0, message=None, messageType=None, data=None, forwarder=None, \
+                 encoder=IkyoJSONEncoder, safe=False, json_dumps_params=None, **kwargs):
         self.__code = code
         self.__data = data
         self.__messages = []
@@ -112,24 +119,6 @@ class IkJsonResponse(JsonResponse):
     def addMessage(self, messageType: MessageType, message: str) -> None:
         self.__messages.append({'type': messageType.value if type(messageType) ==
                                MessageType else messageType, 'message': ('' if message is None else message)})
-
-    # def addMessageDebug(self, message: str) -> None:
-    #     self.addMessage(MessageType.DEBUG, message=message)
-
-    # def addMessageInfo(self, message: str) -> None:
-    #     self.addMessage(MessageType.INFO, message=message)
-
-    # def addMessageError(self, message: str) -> None:
-    #     self.addMessage(MessageType.ERROR, message=message)
-
-    # def addMessageWarn(self, message: str) -> None:
-    #     self.addMessage(MessageType.WARNING, message=message)
-
-    # def addMessageFatal(self, message: str) -> None:
-    #     self.addMessage(MessageType.FATAL, message=message)
-
-    # def addMessageException(self, exception: object) -> None:
-    #     self.addMessage(MessageType.EXCEPTION, message=exception)
 
     def addStaticResource(self, resource) -> None:
         '''
@@ -207,13 +196,16 @@ class IkJsonResponse(JsonResponse):
             except Exception as e:
                 # this is not a model field or field is not a normal field. ignore it
                 logger.error(str(e))
-                continue
         # YL.ikyo, 2023-03-29 - end
         d = r.toJson()
+        # add property values
+        propertValues = modelUtils.getModelPropertyValues(r)
+        for prpKey, prpValue in propertValues.items():
+            d.update({prpKey: self.__object2Str(prpValue)})
         if r._meta.pk is not None and r._meta.pk.name is not None:
             primaryKey = r._meta.pk.name
             d['__PK_'] = primaryKey
-        if modelAdditionalFields and len(modelAdditionalFields) > 0:
+        if modelAdditionalFields is not None and len(modelAdditionalFields) > 0:
             for name in modelAdditionalFields:
                 if name not in d.keys():
                     if ikDbModels.FOREIGN_KEY_VALUE_FLAG in name:
@@ -411,19 +403,20 @@ class IkRequestData(dict):
             logger.error('parse [%s] to %s failed.' % (value, dataType))
         return v
 
-    def getFile(self, parameterName) -> (djangoUploadedfile.UploadedFile | None):
+    def getFile(self, parameterName: str = None) -> (djangoUploadedfile.UploadedFile | None):
         files = self.getFiles(parameterName)
         return files[0] if files and len(files) > 0 else None
 
-    def getFiles(self, parameterName) -> (list | None):
-        if parameterName in self.__request.FILES.keys():
+    def getFiles(self, parameterName: str = None) -> (list | None):
+        if parameterName is not None and parameterName in self.__request.FILES.keys():
             files = self.__request.FILES.getlist(parameterName)
             return files
         else:
             # TODO: temporary solution, see react SimpleFg.tsx (2022-11-03, Li)
             files = []
             for key, value in self.__request.FILES.items():
-                if key.startswith(parameterName + '_FILES_'):
+                if parameterName is None and '_FILES_' in key \
+                    or parameterName is not None and key.startswith('%s_FILES_' % parameterName):
                     files.append(value)
             return files
 
@@ -638,8 +631,8 @@ def __GetRequestData_oneRecord(screen, parameterModelMap, name, values, initData
                     raise IkValidateException('%s [%s] does not exist in model [%s].'
                                               % ('Column' if isTable else 'Field', field.dataField, modelClassName))
                 # TODO: validate, e.g. data type, require, mandatory
-                isDBNullable = modelField.blank or modelField.null
-                isDBUnique = modelField.unique
+                isDBNullable = modelField.blank or modelField.null or field.required == False
+                isDBUnique = modelField.unique or field.unique == True
                 if newValue == '':
                     newValue = None
 
@@ -666,16 +659,21 @@ def __GetRequestData_oneRecord(screen, parameterModelMap, name, values, initData
                     if type(newValue) != bool:
                         if isNullBlank(newValue):
                             newValue = None
-                        elif newValue == 'true':
+                        elif newValue.lower() == 'true':
                             newValue = True
-                        elif newValue == 'false':
+                        elif newValue.lower() == 'false':
                             newValue = False
                         else:
                             raise IkValidateException('%s [%s] should be a bool.'
                                                       % ('Column' if isTable else 'Field', field.caption))
                 elif fieldDataType == 'DateTimeField':
                     if newValue is not None and type(newValue) != datetime.datetime:
-                        newValue = datetime.datetime.strptime(newValue, "%Y-%m-%d %H:%M:%S")
+                        if 'T' in newValue:
+                            newValue = datetime.datetime.strptime(newValue, "%Y-%m-%dT%H:%M:%S.%f")
+                        elif '.' in newValue:
+                            newValue = datetime.datetime.strptime(newValue, "%Y-%m-%d %H:%M:%S.%f")
+                        else:
+                            newValue = datetime.datetime.strptime(newValue, "%Y-%m-%d %H:%M:%S")
                 elif fieldDataType == 'DateField':
                     if newValue is not None and type(newValue) != datetime.datetime.date:
                         newValue = datetime.datetime.strptime(newValue, "%Y-%m-%d").date()
@@ -729,7 +727,10 @@ def __GetRequestData_oneRecord(screen, parameterModelMap, name, values, initData
                     logger.debug('model [%s] field [%s] does not exist, then try class property...' % (modelClassName, field.dataField))
                     setattr(modelInstance, field.dataField, newValue)
                 else:
-                    raise IkValidateException('%s [%s] does not exist in model [%s].'
+                    # ignore the property 
+                    if not isinstance(getattr(modelInstance.__class__, field.dataField, None), property) \
+                        and ikDbModels.FOREIGN_KEY_VALUE_FLAG not in field.dataField:
+                        logger.warning('%s [%s] does not exist in model [%s].'
                                               % ('Column' if isTable else 'Field', field.dataField, modelClassName))
     if isNewModelRecord and not hasIDField and primaryKeyName in values.keys():
         id = values.get(primaryKeyName, None)

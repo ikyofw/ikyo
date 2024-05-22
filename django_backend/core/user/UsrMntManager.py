@@ -60,13 +60,18 @@ def save(saveUsrID: int, currentUsrID, createNew, requestData, oldPsw) -> Boolea
     # check the user name is exists or not
     if isNullBlank(username):
         return Boolean2(False, 'Username is mandatory!')
-    usrCheckerRc = User.objects.filter(usr_nm__iexact=username).first()
-    if createNew and isNotNullBlank(usrCheckerRc):
-        return Boolean2(False, 'This account is exists. Please check.')
-    elif usrDtlFg.ik_is_status_modified() and isNullBlank(usrCheckerRc):
-        return Boolean2(False, 'This account has been deleted. Please check.')
-    elif usrDtlFg.ik_is_status_modified() and usrDtlFg.id != usrCheckerRc.id:
-        return Boolean2(False, 'This account is exists. Please check.')
+    usrCheckerRcs = User.objects.filter(usr_nm__iexact=username)
+    if len(usrCheckerRcs) > 1:
+        return Boolean2(False, 'Duplicate user name [%s], please change (e.g. add suffix)' % username)
+
+    if createNew and len(usrCheckerRcs) == 1:
+        return Boolean2(False, 'Duplicate user name [%s], please change (e.g. add suffix)' % username)
+    if usrDtlFg.ik_is_status_modified():
+        currentUsrRc = User.objects.filter(id=currentUsrID).first()
+        if isNullBlank(currentUsrRc):
+            return Boolean2(False, 'This account has been deleted. Please check.')
+        if len(usrCheckerRcs) == 1 and usrCheckerRcs.first().id != currentUsrID:
+            return Boolean2(False, 'Duplicate user name [%s], please change (e.g. add suffix)' % username)
 
     # email
     email = usrDtlFg.email
@@ -74,9 +79,11 @@ def save(saveUsrID: int, currentUsrID, createNew, requestData, oldPsw) -> Boolea
         return Boolean2(False, "Email is incorrect!")
 
     # password
-    newPsw = usrDtlFg.psw
-    # if isNullBlank(newPsw) or len(newPsw) < 6:
-    #     return Boolean2(False, 'The password\'s length should be equal to or greater than 6 characters!')
+    newPsw = usrDtlFg.psw if isNotNullBlank(usrDtlFg.psw) else None
+    if isNullBlank(newPsw) and createNew:
+        return Boolean2(False, 'Password is mandatory!')
+    if isNotNullBlank(newPsw) and len(newPsw) < 6:
+        return Boolean2(False, 'The password\'s length should be equal to or greater than 6 characters!')
 
     if usrDtlFg.enable != 'Y':
         usrDtlFg.enable = 'N'
@@ -110,7 +117,7 @@ def save(saveUsrID: int, currentUsrID, createNew, requestData, oldPsw) -> Boolea
         if isNotNullBlank(newPsw):
             usrDtlFg.psw = __getPswMD5(newPsw)
         else:
-            usrDtlFg.psw = __getPswMD5(oldPsw)
+            usrDtlFg.psw = oldPsw
 
     pytrn = IkTransaction(userID=saveUsrID)
     pytrn.add(usrDtlFg)

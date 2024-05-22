@@ -1,12 +1,14 @@
 from django.http import HttpResponse
+
+import core.utils.djangoUtils as ikDjangoUtils
 from core.auth.index import hasLogin
 from core.core.http import IkSccJsonResponse
+from core.inbox import InboxView
 from core.init import initIk
 from core.menu.menuManager import MenuManager
-import core.utils.djangoUtils as ikDjangoUtils
-
 from core.screen import ScreenDfnView, TypeWidgetMntView
 from core.user import UsrGrpMntView, UsrMntView
+
 
 def index(request):
     '''
@@ -14,9 +16,11 @@ def index(request):
     '''
     return HttpResponse("Hello, Ikyo World!")
 
+
 ROUTER_EXCLUDE_SCREENS = [
     'menu',
 ]
+
 
 def getRouters(request):
     screenIDs, screenUrls = [], []
@@ -30,6 +34,7 @@ def getRouters(request):
                 screenUrls.append(sn)
     return IkSccJsonResponse(data={"screenIDs": screenIDs, "paths": screenUrls})
 
+
 # ------------------------------------------------------------------------------
 # initializing the all services
 # ------------------------------------------------------------------------------
@@ -41,14 +46,22 @@ class ScreenDfn(ScreenDfnView.ScreenDfnView):
     def __init__(self) -> None:
         super().__init__()
 
+
 class TypeWidgetMnt(TypeWidgetMntView.TypeWidgetMntView):
     def __init__(self) -> None:
         super().__init__()
+
 
 class UsrGrpMnt(UsrGrpMntView.UsrGrpMntView):
     def __init__(self) -> None:
         super().__init__()
 
+
 class UsrMnt(UsrMntView.UsrMntView):
+    def __init__(self) -> None:
+        super().__init__()
+
+
+class Inbox(InboxView.InboxView):
     def __init__(self) -> None:
         super().__init__()
