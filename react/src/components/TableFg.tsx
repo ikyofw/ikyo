@@ -2,6 +2,7 @@ import classNames from "classnames"
 import moment from "moment"
 import React, { forwardRef, Ref, useEffect, useImperativeHandle, useState } from "react"
 import ReactHTMLTableToExcel from "react-html-table-to-excel"
+import { Tooltip } from "react-tooltip"
 import * as Loading from "./Loading"
 import * as Actions from "./tableFg/actions"
 import * as Matrix from "./tableFg/matrix"
@@ -10,25 +11,25 @@ import * as PointMap from "./tableFg/point-map"
 import * as Selection from "./tableFg/selection"
 import * as Types from "./tableFg/types"
 
+import "../../public/static/css/TableFg.css"
+import { useHttp } from "../utils/http"
+import pyiLogger from "../utils/log"
 import pyiLocalStorage from "../utils/pyiLocalStorage"
+import { getResponseData, showErrorMessage, showInfoMessage, validateResponse } from "../utils/sysUtil"
+import * as tableUtil from "../utils/tableUtil"
 import ActiveCell from "./tableFg/ActiveCell"
 import { Cell as DefaultCell, enhance as enhanceCell } from "./tableFg/Cell"
 import DefaultColumnIndicator, { enhance as enhanceColumnIndicator, getFooterData } from "./tableFg/ColumnIndicator"
+import context from "./tableFg/context"
 import DefaultDataEditor from "./tableFg/DataEditor"
 import DefaultDataViewer from "./tableFg/DataViewer"
 import DefaultFooterRow from "./tableFg/FooterRow"
 import DefaultHeaderRow from "./tableFg/HeaderRow"
+import reducer, { hasKeyDownHandler, INITIAL_STATE } from "./tableFg/reducer"
 import DefaultRow from "./tableFg/Row"
 import DefaultRowIndicator, { enhance as enhanceRowIndicator } from "./tableFg/RowIndicator"
 import Selected from "./tableFg/Selected"
 import DefaultTable from "./tableFg/Table"
-import "../../public/static/css/TableFg.css"
-import { useHttp } from "../utils/http"
-import pyiLogger from "../utils/log"
-import { getResponseData, showErrorMessage, showInfoMessage, validateResponse } from "../utils/sysUtil"
-import * as tableUtil from "../utils/tableUtil"
-import context from "./tableFg/context"
-import reducer, { hasKeyDownHandler, INITIAL_STATE } from "./tableFg/reducer"
 import {
   calculateSpreadsheetSize,
   getCSV,
@@ -56,6 +57,9 @@ const img_cancel = pyiGlobal.PUBLIC_URL + "images/cancel_button.gif"
 const img_reset = pyiGlobal.PUBLIC_URL + "images/refresh_button.gif"
 const img_goToTop = pyiGlobal.PUBLIC_URL + "images/go_to_top.png"
 const img_goToBottom = pyiGlobal.PUBLIC_URL + "images/go_to_bottom.png"
+const img_tip = pyiGlobal.PUBLIC_URL + "images/tips_icon.gif"
+const current_icon = pyiGlobal.PUBLIC_URL + "images/current_sbutton.gif"
+const expand_icon = pyiGlobal.PUBLIC_URL + "images/expand_sbutton.gif"
 
 /** The Spreadsheet component props */
 export type Props<CellType extends Types.CellBase> = {
@@ -361,7 +365,7 @@ const TableFg = forwardRef(<CellType extends Types.CellBase>(props: Props<CellTy
 
   const copy = React.useCallback(() => dispatch(Actions.copy()), [dispatch])
   const cut = React.useCallback(() => dispatch(Actions.cut()), [dispatch])
-  const paste = React.useCallback((data) => dispatch(Actions.paste(data, comboPrams)), [dispatch, comboPrams])
+  const paste = React.useCallback((data) => dispatch(Actions.paste(data, comboPrams, formatPrams)), [dispatch, comboPrams])
   const onKeyDownAction = React.useCallback((event) => dispatch(Actions.keyDown(event)), [dispatch])
   const onKeyPress = React.useCallback((event) => dispatch(Actions.keyPress(event)), [dispatch])
   const onDragStart = React.useCallback(() => dispatch(Actions.dragStart()), [dispatch])
@@ -644,17 +648,17 @@ const TableFg = forwardRef(<CellType extends Types.CellBase>(props: Props<CellTy
             let data = getResponseData(result)
             if (data) {
               let serverPageData = []
-              if (data[name]) {
-                serverPageData = data[name]
+              if (data["data"]) {
+                serverPageData = data["data"]
                 if (serverPageData.length === 0 && pageNum !== 0 && pageNum !== 1) {
                   getPageDataWithServer(1)
                   return
                 }
 
-                if (data["style"]) {
-                  setTbodyStylePrams(tableUtil.getTableBodyStylePrams(name, tableParams.fields, data[name], data["style"]))
+                if (data["cssStyle"]) {
+                  setTbodyStylePrams(tableUtil.getTableBodyStylePrams(name, tableParams.fields, data["data"], data["cssStyle"]))
                 } else {
-                  setTbodyStylePrams(tableUtil.getTableBodyStylePrams(name, tableParams.fields, data[name], tableParams.style))
+                  setTbodyStylePrams(tableUtil.getTableBodyStylePrams(name, tableParams.fields, data["data"], tableParams.style))
                 }
               }
 
@@ -672,7 +676,7 @@ const TableFg = forwardRef(<CellType extends Types.CellBase>(props: Props<CellTy
               } else {
                 setShowRange(range(serverPageData.length, 0))
               }
-              setTotalPageNm(Math.ceil(data["__dataLen__"] / pageSize))
+              setTotalPageNm(Math.ceil(data["paginatorDataAmount"] / pageSize))
               if (pageNum !== undefined) {
                 setPageSelect(pageNum)
                 setPageNation(pageNum)
@@ -909,8 +913,8 @@ const TableFg = forwardRef(<CellType extends Types.CellBase>(props: Props<CellTy
     let tbody = document.getElementById("tbody " + name) as HTMLElement
     const newTableHeight = tableScrollHeight ? tableScrollHeight : 400
     if (tbody) {
-      const tbodyHeight = tbody.getBoundingClientRect().height;
-      if (tbodyHeight < newTableHeight ) {
+      const tbodyHeight = tbody.getBoundingClientRect().height
+      if (tbodyHeight < newTableHeight) {
         return
       }
     }
@@ -929,10 +933,9 @@ const TableFg = forwardRef(<CellType extends Types.CellBase>(props: Props<CellTy
   React.useEffect(() => {
     let newTableHeight = tableScrollHeight
     let tbody = document.getElementById("tbody " + name) as HTMLElement
-    
     if (tbody && newTableHeight) {
-      const tbodyHeight = tbody.getBoundingClientRect().height;
-      if (tbodyHeight < newTableHeight ) {
+      const tbodyHeight = tbody.getBoundingClientRect().height
+      if (tbodyHeight < newTableHeight) {
         newTableHeight = null
       }
     }
@@ -1182,7 +1185,7 @@ const TableFg = forwardRef(<CellType extends Types.CellBase>(props: Props<CellTy
                   pluginList.map((plugin: any, index: number) => (
                     <plugin.IconHeader
                       key={size.columns + pluginList.indexOf(plugin) + 1}
-                      position={"cell_-2_" + (size.columns + index - 2) + " " + name}
+                      position={"-2_" + (size.columns + index - 2) + " " + name}
                       rowSpan={headerPrams.headerLines.length}
                     />
                   ))
@@ -1316,7 +1319,7 @@ const TableFg = forwardRef(<CellType extends Types.CellBase>(props: Props<CellTy
                       <plugin.IconCell
                         key={size.columns + pluginList.indexOf(plugin) + 1}
                         id={state.data[rowNumber][pluginParams[index]] ? state.data[rowNumber][pluginParams[index]].value : ""}
-                        position={"cell_" + rowNumber + "_" + (size.columns + index - 2) + " " + name}
+                        position={rowNumber + "_" + (size.columns + index - 2) + " " + name}
                         pluginActiveRows={pluginActiveRows}
                       />
                     ) : (
@@ -1490,7 +1493,13 @@ const TableFg = forwardRef(<CellType extends Types.CellBase>(props: Props<CellTy
               {scrollPrams.tableHeight ? (
                 <img src={img_cancel} alt="exit scrolling mode" onClick={exitScrollingMode} title="Exit Scroll Mode" className="outOfTableIcon"></img>
               ) : (
-                <img src={img_showAllButton} alt="enter scrolling mode" onClick={enterScrollingMode} title="Enter Scroll Mode" className="outOfTableIcon"></img>
+                <img
+                  src={img_showAllButton}
+                  alt="enter scrolling mode"
+                  onClick={enterScrollingMode}
+                  title="Enter Scroll Mode"
+                  className="outOfTableIcon"
+                ></img>
               )}
             </>
           ) : null}
@@ -1549,20 +1558,31 @@ export default TableFg
 
 // The function that creates the plugin
 // XH 2022-04-24 start
-export function createIconColumn(icon1: any, myCallback: any, icon2?: any, header?: string) {
-  if (!header) {
-    header = " "
-  }
+export function createIconColumn(myCallback: any, pluginParams: any) {
+  const caption = Array.isArray(pluginParams.caption) ? pluginParams.caption[0]?.text || "" : pluginParams.caption || ""
   const IconHeader = (props: any) => (
-    <th id={props.position} className="Spreadsheet__header Spreadsheet__header__column" rowSpan={props.rowSpan}>
-      <span>{header}</span>
+    <th id={"cell_" + props.position} className="Spreadsheet__header Spreadsheet__header__column" rowSpan={props.rowSpan}>
+      <span>{caption}</span>
+      {pluginParams.tooltip ? (
+        <>
+          <img
+            src={img_tip}
+            alt="tooltip img"
+            style={pluginParams.caption ? { paddingLeft: "3px" } : {}}
+            data-tooltip-id={"th-tooltip_" + props.position}
+            data-tooltip-place="top"
+            data-tooltip-content={pluginParams.tooltip}
+          ></img>
+          <Tooltip id={"th-tooltip_" + props.position} />
+        </>
+      ) : null}
     </th>
   )
   const IconCell = (props: any) => (
-    <th id={props.position} className="Spreadsheet__header">
+    <th id={"cell_" + props.position} className="Spreadsheet__header">
       {
         <img
-          src={props.pluginActiveRows && props.pluginActiveRows.indexOf(Number(props.id)) !== -1 ? icon2 : icon1}
+          src={props.pluginActiveRows && props.pluginActiveRows.indexOf(Number(props.id)) !== -1 ? current_icon : expand_icon}
           alt="plugin icon"
           onClick={() => myCallback(props.id)}
           style={{ cursor: "pointer" }}

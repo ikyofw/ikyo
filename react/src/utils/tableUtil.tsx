@@ -1,9 +1,3 @@
-/*
- * @Description:
- * @version:
- * @Author: YL
- * @Date: 2022-04-06 16:31:50
- */
 import { getDialogEvent, getDialogEventParamArr, getDialogParams } from "../components/Dialog"
 import pyiLocalStorage from "./pyiLocalStorage"
 
@@ -475,11 +469,14 @@ export function getTableDialogPrams(fields: any, table: any) {
       const widget = field.widget?.trim().toLocaleLowerCase()
       if (widget === global.FIELD_TYPE_BUTTON || widget === global.FIELD_TYPE_ADVANCED_SELECTION || widget === global.FIELD_TYPE_HTML) {
         columns.push(index + 2)
-
+        
+        const btnType = field.widgetParameter["type"] ? field.widgetParameter["type"] : global.BTN_TYPE_NORMAL
+        const multiple = field.widgetParameter["multiple"] ? field.widgetParameter["multiple"] : false
         const dialogParams = getDialogParams(field.widgetParameter.dialog)
-        if (Object.keys(dialogParams).length !== 0) {
+        if (Object.keys(dialogParams).length !== 0 || btnType === global.BTN_TYPE_UPLOAD_DIALOG) {
           const dialogName = dialogParams["name"]
           const dialogTitle = dialogParams["title"]
+          const uploadTip = dialogParams["uploadTip"]
           const dialogContent = dialogParams["content"]
           const eventWithParams = dialogParams["beforeDisplayEvent"]
           const continueName = dialogParams["continueName"] ? dialogParams["continueName"] : "OK"
@@ -504,8 +501,10 @@ export function getTableDialogPrams(fields: any, table: any) {
             }
           }
           dialog.push({
+            multiple: multiple,
             dialogName: dialogName,
             dialogTitle: dialogTitle,
+            uploadTip: uploadTip,
             dialogContent: dialogContent,
             eventName: eventName,
             dialogGroups: dialogGroups,
@@ -553,11 +552,13 @@ export function getTableButtonPrams(fields: any, table: any) {
 
         if (field.widgetParameter && field.widgetParameter.icon) {
           btnIcon.push(field.widgetParameter.icon)
-          if (field.widgetParameter && field.widgetParameter.type) {
-            type.push(field.widgetParameter.type)
-          } else {
-            type.push("normal") // The type of the button column, defaults to normal.
-          }
+        } else {
+          btnIcon.push('')
+        }
+        if (field.widgetParameter && field.widgetParameter.type) {
+          type.push(field.widgetParameter.type)
+        } else {
+          type.push("normal") // The type of the button column, defaults to normal.
         }
       }
     }

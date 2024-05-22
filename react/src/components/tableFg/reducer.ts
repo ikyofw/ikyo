@@ -76,9 +76,10 @@ const reducer = createReducer(INITIAL_STATE, (builder) => {
         }
         if (formatPrams[index] && newCell.value) {
           const format = formatPrams[index]
-          if (!isNaN(newCell.value)) {
-            newCell.comboKey = newCell.value
-            newCell.value = formatNumber(newCell.value, format)
+          let newValue = Number(String(newCell.value).replace(/,/g, "")) as any
+          if (!isNaN(newValue)) {
+            newCell.comboKey = newValue
+            newCell.value = formatNumber(newValue, format)
           } else {
             let newValue = newCell.value
             newValue = formatDate(newValue, format)
@@ -434,7 +435,7 @@ const reducer = createReducer(INITIAL_STATE, (builder) => {
   })
   // XH 2022-05-11 start  paste in disableCols
   builder.addCase(Actions.paste, (state, action) => {
-    const { data: text, comboPrams } = action.payload
+    const { data: text, comboPrams, formatPrams } = action.payload
     const { active } = state
     const hasModify: boolean[] = []
     state.hasModify.forEach((i) => {
@@ -561,6 +562,18 @@ const reducer = createReducer(INITIAL_STATE, (builder) => {
               if (newCell.comboKey === undefined) {
                 newCell.value = ""
               }
+            }
+          }
+          if (formatPrams[index] && newCell.value) {
+            const format = formatPrams[index]
+            let newValue = Number(String(newCell.value).replace(/,/g, "")) as any
+            if (!isNaN(newValue)) {
+              newCell.comboKey = newValue
+              newCell.value = formatNumber(newValue, format)
+            } else {
+              let newValue = newCell.value
+              newValue = formatDate(newValue, format)
+              newCell.value = newValue
             }
           }
           newRows.push(newCell)

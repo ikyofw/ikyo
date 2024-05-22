@@ -1,3 +1,9 @@
+/*
+ * @Description:
+ * @version:
+ * @Author: YL
+ * @Date: 2022-04-06 08:55:14
+ */
 import { createAction } from "@reduxjs/toolkit"
 import * as Matrix from "./matrix"
 import * as Point from "./point"
@@ -121,19 +127,21 @@ export const paste = createAction<
     comboPrams: {
       columns: number[]
       comboData: { [key: string]: any }[]
-    }
+    },
+    formatPrams: any[]
   ) => {
     payload: {
       data: string
       comboPrams: {
         columns: number[]
         comboData: { [key: string]: any }[]
-      }
+      },
+      formatPrams: any[]
     }
   },
   "PASTE"
->("PASTE", (data, comboPrams) => ({
-  payload: { data, comboPrams },
+>("PASTE", (data, comboPrams, formatPrams) => ({
+  payload: { data, comboPrams, formatPrams },
 }))
 export const edit = createAction("EDIT")
 export const view = createAction("VIEW")

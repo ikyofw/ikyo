@@ -1,6 +1,6 @@
 import React, { Ref, forwardRef, useState } from "react"
-import pyiLocalStorage from "../utils/pyiLocalStorage"
 import "../../public/static/css/CheckBox.css"
+import pyiLocalStorage from "../utils/pyiLocalStorage"
 
 const pyiGlobal = pyiLocalStorage.globalParams
 const iconFalse = pyiGlobal.PUBLIC_URL + "images/checkbox_false.gif"
@@ -21,11 +21,10 @@ interface ICheckBox {
   editable?: boolean
   tip?: string
   widgetParameter?: any
-  onChange?: () => void
 }
 
 const CheckBox: React.FC<ICheckBox> = forwardRef((props, ref: Ref<any>) => {
-  const { checkBoxLabel, value, name, editable, tip, widgetParameter, onChange } = props
+  const { checkBoxLabel, value, name, editable, tip, widgetParameter } = props
   const mRef = ref as React.MutableRefObject<any>
 
   const [checkBoxValue, setCheckBoxValue] = useState<string>("false")
@@ -48,7 +47,7 @@ const CheckBox: React.FC<ICheckBox> = forwardRef((props, ref: Ref<any>) => {
     } else {
       setChecked(false)
       setCheckBoxValue("false")
-      if (widgetParameter.stateNumber === "3") {
+      if (widgetParameter.stateNumber === '3') {
         setCheckBoxValue("null")
         let checkbox = document.getElementById(name) as any
         checkbox.indeterminate = true
@@ -82,7 +81,7 @@ const CheckBox: React.FC<ICheckBox> = forwardRef((props, ref: Ref<any>) => {
     <>
       {checkBoxValue ? (
         <>
-          <th className="property_key">{checkBoxLabel ?? null}</th>
+          {widgetParameter.captionPosition !== 'right' ? <th className="property_key">{checkBoxLabel ?? null}</th> : null}
           <td className="property_value tip_center">
             <input
               ref={ref}
@@ -97,6 +96,7 @@ const CheckBox: React.FC<ICheckBox> = forwardRef((props, ref: Ref<any>) => {
                 height: "auto",
               }}
             />
+            {widgetParameter.captionPosition === 'right' ? <th className="property_key_right">{checkBoxLabel ?? null}</th> : null}
             {tooltip ? <span className="tip">{tooltip}</span> : null}
           </td>
         </>
@@ -118,16 +118,16 @@ export function getIcon(state: string) {
 
 export function getNextState(currentState: string) {
   var nextState
-  if (currentState === "true") {
-    nextState = "false"
-  } else if (currentState === "false") {
-    nextState = "true"
-  } else if (currentState === "y") {
-    nextState = "N"
-  } else if (currentState === "n") {
-    nextState = "Y"
+  if (currentState === 'true') {
+    nextState = 'false'
+  } else if (currentState === 'false') {
+    nextState = 'true'
+  } else if (currentState === 'y') {
+    nextState = 'N'
+  } else if (currentState === 'n') {
+    nextState = 'Y'
   } else {
-    nextState = "true"
+    nextState = 'true'
   }
   return nextState
 }

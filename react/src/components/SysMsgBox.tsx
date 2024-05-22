@@ -22,7 +22,7 @@ const SysMsgBox: React.FC<ISysMsgBox> = forwardRef((props, ref: Ref<any>) => {
     <div style={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
       {props.label.toLowerCase() === "debug" ? (
         <img src={debugIcon} alt="debug icon" title="Debug" />
-      ) : props.label.toLowerCase() === "info" ? (
+      ) : props.label.toLowerCase() === "info"  ? (
         <img src={infoIcon} alt="info icon" title="Information" />
       ) : props.label.toLowerCase() === "warning" ? (
         <img src={warningIcon} alt="warning icon" title="Warning" />
@@ -41,6 +41,7 @@ const SysMsgBox: React.FC<ISysMsgBox> = forwardRef((props, ref: Ref<any>) => {
           backgroundColor: "transparent",
           border: "hidden",
           paddingLeft: "10px",
+          paddingRight: "50px",
           width: "97%",
           float: "right",
           fontSize: "2em",

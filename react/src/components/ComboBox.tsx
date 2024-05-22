@@ -1,12 +1,6 @@
-/*
- * @Description:
- * @version:
- * @Author: YL
- * @Date: 2022-03-24 10:42:59
- */
+import classnames from "classnames"
 import transform, { StyleTuple } from "css-to-react-native"
 import React, { ChangeEvent, Ref, forwardRef, useEffect, useState } from "react"
-import classnames from "classnames"
 import { useHttp } from "../utils/http"
 import pyiLocalStorage from "../utils/pyiLocalStorage"
 
@@ -120,6 +114,12 @@ const ComboBox: React.FC<IComboBox> = forwardRef((props, ref: Ref<any>) => {
     properties.forEach((property) => {
       if (property.toLocaleLowerCase() === "class") {
         cellClass = props.style[property].split(",").map((str) => str.trim())
+      } else if (property.toLocaleLowerCase() === "width" && !props.style[property].endsWith("%")) {
+        // If the property is "width" and the unit is not a percentage, it will be processed in the original: width + 3
+        const currentValue = parseFloat(props.style[property])
+        const unit = props.style[property].replace(currentValue, "").trim()
+        const newValue = currentValue + 3
+        cellStyle.push(["width", newValue + unit])
       } else {
         cellStyle.push([property, props.style[property]])
       }

@@ -40,7 +40,7 @@ const Screen: React.FC<IScreenBox> = forwardRef((props, ref: Ref<any>) => {
         let data = {}
         if (dialogType === pyiGlobal.DIALOG_TYPE_UPLOAD) {
           props.fgNames.forEach((fgName: string) => {
-            data = refs[fgName].current.formData()
+            data = refs[fgName].current.formData() // TODO: Maybe should get file and simpleFg
           })
         } else {
           data = createEventData(props.fgNames)
@@ -93,19 +93,41 @@ const Screen: React.FC<IScreenBox> = forwardRef((props, ref: Ref<any>) => {
   }, [props.fgNames])
 
   const createEventData = (eventHandlerParameter: any) => {
-    let eventData = {}
+    let isUploadFg = false
+    const processEventHandlerParameter = (fgName: string) => {
+      const fgData = createDataByFgName(fgName);
+      if (fgData) {
+        const isFormData = fgData instanceof FormData;
+        if (isFormData) {
+          isUploadFg = true
+          newFormData = getFormData(newFormData, fgData);
+        } else {
+          newFormData.append(fgName, typeof fgData === "string" ? fgData : JSON.stringify(fgData));
+        }
+      }
+    };
+
+    let newFormData = new FormData()
     if (!eventHandlerParameter || eventHandlerParameter.length <= 0) {
-      eventData = {}
+      return newFormData
     } else if (eventHandlerParameter[0] === "*") {
       props.fgNames.forEach((fgName: string) => {
-        eventData[fgName] = createDataByFgName(fgName)
+        processEventHandlerParameter(fgName)
       })
     } else {
       eventHandlerParameter.forEach((fgName: string) => {
-        eventData[fgName] = createDataByFgName(fgName)
+        processEventHandlerParameter(fgName)
       })
+    }    
+
+    if (!isUploadFg) {
+      const dictFormData: Record<string, string> = {};
+      newFormData.forEach((value, key) => {
+        dictFormData[key] = value.toString();
+      });
+      return dictFormData
     }
-    return eventData
+    return newFormData
   }
   const createDataByFgName = (fgName: string) => {
     let data
@@ -115,10 +137,21 @@ const Screen: React.FC<IScreenBox> = forwardRef((props, ref: Ref<any>) => {
       } else if (screenJson[fgName].type === pyiGlobal.TABLE_TYPE_RESULT) {
         data = refs[fgName].current.data
       } else if (screenJson[fgName].type === pyiGlobal.SIMPLE_TYPE || screenJson[fgName].type === pyiGlobal.SEARCH_TYPE) {
-        data = refs[fgName].current.formDataToJson()
+        if (isUploadFg(screenJson[fgName])) {
+          data = refs[fgName].current.formData()
+        } else {
+          data = refs[fgName].current.formDataToJson()
+        }
       }
     }
     return data
+  }
+  const isUploadFg = (fgDfn) => {
+    let isUploadFg = false
+    if (fgDfn.type === pyiGlobal.SIMPLE_TYPE) {
+      isUploadFg = fgDfn.fields.find((field) => field.widget.trim().toLocaleLowerCase() === pyiGlobal.FIELD_TYPE_FILE)
+    }
+    return isUploadFg
   }
 
   const closeDialog = () => {
@@ -262,7 +295,11 @@ const Screen: React.FC<IScreenBox> = forwardRef((props, ref: Ref<any>) => {
     }
     const fieldGroups = e.eventHandler.prams
     let data = {}
-    data[e.fgName] = refs[e.fgName].current.formDataToJson()
+    if (props.subScreenNm) {
+      data = createEventData(props.fgNames)
+    } else {
+      data[e.fgName] = refs[e.fgName].current.formDataToJson()
+    }
     try {
       await HttpPost(eventHandler + "?COMBOX_CHANGE_EVENT=true", JSON.stringify(data))
         .then((response) => {
@@ -320,9 +357,9 @@ const Screen: React.FC<IScreenBox> = forwardRef((props, ref: Ref<any>) => {
     data[e.fgName] = refs[e.fgName].current.formDataToJson()
 
     // SessionStorage only needs to be saved when a search event refreshes the entire page, so that previous search criteria can be displayed in searchFg after the page is refreshed.
-    if (fieldGroups.length === 0) {
-      sessionStorage.setItem("SEARCH_DATA_" + e.fgName, refs[e.fgName].current.formDataToJson())
-    }
+    // if (fieldGroups.length === 0) {
+    //   sessionStorage.setItem("SEARCH_DATA_" + e.fgName, refs[e.fgName].current.formDataToJson())
+    // }
     try {
       await HttpPost(eventHandler, JSON.stringify(data))
         .then((response) => {
@@ -366,21 +403,15 @@ const Screen: React.FC<IScreenBox> = forwardRef((props, ref: Ref<any>) => {
     const eventHandler = e.eventHandler[0]
     const eventHandlerParameter = e.eventHandler[1].fieldGroups
     // YL, 2022-07-18 NEW encapsulates all pages - start
-    const btnType = e.eventHandler[2]["type"] ? e.eventHandler[2]["type"] : "normal"
+    const multiple = e.eventHandler[2]["multiple"] ? e.eventHandler[2]["multiple"] : false
+    const btnType = e.eventHandler[2]["type"] ? e.eventHandler[2]["type"] : pyiGlobal.BTN_TYPE_NORMAL
 
     try {
-      let buttonData = {}
-      if (btnType === pyiGlobal.BTN_TYPE_UPLOAD) {
-        eventHandlerParameter.forEach((fgName: string) => {
-          buttonData = refs[fgName].current.formData()
-        })
-      } else {
-        buttonData = createEventData(eventHandlerParameter)
-      }
-
-      if (Object.keys(e.eventHandler[2]).toString().trim().toLowerCase().indexOf("dialog") > -1) {
+      let buttonData = createEventData(eventHandlerParameter)
+      if (Object.keys(e.eventHandler[2]).toString().trim().toLowerCase().indexOf("dialog") > -1 || btnType === pyiGlobal.BTN_TYPE_UPLOAD_DIALOG) {
         // If there is a dialog, show the dialog first.
-        const dialogParams = getDialogParams(e.eventHandler[2]["dialog"])
+        let dialogParams = getDialogParams(e.eventHandler[2]["dialog"])
+        dialogParams["multiple"] = multiple
         showDialog(dialogParams, btnType, eventHandler, buttonData)
         removeLoadingDiv = false
       } else {
@@ -445,7 +476,7 @@ const Screen: React.FC<IScreenBox> = forwardRef((props, ref: Ref<any>) => {
                 let fileName = response.headers.get("Content-Disposition")?.split("filename=")[1]
                 domDownload(fileName, blob, eventHandler)
                 refreshList()
-                saveMessage([{ type: "info", message: "download success." }])
+                saveMessage([{ type: "info", message: "Downloaded." }])
               } else {
                 showErrorMessage("System error, please ask administrator to check: unknown content-type: " + blob.type)
               }
@@ -455,7 +486,7 @@ const Screen: React.FC<IScreenBox> = forwardRef((props, ref: Ref<any>) => {
           })
         })
         removeLoadingDiv = false
-      } else if (btnType === pyiGlobal.BTN_TYPE_UPLOAD) {
+      } else if (btnType === pyiGlobal.BTN_TYPE_UPLOAD_BUTTON || btnType === pyiGlobal.BTN_TYPE_UPLOAD_DIALOG) {
         // upload button event
         await HttpPostNoHeader(eventHandler, data).then((response) => {
           response.blob().then((blob) => {
@@ -473,7 +504,7 @@ const Screen: React.FC<IScreenBox> = forwardRef((props, ref: Ref<any>) => {
                 let fileName = response.headers.get("Content-Disposition")?.split("filename=")[1]
                 domDownload(fileName, blob, eventHandler)
                 refreshList()
-                saveMessage([{ type: "info", message: "download success." }])
+                saveMessage([{ type: "info", message: "Downloaded." }])
               }
             } finally {
               Loading.remove()
@@ -500,10 +531,10 @@ const Screen: React.FC<IScreenBox> = forwardRef((props, ref: Ref<any>) => {
               let fileName = response?.headers?.["content-disposition"]?.split("filename=")[1]
               domDownload(fileName, blob, eventHandler)
               if (data.constructor === Object && Object.keys(data).length > 0) {
-                saveMessage([{ type: "info", message: "download success." }])
+                saveMessage([{ type: "info", message: "Downloaded." }])
                 refreshList()
               } else {
-                showInfoMessage("download success.")
+                showInfoMessage("Downloaded.")
               }
             }
           } finally {
@@ -525,8 +556,12 @@ const Screen: React.FC<IScreenBox> = forwardRef((props, ref: Ref<any>) => {
   const showDialog = async (dialogParams, btnType, eventHandler, buttonData) => {
     Loading.show()
     try {
+      const dialogType = btnType === pyiGlobal.BTN_TYPE_UPLOAD_DIALOG ? pyiGlobal.DIALOG_TYPE_UPLOAD : pyiGlobal.DIALOG_TYPE_NORMAL
+
+      const multiple = dialogParams["multiple"]
       const dialogName = dialogParams["name"]
       const dialogTitle = dialogParams["title"]
+      const uploadTip = dialogParams["uploadTip"]
       const dialogContent = dialogParams["content"]
       const eventWithParams = dialogParams["beforeDisplayEvent"]
       const continueName = dialogParams["continueName"] ? dialogParams["continueName"] : "OK"
@@ -555,14 +590,16 @@ const Screen: React.FC<IScreenBox> = forwardRef((props, ref: Ref<any>) => {
               const dialogTitle = result.data && result.data["title"] ? result.data["title"] : dialogParams["title"]
               const dialogContent = result.data && result.data["content"] ? result.data["content"] : dialogParams["content"]
               const params = {
-                dialogTitle: dialogTitle,
-                dialogContent: dialogContent,
-                dialogType: btnType,
-                screenID: props.screenID,
+                multiple: multiple,
                 dialogName: dialogName,
+                dialogTitle: dialogTitle,
+                uploadTip: uploadTip,
+                dialogContent: dialogContent,
+                dialogType: dialogType,
+                screenID: props.screenID,
                 onCancel: () => closeDialog(),
                 onContinue: (dialogData) => {
-                  if (btnType === pyiGlobal.BTN_TYPE_UPLOAD) {
+                  if (btnType === pyiGlobal.BTN_TYPE_UPLOAD_DIALOG || btnType === pyiGlobal.BTN_TYPE_UPLOAD_BUTTON) {
                     onClickEvent(btnType, eventHandler, getFormData(dialogData, buttonData))
                   } else {
                     onClickEvent(btnType, eventHandler, { ...buttonData, ...dialogData })
@@ -578,14 +615,16 @@ const Screen: React.FC<IScreenBox> = forwardRef((props, ref: Ref<any>) => {
           })
       } else {
         const params = {
-          dialogTitle: dialogTitle,
-          dialogContent: dialogContent,
-          dialogType: btnType,
-          screenID: props.screenID,
+          multiple: multiple,
           dialogName: dialogName,
+          dialogTitle: dialogTitle,
+          uploadTip: uploadTip,
+          dialogContent: dialogContent,
+          dialogType: dialogType,
+          screenID: props.screenID,
           onCancel: () => closeDialog(),
           onContinue: (dialogData) => {
-            if (btnType === pyiGlobal.BTN_TYPE_UPLOAD) {
+            if (btnType === pyiGlobal.BTN_TYPE_UPLOAD_DIALOG || btnType === pyiGlobal.BTN_TYPE_UPLOAD_BUTTON) {
               onClickEvent(btnType, eventHandler, getFormData(dialogData, buttonData))
             } else {
               onClickEvent(btnType, eventHandler, { ...buttonData, ...dialogData })
@@ -622,8 +661,6 @@ const Screen: React.FC<IScreenBox> = forwardRef((props, ref: Ref<any>) => {
         let pluginCallBack = []
         let pluginLists = []
         screenPlugin[fgName].forEach((plugin: any, index: number) => {
-          const currentIcon = pyiGlobal.PUBLIC_URL + "images/current_sbutton.gif"
-          const expandIcon = pyiGlobal.PUBLIC_URL + "images/expand_sbutton.gif"
           pluginCallBack[index] = async (id: number) => {
             Loading.show()
             try {
@@ -644,8 +681,7 @@ const Screen: React.FC<IScreenBox> = forwardRef((props, ref: Ref<any>) => {
               Loading.remove() // can't delete
             }
           }
-          const caption = Array.isArray(plugin.caption) ? plugin.caption[0].text : plugin.caption
-          pluginLists[index] = createIconColumn(expandIcon, pluginCallBack[index], currentIcon, caption)
+          pluginLists[index] = createIconColumn(pluginCallBack[index], plugin)
         })
         screenPluginLists[fgName] = pluginLists
       }
@@ -842,14 +878,30 @@ export function parseLayoutParams(layoutParams) {
   return newLayoutParams
 }
 
-export function getFormData(data1, data2) {
-  const isFormData1 = data1 instanceof FormData
-  const isFormData2 = data2 instanceof FormData
+export function getFormData(formData1, formData2) {
+  const isFormData1 = formData1 instanceof FormData
+  const isFormData2 = formData2 instanceof FormData
 
+  const newFormData = new FormData()
   if (isFormData1) {
-    return data1
-  } else if (isFormData2) {
-    return data2
+    for (let [key, value] of formData1.entries()) {
+      newFormData.append(key, value)
+    }
+  } else {
+    Object.keys(formData1).map((key) => {
+      const value = formData1[key]
+      newFormData.append(key, typeof value === "string" ? value : JSON.stringify(value))
+    })
   }
-  return null
+  if (isFormData2) {
+    for (let [key, value] of formData2.entries()) {
+      newFormData.append(key, value)
+    }
+  } else {
+    Object.keys(formData2).map((key) => {
+      const value = formData2[key]
+      newFormData.append(key, typeof value === "string" ? value : JSON.stringify(value))
+    })
+  }
+  return newFormData
 }

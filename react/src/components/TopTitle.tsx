@@ -16,12 +16,12 @@ const TopTitle = () => {
   // check has new message
   useEffect(() => {
     if (pyiLocalStorage.getCurrentUser()) {
-      // checkHasNewSysMsg() BAK
+      checkHasNewSysMsg()
     }
   }, [])
 
   const checkHasNewSysMsg = async () => {
-    await HttpGet("/api/ib000/getNewMsgSize")
+    await HttpGet("/api/inbox/getNewMsgSize")
       .then((response) => {
         if (response.ok) return response.json()
         throw response
@@ -32,7 +32,7 @@ const TopTitle = () => {
   }
 
   function goToInbox() {
-    window.location.href = window.location.origin + "/IB000"
+    window.location.href = window.location.origin + "/Inbox"
   }
 
   return (
@@ -40,9 +40,9 @@ const TopTitle = () => {
       {
         <table className="screen_title_layout">
           <tbody>
-            <tr style={{ height: "25px" }}>
-              <td className="screen_title_left" id="sysScreenTitle"></td>
-              <td className="screen_title_center" id="sysMsgTitle"></td>
+            <tr style={{ minHeight: "25px" }}>
+              <td className="screen_title_left" id="sysScreenTitleLeft"></td>
+              <td className="screen_title_center" id="sysScreenTitleCenter"></td>
               <td className="screen_title_right">
                 {(pyiLocalStorage.getCurrentUser() ? pyiLocalStorage.getCurrentUser() : "guest") + " " + moment().format("YYYY-MM-DD hh:mm:ss")}
                 <a id={"sysHelp"} title="Help Document" target="_blank">

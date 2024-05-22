@@ -1,9 +1,3 @@
-/*
- * @Description: ToolBar
- * @version:
- * @Author: YL
- * @Date: 2022-03-17 15:43:05
- */
 import React from "react"
 import ImageButton from "./ImageButton"
 

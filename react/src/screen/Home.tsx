@@ -25,13 +25,13 @@ const Home = () => {
         } else if (Number(result.code) !== 1) {
           sysUtil.showMessage(result.messages)
         } else if (result.code === 1) {
-          // checkHasNewSysMsg() // BAK
+          checkHasNewSysMsg()
         }
       })
   }
 
   const checkHasNewSysMsg = async () => {
-    await HttpGet("/api/ib000/getNewMsgSize")
+    await HttpGet("/api/inbox/getNewMsgSize")
       .then((response) => {
         if (response.ok) return response.json()
         throw response
@@ -59,7 +59,7 @@ const Home = () => {
   }
 
   const openInbox = () => {
-    window.location.href = window.location.origin + "/IB000"
+    window.location.href = window.location.origin + "/Inbox"
   }
   return pyiLocalStorage.getCurrentUser() ? (
     <>

@@ -106,13 +106,7 @@ const SearchFg: React.FC<ISearchFg> = forwardRef((props, ref: Ref<any>) => {
   }
 
   useEffect(() => {
-    if (sessionStorage.getItem("SEARCH_DATA_" + name)) {
-      const schData = JSON.parse(sessionStorage.getItem("SEARCH_DATA_" + name))
-      setSearchData(schData)
-      sessionStorage.removeItem("SEARCH_DATA_" + name)
-    } else {
-      setSearchData(searchParams.data)
-    }
+    setSearchData(searchParams.data)
   }, [name, searchParams.data])
 
   return (

@@ -1,0 +1,6 @@
+#inboxFg .read {
+  color: #777;
+}
+#inboxFg .deleted {
+  color: red;
+}

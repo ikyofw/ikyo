@@ -1,9 +1,3 @@
-/*
- * @Description:
- * @version:
- * @Author: YL
- * @Date: 2022-03-17 17:03:45
- */
 import transform, { StyleTuple } from "css-to-react-native"
 import React, { ChangeEvent, Ref, forwardRef, useEffect, useState } from "react"
 import classnames from "classnames"
@@ -61,6 +55,7 @@ const TextArea: React.FC<ITextArea> = forwardRef((props, ref: Ref<any>) => {
       }
     })
   }
+  const placeholder = props.widgetParameter.placeholder
 
   return (
     <>
@@ -72,6 +67,7 @@ const TextArea: React.FC<ITextArea> = forwardRef((props, ref: Ref<any>) => {
           style={transform(cellStyle)}
           ref={ref}
           name={props.name}
+          placeholder={placeholder}
           defaultValue={props.textAreaValue}
           value={value}
           onChange={changeTextareaValue}

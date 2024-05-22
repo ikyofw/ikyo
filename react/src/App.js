@@ -71,45 +71,10 @@ function App() {
     const screenID = location.pathname.substring(1).toLowerCase()
     useEffect(() => {
       if (screenID && screenIDs.length > 0 && !screenIDs.includes(screenID)) {
-        showErrorMessage("Screen doesn't not exists: [" + screenID + "]")
+        showErrorMessage("Screen does not exists: [" + screenID + "]")
       }
     }, [screenID])
     return null
-  }
-
-  const resizeObserver1 = new ResizeObserver(function (entries) {
-    for (var entry of entries) {
-      const topScreenHeight = entry.contentRect.height
-      const style = document.getElementById("top_screen_title").style
-      style.top = topScreenHeight + "px"
-      style.position = "sticky"
-      style.zIndex = "20"
-    }
-  })
-  const resizeObserver2 = new ResizeObserver(function (entries) {
-    for (var entry of entries) {
-      const topTitleHeight = entry.contentRect.height
-      if (topTitleHeight > 200) {
-        const fixedTopTitleBtt = document.getElementById("sysFixedTopTitle")
-        if (fixedTopTitleBtt) {
-          fixedTopTitleBtt.hidden = false
-          var button = document.getElementById("sysFixScrollImg")
-          if (button) {
-            console.log(button);
-            button.click();
-          }
-        }
-      }
-    }
-  })
-
-  const topScreen = document.getElementById("top_screen")
-  const topTitle = document.getElementById("top_screen_title")
-  if (topScreen) {
-    resizeObserver1.observe(topScreen)
-  }
-  if (topTitle) {
-    resizeObserver2.observe(topTitle)
   }
 
   return (

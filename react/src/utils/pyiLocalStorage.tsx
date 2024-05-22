@@ -51,13 +51,13 @@ const pyiLocalStorage = {
 
     // dialog type
     DIALOG_TYPE_NORMAL: "normal",
-    DIALOG_TYPE_HTML: "html",
     DIALOG_TYPE_UPLOAD: "upload",
     DIALOG_TYPE_HOME_INBOX: "homeInbox",
 
     // button type
     BTN_TYPE_NORMAL: "normal",
-    BTN_TYPE_UPLOAD: "upload",
+    BTN_TYPE_UPLOAD_DIALOG: "uploadDialog",
+    BTN_TYPE_UPLOAD_BUTTON: "uploadButton",
     BTN_TYPE_DOWNLOAD: "download",
 
     // button type in table
@@ -65,7 +65,7 @@ const pyiLocalStorage = {
     TABLE_BTN_TYPE_DIALOG: "dialog",
     TABLE_BTN_TYPE_SWITCH: "switch",
     TABLE_BTN_TYPE_PDF: "pdf",
-    TABLE_BTN_TYPE_UPLOAD: "upload",
+    TABLE_BTN_TYPE_UPLOAD: "uploadDialog",
     TABLE_BTN_TYPE_DOWNLOAD: "download",
 
     // selection mode
@@ -126,13 +126,17 @@ const pyiLocalStorage = {
       sysMsgArr = JSON.parse(sysMsgStr)
     }
     sysMsgArr.push(sysMsg)
-    window.localStorage.setItem("sysMsgs", JSON.stringify(sysMsgArr))
+
+    const screenID = getScreenIDByUrl()
+    window.localStorage.setItem(screenID + "_sysMsgs", JSON.stringify(sysMsgArr))
   },
   getSysMsgs: () => {
-    return window.localStorage.getItem("sysMsgs")
+    const screenID = getScreenIDByUrl()
+    return window.localStorage.getItem(screenID + "_sysMsgs")
   },
   clearSysMsgs: () => {
-    window.localStorage.setItem("sysMsgs", null)
+    const screenID = getScreenIDByUrl()
+    window.localStorage.setItem(screenID + "_sysMsgs", null)
   },
   clearStore: () => {
     window.localStorage.clear()
@@ -157,4 +161,11 @@ function getApiUrl() {
 
 function getPublicUrl() {
   return window.location.origin
+}
+
+function getScreenIDByUrl() {
+  const href = window.location.href
+  const parts = href.split('?');
+  const screenID = parts[0].split('/').pop()
+  return screenID
 }

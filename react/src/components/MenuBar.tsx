@@ -19,7 +19,7 @@ const MenuBar = () => {
 
   const MENU_KEY = pyiGlobal.COOKIE_MENU_ID
   const MENU_ACTION = pyiGlobal.COOKIE_MENU_ACTION
-  const SUBMENU_DISPLAY_MODE = pyiGlobal.SUBMENU_DISPLAY_MODE ? pyiGlobal.SUBMENU_DISPLAY_MODE : 'click'
+  const SUBMENU_DISPLAY_MODE = pyiGlobal.SUBMENU_DISPLAY_MODE ? pyiGlobal.SUBMENU_DISPLAY_MODE : "click"
   const lastSelectedMenuId = cookie.load(MENU_KEY)
   // cookie.remove(KEY, { path: "/" })
   const path = window.location.pathname
@@ -87,9 +87,10 @@ const MenuBar = () => {
   }
 
   function updateCurrentMenu(menu) {
+    // YL, 2024-04-10. filter logout
     if (menu.action && menu.action.trim().toLocaleLowerCase() === "logout") {
-      cookie.remove(MENU_KEY, { path: "/" })
-      cookie.remove(MENU_ACTION, { path: "/" })
+      // cookie.remove(MENU_KEY, { path: "/" })
+      // cookie.remove(MENU_ACTION, { path: "/" })
       // pyiLocalStorage.clearStore() // do not clear, for Logout menu
       return
     }
@@ -110,22 +111,24 @@ const MenuBar = () => {
     const menus = props.menus
     const selectedMenuId = props.selectedMenuId
 
-    const menuItems = menus && menus.map((menu) => (
-      <li
-        key={menu.id}
-        className={selectedMenuId && String(selectedMenuId) === String(menu.id) ? "currentMenu" : level}
-        onMouseMove={props.onMouseMove ? props.onMouseMove(menu) : null}
-      >
-        <a
-          href={"/" + menu.action}
-          onClick={(e) => {
-            updateCurrentMenu(menu)
-          }}
+    const menuItems =
+      menus &&
+      menus.map((menu) => (
+        <li
+          key={menu.id}
+          className={selectedMenuId && String(selectedMenuId) === String(menu.id) ? "currentMenu" : level}
+          onMouseMove={props.onMouseMove ? props.onMouseMove(menu) : null}
         >
-          <span>{menu.title}</span>
-        </a>
-      </li>
-    ))
+          <a
+            href={"/" + menu.action}
+            onClick={(e) => {
+              updateCurrentMenu(menu)
+            }}
+          >
+            <span>{menu.title}</span>
+          </a>
+        </li>
+      ))
 
     return (
       <div className={classnames("sys-top-menu-bar", `sys-top-menu-bar--${level}`)}>
@@ -142,11 +145,11 @@ const MenuBar = () => {
           level={"L1"}
           menus={menu1Data}
           selectedMenuId={selectedL1MenuId}
-          onClick={Object.keys(menu2Data).length > 0 && SUBMENU_DISPLAY_MODE === 'click' ? (menu) => displayTertiaryMenu(menu) : null}
-          onMouseMove={Object.keys(menu2Data).length > 0 && SUBMENU_DISPLAY_MODE === 'hover' ? (menu) => displayTertiaryMenu(menu) : null}
+          onClick={Object.keys(menu2Data).length > 0 && SUBMENU_DISPLAY_MODE === "click" ? (menu) => displayTertiaryMenu(menu) : null}
+          onMouseMove={Object.keys(menu2Data).length > 0 && SUBMENU_DISPLAY_MODE === "hover" ? (menu) => displayTertiaryMenu(menu) : null}
         />
       ) : null}
-      {Object.keys(menu2Data).length > 0 ? (
+      {Object.keys(menu2Data).length > 0 && menu2Data[selectedL1MenuId] ? (
         <SubMenuBar level={"L2"} menus={menu2Data[selectedL1MenuId]} selectedMenuId={selectedL2MenuId} />
       ) : null}
     </div>

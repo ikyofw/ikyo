@@ -1,10 +1,3 @@
-/*
- * @Description:
- * @version:
- * @Author: YL
- * @Date: 2022-03-17 13:45:01
- */
-
 import transform, {StyleTuple} from "css-to-react-native"
 import React, { forwardRef, Ref } from "react"
 import classnames from "classnames"
@@ -58,6 +51,7 @@ const TextBox: React.FC<ITextbox> = forwardRef((props, ref: Ref<any>) => {
       }
     })
   }
+  const placeholder = props.widgetParameter.placeholder
 
   return (
     <>
@@ -68,6 +62,7 @@ const TextBox: React.FC<ITextbox> = forwardRef((props, ref: Ref<any>) => {
           type="Textbox"
           name={props.name}
           id={props.name}
+          placeholder={placeholder}
           value={value}
           onChange={(e) => setValue(e.target.value)}
           disabled={!props.editable}

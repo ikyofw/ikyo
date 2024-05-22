@@ -43,10 +43,10 @@ const Label: React.FC<ILabel> = forwardRef((props, ref: Ref<any>) => {
           }
         }
       }
-
+      
       let changeFlag = false
       options.map((item) => {
-        if (item['value'] === props.labelValue) {
+        if (String(item['value']) === String(props.labelValue)) {
           changeFlag = true
           setValue(item['value'])
           if (props.widgetParameter["format"]) {

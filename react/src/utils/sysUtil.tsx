@@ -1,13 +1,13 @@
 import moment from "moment"
-import { Tooltip } from "react-tooltip"
-import React, { useState, useEffect } from "react"
-import ReactDOM from "react-dom"
+import React from "react"
 import cookie from "react-cookies"
+import ReactDOM from "react-dom"
+import { Tooltip } from "react-tooltip"
 import * as Loading from "../components/Loading"
 import SysMsgBox from "../components/SysMsgBox"
-import pyiLocalStorage from "./pyiLocalStorage"
 import { useHttp } from "../utils/http"
 import pyiLogger from "../utils/log"
+import pyiLocalStorage from "./pyiLocalStorage"
 
 const pyiGlobal = pyiLocalStorage.globalParams
 const MENU_ACTION = pyiGlobal.COOKIE_MENU_ACTION
@@ -31,9 +31,14 @@ const timeStringFormat = "HH:mm:ss"
 const defaultFormat = dateStringFormat
 
 export function clearMessage() {
-  if (document.getElementById("sysMsgTitle")) {
-    ReactDOM.unmountComponentAtNode(document.getElementById("sysMsgTitle"))
+  if (document.getElementById("sysScreenTitleCenter")) {
+    ReactDOM.unmountComponentAtNode(document.getElementById("sysScreenTitleCenter"))
   }
+  const topScreenHeight = document.getElementById("top_screen").offsetHeight
+  const style = document.getElementById("top_screen_title").style
+  style.top = topScreenHeight + "px"
+  style.position = "sticky"
+  style.zIndex = "20"
 }
 
 export function saveMessage(messages: Array<Object>) {
@@ -44,7 +49,7 @@ export function saveMessage(messages: Array<Object>) {
   }
 }
 
-export function showMessage(messages: Array<Object>, hiddenTopTitleFixedBtt?: boolean) {
+export function showMessage(messages: Array<Object>) {
   clearMessage()
 
   let localSysMsgStr = pyiLocalStorage.getSysMsgs()
@@ -71,24 +76,35 @@ export function showMessage(messages: Array<Object>, hiddenTopTitleFixedBtt?: bo
       }
     })
   }
-  if (messageArr && messageArr.length > 0 && document.getElementById("sysMsgTitle")) {
-    // bug fix, if wci1 page no sysMsgTitle
-    var style = document.getElementById("top_screen_title").style
-    const setTopTitleFixed = () => {
-      if (style.top) {
-        style.top = ""
-        style.position = ""
-        style.zIndex = "10"
-      } else {
-        style.top = document.getElementById("top_screen").offsetHeight + "px"
-        style.position = "sticky"
-        style.zIndex = "20"
-      }
-      showMessage(messages, true)
-    }
+  if (messageArr && messageArr.length > 0 && document.getElementById("sysScreenTitleCenter")) {
+    // const setTopTitleFixed = () => {
+    //   const topTitleStyle = document.getElementById("top_screen_title").style
+    //   const msgBoxStyle = document.getElementById("msg_box")?.style
+    //   const fixImgA = document.getElementById("sysFixedTopTitle")
+    //   const fixImg = document.getElementById("sysFixScrollImg") as HTMLImageElement
+    //   if (topTitleStyle.top) {
+    //     topTitleStyle.top = ""
+    //     topTitleStyle.position = ""
+    //     topTitleStyle.zIndex = "10"
+    //     msgBoxStyle.maxHeight = "none"
+    //     msgBoxStyle.overflow = "visible"
+    //     fixImgA.title = "Fix"
+    //     fixImg.src = noPinImg
+    //   } else {
+    //     topTitleStyle.top = document.getElementById("top_screen").offsetHeight + "px"
+    //     topTitleStyle.position = "sticky"
+    //     topTitleStyle.zIndex = "20"
+    //     msgBoxStyle.maxHeight = "200px"
+    //     msgBoxStyle.overflow = "scroll"
+    //     msgBoxStyle.overflowX = "hidden"
+    //     msgBoxStyle.overflowY = "auto"
+    //     fixImgA.title = "Scroll"
+    //     fixImg.src = pinImg
+    //   }
+    // }
 
     let msgComponent: any = (
-      <div className="msg_box">
+      <div id="msg_box" onDoubleClick={() => clearMessage()} className="msg_box">
         {messageArr.map((msgObj, index) => {
           return (
             <SysMsgBox
@@ -107,40 +123,49 @@ export function showMessage(messages: Array<Object>, hiddenTopTitleFixedBtt?: bo
             />
           )
         })}
-        <a
+        {/* <a
           href="#"
-          hidden={hiddenTopTitleFixedBtt ? !hiddenTopTitleFixedBtt : true}
+          hidden={true}
           id="sysFixedTopTitle"
-          title={style.top ? "Fix" : "Scroll"}
-          style={{ position: "absolute", top: "8px", right: "25px" }}
+          title="Fix"
+          style={{ position: "absolute", top: "8px", right: "30px" }}
         >
           <img
             id="sysFixScrollImg"
-            src={style.top ? pinImg : noPinImg}
+            src={pinImg}
             alt="set top title fixed or unfixed"
             onClick={() => setTopTitleFixed()}
             style={{ verticalAlign: "top", borderStyle: "none", padding: "0 5px 0 3px" }}
           ></img>
-        </a>
-        <a
-          href="#"
-          id="sysClearMsg"
-          title="Clear Message"
-          style={{ position: "absolute", top: "8px", right: "5px" }}
-        >
+        </a> */}
+        <a href="#" id="sysClearMsg" title="Clear Message" style={{ position: "absolute", top: "8px", right: "5px" }}>
           <img
             id="sysClearMsgImg"
             src={closeImg}
             alt="set top title fixed or unfixed"
             onClick={() => clearMessage()}
-            style={{ verticalAlign: "top", borderStyle: "none", padding: "0 5px 0 3px" }}
+            style={{ verticalAlign: "top", borderStyle: "none", padding: "0 8px 0 3px" }}
           ></img>
         </a>
       </div>
     )
     document.body.scrollTop = 0
     document.documentElement.scrollTop = 0
-    ReactDOM.render(msgComponent, document.getElementById("sysMsgTitle"))
+    ReactDOM.render(msgComponent, document.getElementById("sysScreenTitleCenter"))
+
+    const topTitle = document.getElementById("top_screen_title")
+    const topScreenHeight = document.getElementById("top_screen").offsetHeight
+    if (topTitle) {
+      const topTitleStyle = topTitle.style
+      topTitleStyle.top = topScreenHeight + "px"
+      topTitleStyle.position = "sticky"
+      topTitleStyle.zIndex = "20"
+      if (topTitle.offsetHeight > 200) {
+        topTitleStyle.top = ""
+        topTitleStyle.position = ""
+        topTitleStyle.zIndex = "10"
+      }
+    }
   }
 }
 
@@ -214,7 +239,7 @@ export function showScreenTitle(title: string) {
               </a>
               {backMenus.map((backMenu: string, index: number) => {
                 return (
-                  <a href={"/" + backMenu["screen_nm"]} className="tooltip-action" style={{ color: "white", display: "block" }}>
+                  <a key={index} href={"/" + backMenu["screen_nm"]} className="tooltip-action" style={{ color: "white", display: "block" }}>
                     {(index + 1).toString().padStart(2, "0") + ". " + backMenu["menu_caption"]}
                   </a>
                 )
@@ -227,11 +252,11 @@ export function showScreenTitle(title: string) {
     )
   }
 
-  if (document.getElementById("sysScreenTitle")) {
-    ReactDOM.unmountComponentAtNode(document.getElementById("sysScreenTitle"))
+  if (document.getElementById("sysScreenTitleLeft")) {
+    ReactDOM.unmountComponentAtNode(document.getElementById("sysScreenTitleLeft"))
   }
 
-  ReactDOM.render(<TooltipComponent />, document.getElementById("sysScreenTitle"))
+  ReactDOM.render(<TooltipComponent />, document.getElementById("sysScreenTitleLeft"))
 }
 
 export function getScreenDfn(responseJson: any, refreshPage: Boolean) {
@@ -246,8 +271,14 @@ export function getScreenDfn(responseJson: any, refreshPage: Boolean) {
     localStorage.setItem("__LOG_LEVEL__", responseJson.logLevel)
   }
   if (responseJson.code === 1) {
-    if (responseJson.data && (responseJson.data.viewID || responseJson.data.viewTitle)) {
-      showScreenTitle(responseJson.data.viewID + (responseJson.data.viewID ? " - " : "") + responseJson.data.viewTitle)
+    if (responseJson.data && (responseJson.data.viewCaption || responseJson.data.viewID || responseJson.data.viewTitle)) {
+      const screenTitle = responseJson.data.viewCaption
+        ? responseJson.data.viewCaption
+        : responseJson.data.viewID + (responseJson.data.viewID ? " - " : "") + responseJson.data.viewTitle
+      if (screenTitle) {
+        showScreenTitle(screenTitle)
+        document.title = document.title + ": " + screenTitle
+      }
     }
     return responseJson.data
   } else if (Number(responseJson.code) === 100001) {
@@ -304,6 +335,10 @@ export function validateResponse(responseJson: any, refreshPage: Boolean) {
 }
 
 export function updateCurrentMenu(screenNm) {
+  // YL, 2024-04-10. filter logout
+  if (screenNm && screenNm.toLocaleLowerCase().indexOf("logout") > -1) {
+    return
+  }
   const expireDate = new Date()
   expireDate.setDate(expireDate.getDate() + 7) // expires in 7 days
   cookie.save(MENU_ACTION, screenNm, { path: "/", expires: expireDate })

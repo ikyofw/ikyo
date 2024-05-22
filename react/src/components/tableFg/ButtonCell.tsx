@@ -81,7 +81,7 @@ const Button: React.FC<IButton> = (props) => {
       // Revoke the Blob URL after triggering the download, freeing system resources as the blob URL is no longer needed
       URL.revokeObjectURL(linkNode.href)
       document.body.removeChild(linkNode)
-      showInfoMessage("download success.")
+      showInfoMessage("Downloaded.")
     } else {
       pyiLogger.warn("Download - " + eventHandler + " no filename, please ask administrator to check.")
     }
@@ -134,8 +134,12 @@ const Button: React.FC<IButton> = (props) => {
 
   const showDialog = async (dialog, beforeDisplayData, btnType, eventHandler, buttonData) => {
     try {
+      const dialogType = btnType === pyiGlobal.BTN_TYPE_UPLOAD_DIALOG ? pyiGlobal.DIALOG_TYPE_UPLOAD : pyiGlobal.DIALOG_TYPE_NORMAL
+
+      const multiple = dialog.multiple
       const dialogName = dialog.dialogName
       const dialogTitle = dialog.dialogTitle
+      const uploadTip = dialog.uploadTip
       const dialogContent = dialog.dialogContent
       const eventName = dialog.eventName
       const continueName = dialog.continueName
@@ -155,14 +159,16 @@ const Button: React.FC<IButton> = (props) => {
               const dialogTitle = result.data && result.data["title"] ? result.data["title"] : dialog.dialogTitle
               const dialogContent = result.data && result.data["content"] ? result.data["content"] : dialog.dialogContent
               const params = {
-                dialogTitle: dialogTitle,
-                dialogContent: dialogContent,
-                dialogType: btnType,
-                screenID: screenID,
+                multiple: multiple,
                 dialogName: dialogName,
+                dialogTitle: dialogTitle,
+                uploadTip: uploadTip,
+                dialogContent: dialogContent,
+                dialogType: dialogType,
+                screenID: screenID,
                 onCancel: () => closeDialog(),
                 onContinue: (dialogData) => {
-                  if (btnType === pyiGlobal.BTN_TYPE_UPLOAD) {
+                  if (btnType === pyiGlobal.BTN_TYPE_UPLOAD_DIALOG || btnType === pyiGlobal.BTN_TYPE_UPLOAD_BUTTON) {
                     onClickEvent(btnType, eventHandler, getFormData(dialogData, buttonData))
                   } else {
                     onClickEvent(btnType, eventHandler, { ...buttonData, ...dialogData })
@@ -178,14 +184,16 @@ const Button: React.FC<IButton> = (props) => {
           })
       } else {
         const params = {
-          dialogTitle: dialogTitle,
-          dialogContent: dialogContent,
-          dialogType: btnType,
-          screenID: screenID,
+          multiple: multiple,
           dialogName: dialogName,
+          dialogTitle: dialogTitle,
+          uploadTip: uploadTip,
+          dialogContent: dialogContent,
+          dialogType: dialogType,
+          screenID: screenID,
           onCancel: () => closeDialog(),
           onContinue: (dialogData) => {
-            if (btnType === pyiGlobal.BTN_TYPE_UPLOAD) {
+            if (btnType === pyiGlobal.BTN_TYPE_UPLOAD_DIALOG || btnType === pyiGlobal.BTN_TYPE_UPLOAD_BUTTON) {
               onClickEvent(btnType, eventHandler, getFormData(dialogData, buttonData))
             } else {
               onClickEvent(btnType, eventHandler, { ...buttonData, ...dialogData })

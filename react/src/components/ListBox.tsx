@@ -1,9 +1,3 @@
-/*
- * @Description:
- * @version:
- * @Author: YL
- * @Date: 2022-03-24 10:42:59
- */
 import transform, { StyleTuple } from "css-to-react-native"
 import React, { ChangeEvent, Ref, forwardRef, useEffect, useState } from "react"
 import classnames from "classnames"

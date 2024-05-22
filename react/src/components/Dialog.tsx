@@ -76,8 +76,7 @@ export default function CustomDialog(props: CustomDialogProps) {
       }
       setUploadMsg('')
       data = formData
-    }
-    if (screenRef.current) {
+    } else if (screenRef.current) {
       data = screenRef.current.getData(dialogPrams.dialogType)
     }
     setDialogName(null)
@@ -146,9 +145,9 @@ export default function CustomDialog(props: CustomDialogProps) {
             <FileUpload
               key={"dialog"}
               ref={uploadRef}
-              fileBoxLabel={"Select File(s)"}
+              fileBoxLabel={dialogPrams.uploadTip ? dialogPrams.uploadTip : dialogPrams.multiple ? "Select File(s)" : "Select File"}
               name={"uploadField"}
-              widgetParameter={{ multiple: true }}
+              widgetParameter={{ multiple: dialogPrams.multiple ? dialogPrams.multiple : false }}
               editable={true}
             />
             <br />
@@ -234,8 +233,8 @@ export const getDialogParams = (dialog: string) => {
   let params = {}
   dialog &&
     dialog.split(";").forEach((param: string) => {
-      const paramName = param.split(":")[0].trim()
-      const content = param.split(":")[1].trim()
+      const paramName = param.slice(0, param.indexOf(':')).trim()
+      const content = param.slice(param.indexOf(':') + 1).trim()
       params[paramName] = content
     })
   return params
