@@ -140,6 +140,10 @@ npm start
 # License
 MIT
 
+# Document
+[Ikyo Document](docs/doc.md)
+
+
 # Reference
 1. Django  
    https://www.djangoproject.com
