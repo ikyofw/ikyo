@@ -93,10 +93,8 @@ Parsing to get the html file and display it:
             newScript.src = oldScript.src
             // eslint-disable-next-line no-loop-func
             newScript.onload = newScript.onratechange = function () {
-              // load js文件的回调函数
               jsFilesNum += 1
               if (jsFilesNum > 0 && scriptLen - 1 === jsFilesNum) {
-                // 因为是一个一个load， 需要判断总数与html文件里的相符才加载html的script内容
                 let sc = document.createElement("script")
                 sc.type = "text/javascript"
                 sc.innerHTML = content

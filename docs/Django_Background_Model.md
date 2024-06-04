@@ -1,6 +1,7 @@
 ## Screen
 
-[![Model screen.png](images/Model_screen.png)](images/Model_screen.png)
+[![Model
+screen.png](images/Model_screen.png)](images/Model_screen.png)
 
 screen_sn: Screen serial number
 

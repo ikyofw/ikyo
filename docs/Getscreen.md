@@ -157,7 +157,8 @@ this page.
 
 ## Reference
 
-[SearchFg and SimpleFg](SearchFg_and_SimpleFg.md "SearchFg and SimpleFg")
+[SearchFg and SimpleFg](SearchFg_and_SimpleFg.md "SearchFg and
+SimpleFg")
 
 [TableFg](TableFg.md "TableFg")
 

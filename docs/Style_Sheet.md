@@ -22,12 +22,14 @@ Add the following lines in Spreadsheet.css
 If modify the Spreadsheet.css like above, when the input outside the
 spreadsheet gets focus, there is no black box.
 
-[![Style sheet1.png](images/Style_sheet1.png)](images/Style_sheet1.png)
+[![Style
+sheet1.png](images/Style_sheet1.png)](images/Style_sheet1.png)
 
 If remove that part, when it gets focus, there is a black box surrounding the
 input.
 
-[![Style sheet2.png](images/Style_sheet2.png)](images/Style_sheet2.png)
+[![Style
+sheet2.png](images/Style_sheet2.png)](images/Style_sheet2.png)
 
 ### Combo Box Border
 
@@ -40,9 +42,11 @@ below, it will look like the second image.
     <select style={{border: "none"}}>
     
 
-[![Style sheet3.png](images/Style_sheet3.png)](images/Style_sheet3.png)
+[![Style
+sheet3.png](images/Style_sheet3.png)](images/Style_sheet3.png)
 
-[![Style sheet4.png](images/Style_sheet4.png)](images/Style_sheet4.png)
+[![Style
+sheet4.png](images/Style_sheet4.png)](images/Style_sheet4.png)
 
 ### Icon Alignment
 
@@ -76,5 +80,5 @@ page：<https://blog.csdn.net/zhang_yu_ling/article/details/90272623>
 
 Here is the final result：
 
-[![Icons.png](/images/thumb/f/fc/Icons.png/300px-Icons.png)](images/Icons.png)
+[![Icons.png](images/Icons.png)](images/Icons.png)
 

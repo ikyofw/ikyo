@@ -2,8 +2,7 @@
 
 ### Interface
 
-[![ImageViewer1.png](/images/thumb/e/e2/ImageViewer1.png/400px-
-ImageViewer1.png)](images/ImageViewer1.png)
+[![ImageViewer1.png](images/ImageViewer1.png)](images/ImageViewer1.png)
 
 ### Install the package
 

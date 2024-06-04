@@ -1,6 +1,7 @@
 ## Interface
 
-[![Calendar img.png](images/Calendar_img.png)](images/Calendar_img.png)
+[![Calendar
+img.png](images/Calendar_img.png)](images/Calendar_img.png)
 
 ## Calendar component
 

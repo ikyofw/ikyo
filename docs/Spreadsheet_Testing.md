@@ -244,5 +244,6 @@ This is an automatic test for page scrolling function.
 
 ## The mindmap of test cases
 
-[![Test mindmap.png](images/Test_mindmap.png)](images/Test_mindmap.png)
+[![Test
+mindmap.png](images/Test_mindmap.png)](images/Test_mindmap.png)
 

@@ -41,12 +41,12 @@ TableFg.tsx:
     const hideFilterRow = () => {
       setFilterRow(false)
       if (pageType === pyiGlobal.CLIENT_PAGING) {
-        setShowRange(preShowRange) // 隐藏搜索栏的时候显示上一个未经过滤showRange
+        setShowRange(preShowRange) // Show the previous unfiltered showRange when the search bar is hidden.
       } else {
-        setShowRange(range(state.data.length, 0)) // 隐藏搜索栏的时候显示所有data
+        setShowRange(range(state.data.length, 0)) // Show all data when the search bar is hidden.
       }
     }
-    const resetFilterRow = () => { // 重置搜索栏
+    const resetFilterRow = () => { // Reset the search bar.
       if (pageType === pyiGlobal.CLIENT_PAGING) {
         setShowRange(preShowRange)
       } else {
@@ -147,7 +147,7 @@ Input box width:
         const width = (headers[column] as HTMLInputElement).offsetWidth
         inputWidth.push(width - 3)
       })
-      setInputWidth(inputWidth.slice(2 - size.columns)) // 获取列头各个单元格的宽度，用来设置input框的宽度
+      setInputWidth(inputWidth.slice(2 - size.columns)) // Get the width of each cell in the column header to set the width of the input fields.
     }, [state.data])
     
 
@@ -161,7 +161,7 @@ Filter function:
       filterRefs[column] = _useRef(null)
     })
     
-    const filterData = () => { //  过滤当前页
+    const filterData = () => { // Filter the current page.
       let preShowRange = []
       if (pageType === pyiGlobal.CLIENT_PAGING) {
         if (pageNation === totalPageNm) {
@@ -175,7 +175,7 @@ Filter function:
       setNewShowRange(preShowRange)
     } 
     
-    const setNewShowRange = (showRange: number[]) => { // 过滤指定的showRange
+    const setNewShowRange = (showRange: number[]) => { // Filter the specified showRange.
       if (state.data.length <= showRange.slice(-1)[0]) {
         return
       }
@@ -215,6 +215,6 @@ Refiltering:
       } else {
         setNewShowRange(preShowRange)
       }
-    }, [pageNation]) // 翻页的时候重新过滤
+    }, [pageNation]) // Reapply the filter when paging.
     
 

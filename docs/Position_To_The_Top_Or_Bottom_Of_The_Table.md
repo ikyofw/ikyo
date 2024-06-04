@@ -63,8 +63,8 @@ last row.
 
     
     
-    const [showTopIcon, setShowTopIcon] = React.useState(false)   // 控制headerRow右侧的图标是否显示
-    const [showBottomIcon, setShowBottomIcon] = React.useState(false)   // 控制lastRow右侧的图标是否显示
+    const [showTopIcon, setShowTopIcon] = React.useState(false)   // Control whether the icon on the right side of the header row is displayed.
+    const [showBottomIcon, setShowBottomIcon] = React.useState(false)   // Control whether the icon on the right side of the last row is displayed.
     
     let timeOutFunc1 = null
     let timeOutFunc2 = null
@@ -104,7 +104,7 @@ last row.
           lastRow.removeEventListener("mouseleave", hideLastRowIcon)
         }
       }
-    }, [state.showRange])  // 鼠标移动到列头或最后一行的时候显示图标
+    }, [state.showRange])  // Show the icon when the mouse moves over the column header or the last row.
     
 
 Create click fuction

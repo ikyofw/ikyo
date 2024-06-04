@@ -2,18 +2,15 @@
 
 ### Whole project structure
 
-[![Sffgc 1.jpg](/images/thumb/9/95/Sffgc_1.jpg/200px-
-Sffgc_1.jpg.png)](images/Sffgc_1.jpg)
+[![Sffgc 1.jpg](images/Sffgc_1.jpg)](images/Sffgc_1.jpg)
 
 ### Django backend structure
 
-[![Sffgc 2.jpg](/images/thumb/b/bf/Sffgc_2.jpg/200px-
-Sffgc_2.jpg.png)](images/Sffgc_2.jpg)
+[![Sffgc 2.jpg](images/Sffgc_2.jpg)](images/Sffgc_2.jpg)
 
 ### React fronent structure
 
-[![Sffgc 3.jpg](/images/thumb/e/ef/Sffgc_3.jpg/200px-
-Sffgc_3.jpg.png)](images/Sffgc_3.jpg)
+[![Sffgc 3.jpg](images/Sffgc_3.jpg)](images/Sffgc_3.jpg)
 
 ## User Interface
 
