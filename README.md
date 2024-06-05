@@ -140,8 +140,8 @@ npm start
 # License
 MIT
 
-# Document
-[Ikyo Document](docs/doc.md)
+# Documentation
+[Documentation](docs/doc.md)
 
 
 # Reference
