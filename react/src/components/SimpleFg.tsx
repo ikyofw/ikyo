@@ -1,3 +1,4 @@
+import { StyleTuple } from "css-to-react-native"
 import React, { Ref, forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react"
 import { useHttp } from "../utils/http"
 import pyiLogger from "../utils/log"
@@ -95,7 +96,9 @@ const SimpleFg: React.FC<ISimpleFg> = forwardRef((props, ref: Ref<any>) => {
         // convert to json format
         let jsonData: any = {}
         formData.forEach((value, key) => (jsonData[key] = value))
-        setData(jsonData)
+        if (simpleParams.dataUrl !== null) {
+          setData(jsonData)
+        }
         const jsonStr = JSON.stringify(jsonData)
         return jsonStr
       },
@@ -107,7 +110,7 @@ const SimpleFg: React.FC<ISimpleFg> = forwardRef((props, ref: Ref<any>) => {
             // TODO: pass a array to server (2022-11-03, Li)
             const files = refs[field.name].current?.files
             if (!files || files.length === 0) {
-              formData.append(field.name, null)
+              formData.append(field.name, '')
             }
             if (files.length === 1) {
               const reader = new FileReader()
@@ -199,6 +202,7 @@ const SimpleFg: React.FC<ISimpleFg> = forwardRef((props, ref: Ref<any>) => {
                           labelLabel={field.caption}
                           labelValue={formatValue(data, field)}
                           name={field.name}
+                          style={field.style}
                           tip={field.tooltip}
                           widgetParameter={field.widgetParameter}
                         />
@@ -299,10 +303,11 @@ const SimpleFg: React.FC<ISimpleFg> = forwardRef((props, ref: Ref<any>) => {
                           value={formatValue(data, field)}
                           name={field.name}
                           editable={editable && field.editable}
+                          style={field.style}
                           tip={field.tooltip}
                           widgetParameter={field.widgetParameter}
                         />
-                      ) : String(field.widget).trim().toLocaleLowerCase() === global.FIELD_TYPE_DATE_BOX? (
+                      ) : String(field.widget).trim().toLocaleLowerCase() === global.FIELD_TYPE_DATE_BOX ? (
                         <DateBox
                           key={index}
                           ref={refs[field.name]}
@@ -322,6 +327,7 @@ const SimpleFg: React.FC<ISimpleFg> = forwardRef((props, ref: Ref<any>) => {
                           widgetParameter={field.widgetParameter}
                           clickEvent={() => props.btnClickEvent([field.eventHandler, field.eventHandlerParameter, field.widgetParameter])}
                           editable={editable && field.editable}
+                          style={field.style}
                         />
                       ) : String(field.widget).trim().toLocaleLowerCase() === global.FIELD_TYPE_FILE ? (
                         <FileUpload
@@ -331,6 +337,8 @@ const SimpleFg: React.FC<ISimpleFg> = forwardRef((props, ref: Ref<any>) => {
                           name={field.name}
                           widgetParameter={field.widgetParameter}
                           editable={editable && field.editable}
+                          style={field.style}
+                          tip={field.tooltip}
                         />
                       ) : (
                         // default use Label
@@ -340,6 +348,7 @@ const SimpleFg: React.FC<ISimpleFg> = forwardRef((props, ref: Ref<any>) => {
                           labelLabel={field.caption}
                           labelValue={formatValue(data, field)}
                           name={field.name}
+                          style={field.style}
                           tip={field.tooltip}
                           widgetParameter={field.widgetParameter}
                         />
@@ -391,7 +400,12 @@ export function formatValue(data: any, field: any) {
     return ""
   }
 
-  if ((data[field.dataField] && data[field.dataField] !== null) || data[field.dataField] === 0 || data[field.dataField] === false || data[field.dataField] === "") {
+  if (
+    (data[field.dataField] && data[field.dataField] !== null) ||
+    data[field.dataField] === 0 ||
+    data[field.dataField] === false ||
+    data[field.dataField] === ""
+  ) {
     value = data[field.dataField]
   } else {
     value = data[field.name]
@@ -402,4 +416,20 @@ export function formatValue(data: any, field: any) {
     value = formatData(value, format)
   }
   return value
+}
+
+export function formatCss(style) {
+  let cellStyle: StyleTuple[] = []
+  let cellClass = []
+  if (style) {
+    const properties = Object.keys(style)
+    properties.forEach((property) => {
+      if (property.toLocaleLowerCase() === "class") {
+        cellClass = style[property].split(",").map((str) => str.trim())
+      } else {
+        cellStyle.push([property, style[property]])
+      }
+    })
+  }
+  return { cellStyle, cellClass }
 }

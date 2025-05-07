@@ -27,15 +27,19 @@ const DataEditor: React.FC<Types.DataEditorProps> = ({ onChange, cell, column, c
   if (index !== -1 && comboPrams["comboData"].length > 0) {
     isComboCell = true
     options = comboPrams["comboData"][index]["data"]
+    const required = comboPrams["required"][index]
     // YL, 2024-02-23 show empty value - start
     options.forEach((op) => {
       if (op.display == "" || op.display == null) {
         op.display = " "
       }
-      if (typeof op.display == "string") {
+      if (typeof op.display == "string" && op.display.trim() == "") {
         op.display = op.display.replace(/\s/g, "\u00a0")
       }
     })
+    if (!required && !options.some(op => op.value === null)) {
+      options = [{"value": null, "display": "\u00a0"}, ...options]
+    }
     // YL, 2024-02-23 - end
   }
 

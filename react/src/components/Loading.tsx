@@ -1,4 +1,4 @@
-import ReactDOM from "react-dom"
+import ReactDOM from "react-dom";
 import "../../public/static/css/Loading.css"
 import pyiLocalStorage from "../utils/pyiLocalStorage"
 
@@ -14,16 +14,20 @@ const Loading = () => {
 }
 export default Loading
 let loadingDiv = null
+
 export function show() {
   if (!document.getElementById("loadingDiv")) {
-    loadingDiv = document.createElement("div")
-    loadingDiv.setAttribute("id", "loadingDiv")
-    document.body.appendChild(loadingDiv)
-    ReactDOM.render(<Loading />, loadingDiv)
+    loadingDiv = document.createElement("div");
+    loadingDiv.setAttribute("id", "loadingDiv");
+    document.body.appendChild(loadingDiv);
+    ReactDOM.render(<Loading />, loadingDiv); 
   }
 }
 
 export function remove() {
-  loadingDiv && ReactDOM.unmountComponentAtNode(loadingDiv) // Remove the mounted Loading component from the div
-  loadingDiv && loadingDiv.parentNode?.removeChild(loadingDiv) // Removing a Mounted Container
+  if (loadingDiv) {
+    ReactDOM.unmountComponentAtNode(loadingDiv) // Unmount the component from the container
+    loadingDiv.parentNode?.removeChild(loadingDiv) // Remove the container from the DOM
+    loadingDiv = null // Reset loadingDiv to null
+  }
 }

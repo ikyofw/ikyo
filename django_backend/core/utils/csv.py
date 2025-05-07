@@ -135,7 +135,7 @@ def CreateVariables(csvFile: object, variables: dict = None) -> dict:
     return csvData
 
 
-def Write2CsvFile(csvFile: object, data: dict, overwrite: bool = True, specifiedTableValues: list = None, comments: object = None) -> None:
+def Write2CsvFile(csvFile: object, data: dict, overwrite: bool = True, specifiedTableValues: list = None, comments: object = None, sort_keys: bool = False) -> None:
     """ write data to csv file
 
     Args:
@@ -171,7 +171,7 @@ def Write2CsvFile(csvFile: object, data: dict, overwrite: bool = True, specified
             csvData.append([COMMENT_LINE_FLAG, str(comments)])
 
     if data:
-        keys = sorted([key for key in data.keys()])
+        keys = sorted([key for key in data.keys()]) if sort_keys else [key for key in data.keys()]
         for i in range(len(keys)):
             name = keys[i]
             value = data[name]

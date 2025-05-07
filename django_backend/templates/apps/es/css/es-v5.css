@@ -1,0 +1,19 @@
+.row_submitted {background: #DEFFAC;}
+.row_cancelled {background: #996666; color: #fff;}
+.row_rejected {background: #FFD9EC;}
+.row_approved {background: #33CCFF;}
+.row_pce_un_submit {color: #FFFF00;}
+.row_paid {background: #93FF93;}
+.row_settled {background: #00A600;color: #fff;}
+.row_deleted {text-decoration:line-through;}
+
+#pageTitleDiv {color:blue; font-size: 1.8em; padding: 5px; 
+	border-bottom:1px solid blue;  }
+
+.row_select{
+  background-color: aqua;
+}
+
+.cell_no_file{
+  background-color: red;
+}

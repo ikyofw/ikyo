@@ -136,7 +136,7 @@ export function getTableHeadStylePrams(table: any) {
             cellPrams.style = style
           }
 
-          if (item && item.text) {
+          if (item && item.text !== null) {
             cellPrams.rowSpan = 1
             cellPrams.colSpan = 1 // Cells with rowSpan and colSpan of 0 will be merged.
             for (
@@ -227,6 +227,7 @@ export function getTableComboBoxPrams(table: any) {
   } = { columns: [], comboData: [] }
   let columns = []
   let comboData = []
+  let required = []
 
   if (table.fields) {
     for (let index = 0; index < table.fields.length; index++) {
@@ -234,6 +235,7 @@ export function getTableComboBoxPrams(table: any) {
       const widget = field.widget?.trim().toLocaleLowerCase()
       if ((widget === global.FIELD_TYPE_COMBO_BOX || widget === global.FIELD_TYPE_LABEL) && field.widgetParameter && field.widgetParameter.data) {
         columns.push(index + 2)
+        required.push(field.required)
 
         let options = []
         const data = field.widgetParameter.data
@@ -270,6 +272,7 @@ export function getTableComboBoxPrams(table: any) {
   }
   tableFgComboBoxPrams["columns"] = columns
   tableFgComboBoxPrams["comboData"] = comboData
+  tableFgComboBoxPrams["required"] = required
 
   // console.log("tableFgComboBoxPrams", tableFgComboBoxPrams)
   return tableFgComboBoxPrams
@@ -469,7 +472,7 @@ export function getTableDialogPrams(fields: any, table: any) {
       const widget = field.widget?.trim().toLocaleLowerCase()
       if (widget === global.FIELD_TYPE_BUTTON || widget === global.FIELD_TYPE_ADVANCED_SELECTION || widget === global.FIELD_TYPE_HTML) {
         columns.push(index + 2)
-        
+
         const btnType = field.widgetParameter["type"] ? field.widgetParameter["type"] : global.BTN_TYPE_NORMAL
         const multiple = field.widgetParameter["multiple"] ? field.widgetParameter["multiple"] : false
         const dialogParams = getDialogParams(field.widgetParameter.dialog)
@@ -517,7 +520,12 @@ export function getTableDialogPrams(fields: any, table: any) {
           dialog.push(null)
         }
 
-        eventHandler.push({ url: field.eventHandler, fieldGroups: field.eventHandlerParameter.fieldGroups, fields: fields }) //The click request url for the button column, and the name and column number of the parameters that this url posts to the backend.
+        eventHandler.push({
+          url: field.eventHandler,
+          fieldGroups: field.eventHandlerParameter.fieldGroups,
+          refreshPrams: field.eventHandlerParameter.refreshPrams,
+          fields: fields,
+        }) //The click request url for the button column, and the name and column number of the parameters that this url posts to the backend.
       }
     }
   }
@@ -553,7 +561,7 @@ export function getTableButtonPrams(fields: any, table: any) {
         if (field.widgetParameter && field.widgetParameter.icon) {
           btnIcon.push(field.widgetParameter.icon)
         } else {
-          btnIcon.push('')
+          btnIcon.push("")
         }
         if (field.widgetParameter && field.widgetParameter.type) {
           type.push(field.widgetParameter.type)
@@ -653,14 +661,14 @@ export function getTableBodyStylePrams(tableName: string, tableFields: any, tabl
   const dataLength = tableData.length
   const fieldLength = tableFields ? tableFields.length : 0
   let tableBodyStylePrams = []
+  for (var i = 0; i < dataLength; i++) {
+    tableBodyStylePrams.push(Array(fieldLength).fill(null))
+  }
   if (tableStyle) {
     if (tableStyle.length === 1 && Object.keys(tableStyle[0]).length === 1 && Object.keys(tableStyle[0])[0].toLocaleLowerCase() === "style") {
       // If there is only one dictionary in the style list, and that dictionary has only one key, 'style', it means that the style is applied to the whole form.
       tableBodyStylePrams = Array(dataLength).fill(Array(fieldLength).fill(tableStyle[0]["style"]))
     } else {
-      for (var i = 0; i < dataLength; i++) {
-        tableBodyStylePrams.push(Array(fieldLength).fill(null))
-      }
       tableStyle.forEach((style) => {
         // index for -2: modify the style of a whole row or column; index for -1: to find the row/column, do not deal with; other cases index is to modify the coordinates of the cell
         let rowIndex = -2
@@ -676,7 +684,7 @@ export function getTableBodyStylePrams(tableName: string, tableFields: any, tabl
         if (style["col"] !== undefined) {
           colIndex = -1
           tableFields.forEach((field, index) => {
-            if (field.dataField === style["col"]) {
+            if (field.name === style["col"]) {
               colIndex = index
             }
           })
@@ -722,7 +730,7 @@ export function getTableBodyStylePrams(tableName: string, tableFields: any, tabl
   if (tableFields) {
     for (let index = 0; index < fieldLength; index++) {
       const field = tableFields[index]
-      if (Object.keys(field.style).length > 0) {
+      if (field.style && Object.keys(field.style).length > 0) {
         tableBodyStylePrams.forEach((rowStyle) => {
           rowStyle[index] = { ...rowStyle[index], ...field.style }
         })

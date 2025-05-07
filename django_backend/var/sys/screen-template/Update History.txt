@@ -1,2 +1,0 @@
-v3, 2024-03-25
-      "Field Groups" table remove "Format" and Validation" column. Add "Unique" and "Required" column.

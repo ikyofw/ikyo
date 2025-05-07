@@ -6,12 +6,14 @@ Date: 2024-04-26 11:53:36
 '''
 import logging
 import traceback
+from datetime import datetime
 
 import core.user.userManager as UserManager
 from core.core.exception import IkException, IkValidateException
 from core.core.lang import Boolean2
 from core.db.transaction import IkTransaction
 from core.models import IkInbox, IkInboxPrm
+from core.utils.langUtils import isNotNullBlank, isNullBlank
 
 logger = logging.getLogger('ikyo')
 
@@ -76,12 +78,12 @@ def updateStatus(operatorID, inboxIds, status) -> Boolean2:
                          (operator, inboxRc.sts, status, inboxRc.owner_id))
             raise IkValidateException('Permission deny.')
         if inboxRc.sts == status:
-            return Boolean2(True)  # no need to change
-        # if status == IkInbox.STATUS_DELETED:  # delete database
-        #     inboxRc.ik_set_status_delete()
-        # else:  # update
-        inboxRc.sts = status
-        inboxRc.ik_set_status_modified()
+            continue  # no need to change
+        if status == IkInbox.STATUS_DELETED:  # delete database
+            inboxRc.ik_set_status_delete()
+        else:  # update
+            inboxRc.sts = status
+            inboxRc.ik_set_status_modified()
         inboxDBRcs.append(inboxRc)
     # save to database
     ptrn = IkTransaction(userID=operatorID)
@@ -98,3 +100,56 @@ def getLinkParameters(inboxID) -> dict:
     for prm in prmRcs:
         map.update({prm.k: prm.v})
     return map
+
+
+def send(senderID, receiverIDs, module, summary, linkParameters=None) -> list:
+    '''
+        receiverIDs: user id list
+        return inbox ID list if success, else return None.
+    '''
+    # validation
+    if senderID is None:
+        raise IkValidateException('Parameter [senderID] is mandatory!')
+    sender = UserManager.getUserName(userID=senderID)
+    if sender is None:
+        raise IkValidateException('Sender [%s] does not exist.' % senderID)
+    if isNullBlank(receiverIDs):
+        raise IkValidateException('Parameter [receiverIDs] is mandatory!')
+    elif type(receiverIDs) == int:
+        receiverIDs = [receiverIDs]
+    if type(receiverIDs) != list:
+        raise IkValidateException('Parameter [receiverIDs] should be an int or an int list!')
+    elif len(receiverIDs) == 0:
+        raise IkValidateException('Parameter [receiverIDs] cannot be empty!')
+    for receiverID in receiverIDs:
+        receiver = UserManager.getUserName(userID=receiverID)
+        if receiver is None:
+            raise IkValidateException(False, 'Receiver [%s] does not exist.' % receiverID)
+    if isNullBlank(module):
+        raise IkValidateException(False, 'Parameter [Module] is mandatory.')
+    if isNullBlank(summary):
+        raise IkValidateException(False, 'Parameter [Summary] is mandatory.')
+    if not isNullBlank(linkParameters) and type(linkParameters) != dict:
+        raise IkValidateException('Parameter [linkParameters] should be None or a dict.')
+    # prepare model records
+    inboxRcs = []
+    prmRcs = []
+    for receiverID in receiverIDs:
+        inboxRc = IkInbox(owner_id=receiverID,
+                          sender_id=senderID,
+                          send_dt=datetime.now(),
+                          sts=IkInbox.STATUS_NEW,
+                          summary=summary,
+                          module=module)
+        inboxRcs.append(inboxRc)
+        if linkParameters is not None and len(linkParameters) > 0:
+            for name, value in linkParameters.items():
+                prmRcs.append(IkInboxPrm(inbox=inboxRc, k=name, v=(None if isNullBlank(value) else value)))
+    # save to database
+    ptrn = IkTransaction(userID=senderID)
+    ptrn.add(inboxRcs)
+    ptrn.add(prmRcs)
+    b = ptrn.save()
+    if not b.value:
+        raise IkValidateException(b.dataStr)
+    return [inboxRc.id for inboxRc in inboxRcs]

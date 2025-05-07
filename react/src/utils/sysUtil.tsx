@@ -12,8 +12,6 @@ import pyiLocalStorage from "./pyiLocalStorage"
 const pyiGlobal = pyiLocalStorage.globalParams
 const MENU_ACTION = pyiGlobal.COOKIE_MENU_ACTION
 const backImg = pyiGlobal.PUBLIC_URL + "images/back.png"
-const pinImg = pyiGlobal.PUBLIC_URL + "images/pin.png"
-const noPinImg = pyiGlobal.PUBLIC_URL + "images/pin_angle.png"
 const closeImg = pyiGlobal.PUBLIC_URL + "images/close1.png"
 
 const INFO_MSG = "info"
@@ -34,11 +32,13 @@ export function clearMessage() {
   if (document.getElementById("sysScreenTitleCenter")) {
     ReactDOM.unmountComponentAtNode(document.getElementById("sysScreenTitleCenter"))
   }
-  const topScreenHeight = document.getElementById("top_screen").offsetHeight
-  const style = document.getElementById("top_screen_title").style
-  style.top = topScreenHeight + "px"
-  style.position = "sticky"
-  style.zIndex = "20"
+  const topScreenHeight = document.getElementById("top_screen")?.offsetHeight
+  const style = document.getElementById("top_screen_title")?.style
+  if (topScreenHeight && style) {
+    style.top = topScreenHeight + "px"
+    style.position = "sticky"
+    style.zIndex = "20"
+  }
 }
 
 export function saveMessage(messages: Array<Object>) {
@@ -49,8 +49,10 @@ export function saveMessage(messages: Array<Object>) {
   }
 }
 
-export function showMessage(messages: Array<Object>) {
-  clearMessage()
+export function showMessage(messages: Array<Object>, refresh: boolean = true) {
+  if (refresh) {
+    clearMessage()
+  }
 
   let localSysMsgStr = pyiLocalStorage.getSysMsgs()
   let localSysMsgArr: any[]
@@ -77,33 +79,9 @@ export function showMessage(messages: Array<Object>) {
     })
   }
   if (messageArr && messageArr.length > 0 && document.getElementById("sysScreenTitleCenter")) {
-    // const setTopTitleFixed = () => {
-    //   const topTitleStyle = document.getElementById("top_screen_title").style
-    //   const msgBoxStyle = document.getElementById("msg_box")?.style
-    //   const fixImgA = document.getElementById("sysFixedTopTitle")
-    //   const fixImg = document.getElementById("sysFixScrollImg") as HTMLImageElement
-    //   if (topTitleStyle.top) {
-    //     topTitleStyle.top = ""
-    //     topTitleStyle.position = ""
-    //     topTitleStyle.zIndex = "10"
-    //     msgBoxStyle.maxHeight = "none"
-    //     msgBoxStyle.overflow = "visible"
-    //     fixImgA.title = "Fix"
-    //     fixImg.src = noPinImg
-    //   } else {
-    //     topTitleStyle.top = document.getElementById("top_screen").offsetHeight + "px"
-    //     topTitleStyle.position = "sticky"
-    //     topTitleStyle.zIndex = "20"
-    //     msgBoxStyle.maxHeight = "200px"
-    //     msgBoxStyle.overflow = "scroll"
-    //     msgBoxStyle.overflowX = "hidden"
-    //     msgBoxStyle.overflowY = "auto"
-    //     fixImgA.title = "Scroll"
-    //     fixImg.src = pinImg
-    //   }
-    // }
+    const existingContent = document.getElementById("sysScreenTitleCenter").innerHTML
 
-    let msgComponent: any = (
+    let msgComponent = (
       <div id="msg_box" onDoubleClick={() => clearMessage()} className="msg_box">
         {messageArr.map((msgObj, index) => {
           return (
@@ -123,35 +101,30 @@ export function showMessage(messages: Array<Object>) {
             />
           )
         })}
-        {/* <a
-          href="#"
-          hidden={true}
-          id="sysFixedTopTitle"
-          title="Fix"
-          style={{ position: "absolute", top: "8px", right: "30px" }}
-        >
-          <img
-            id="sysFixScrollImg"
-            src={pinImg}
-            alt="set top title fixed or unfixed"
-            onClick={() => setTopTitleFixed()}
-            style={{ verticalAlign: "top", borderStyle: "none", padding: "0 5px 0 3px" }}
-          ></img>
-        </a> */}
-        <a href="#" id="sysClearMsg" title="Clear Message" style={{ position: "absolute", top: "8px", right: "5px" }}>
-          <img
-            id="sysClearMsgImg"
-            src={closeImg}
-            alt="set top title fixed or unfixed"
-            onClick={() => clearMessage()}
-            style={{ verticalAlign: "top", borderStyle: "none", padding: "0 8px 0 3px" }}
-          ></img>
-        </a>
+        {!existingContent && (
+          <a href="#" id="sysClearMsg" title="Clear Message" style={{ position: "absolute", top: "8px", right: "5px" }}>
+            <img
+              id="sysClearMsgImg"
+              src={closeImg}
+              alt="set top title fixed or unfixed"
+              onClick={() => clearMessage()}
+              style={{ verticalAlign: "top", borderStyle: "none", padding: "0 8px 0 3px" }}
+            />
+          </a>
+        )}
       </div>
     )
+
+    const newContent = (
+      <div>
+        <div dangerouslySetInnerHTML={{ __html: existingContent }}></div>
+        {msgComponent}
+      </div>
+    )
+
     document.body.scrollTop = 0
     document.documentElement.scrollTop = 0
-    ReactDOM.render(msgComponent, document.getElementById("sysScreenTitleCenter"))
+    ReactDOM.render(newContent, document.getElementById("sysScreenTitleCenter"))
 
     const topTitle = document.getElementById("top_screen_title")
     const topScreenHeight = document.getElementById("top_screen").offsetHeight
@@ -259,13 +232,8 @@ export function showScreenTitle(title: string) {
   ReactDOM.render(<TooltipComponent />, document.getElementById("sysScreenTitleLeft"))
 }
 
-export function getScreenDfn(responseJson: any, refreshPage: Boolean) {
-  //  if refreshPage is true, clear previous messages and display all messages; else only save current message
-  if (refreshPage || responseJson.code === 0) {
-    showMessage(responseJson.messages)
-  } else {
-    saveMessage(responseJson.messages)
-  }
+export function getScreenDfn(responseJson: any) {
+  showMessage(responseJson.messages)
 
   if (responseJson.logLevel) {
     localStorage.setItem("__LOG_LEVEL__", responseJson.logLevel)
@@ -277,7 +245,9 @@ export function getScreenDfn(responseJson: any, refreshPage: Boolean) {
         : responseJson.data.viewID + (responseJson.data.viewID ? " - " : "") + responseJson.data.viewTitle
       if (screenTitle) {
         showScreenTitle(screenTitle)
-        document.title = document.title + ": " + screenTitle
+        if (!document.title.includes(screenTitle)) {
+          document.title = document.title + ": " + screenTitle
+        }
       }
     }
     return responseJson.data
@@ -313,7 +283,7 @@ export function getResponseData(responseJson: any) {
 export function validateResponse(responseJson: any, refreshPage: Boolean) {
   //  if refreshPage is true, clear previous messages and display message; else only save current message
   if (refreshPage && responseJson.messages && responseJson.messages.length > 0) {
-    showMessage(responseJson.messages)
+    showMessage(responseJson.messages, false)
   } else {
     saveMessage(responseJson.messages)
   }
@@ -336,7 +306,7 @@ export function validateResponse(responseJson: any, refreshPage: Boolean) {
 
 export function updateCurrentMenu(screenNm) {
   // YL, 2024-04-10. filter logout
-  if (screenNm && screenNm.toLocaleLowerCase().indexOf("logout") > -1) {
+  if (screenNm && (screenNm.toLocaleLowerCase().indexOf("logout") > -1 || screenNm.toLocaleLowerCase().indexOf("menu") > -1)) {
     return
   }
   const expireDate = new Date()

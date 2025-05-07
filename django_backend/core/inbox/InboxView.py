@@ -77,17 +77,12 @@ class InboxView(ScreenAPIView):
         else:
             data = data.filter(~Q(sts=IkInbox.STATUS_DELETED))
 
-        pageSize = self._getPaginatorPageSize("inboxFg")
-        pageNum = self._getPaginatorPageNumber("inboxFg")
-        totalLen = data.count()
-        paginator = Paginator(data, pageSize)
-        results = data if pageNum == 0 else paginator.get_page(pageNum)
-
-        # get style
-        style = []
-        for inbox in results:
-            style.append({"row": inbox.id, "class": inbox.sts})
-        return self.getSccJsonResponse(data=data, cssStyle=style, paginatorDataAmount=totalLen)
+        def get_style_func(results):
+            style = []
+            for inbox in results:
+                style.append({"row": inbox['id'], "class": inbox['sts']})
+            return style
+        return self.getPagingResponse(table_name="inboxFg", table_data=data, get_style_func=get_style_func)
 
     def postPreRmk(self):
         requestData = self.getRequestData()
@@ -121,7 +116,7 @@ class InboxView(ScreenAPIView):
         return IkSccJsonResponse()
 
     def openDetail(self):
-        """ Go to mudule
+        """ Go to module
         """
         userId = self.getCurrentUserId()
         requestData = self.getRequestData()
@@ -129,7 +124,7 @@ class InboxView(ScreenAPIView):
             inboxID = requestData.get('id')
             if isNotNullBlank(inboxID):
                 inboxID = int(inboxID)
-                boo = InboxManager.markReadOrUnread(userId, inboxID, IkInbox.STATUS_READ)
+                boo = InboxManager.markRead(userId, [inboxID])
                 if boo.value:
                     # Open Menu
                     IkInboxRc = IkInbox.objects.filter(id=inboxID).first()

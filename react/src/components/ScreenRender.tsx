@@ -3,7 +3,7 @@ import { useLocation } from "react-router-dom"
 import { useHttp } from "../utils/http"
 import pyiLogger from "../utils/log"
 import pyiLocalStorage from "../utils/pyiLocalStorage"
-import { getScreenDfn } from "../utils/sysUtil"
+import { getResponseData } from "../utils/sysUtil"
 import Screen from "./Screen"
 import { suuidContext } from "./ConText"
 
@@ -16,14 +16,14 @@ const ScreenRender = (props) => {
   const [fgNames, setFgNames] = useState([])
   const [SUUID, setSUUID] = useState("")
 
-  React.useEffect(() => {
-    refreshList()
-  }, []) // page refresh
-
   const location = useLocation()
   React.useEffect(() => {
     unloadScreen()
   }, [location])
+
+  React.useEffect(() => {
+    refreshList()
+  }, []) // page refresh
 
   const unloadScreen = async () => {
     try {
@@ -75,7 +75,7 @@ const ScreenRender = (props) => {
           throw response
         })
         .then((result) => {
-          let screenDfn = getScreenDfn(result, false)
+          let screenDfn = getResponseData(result)
           if (!screenDfn) {
             pyiLogger.error("get initScreen error, please check.", true)
             return

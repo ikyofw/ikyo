@@ -2,6 +2,7 @@ import core.ui.ui as ikui
 import core.menu.menu as coreMenu
 import core.models as ikModels
 from core.core.http import IkSccJsonResponse
+from core.menu import menu_mnt_manager as menuMntManager
 from core.menu.menuManager import MenuManager
 from core.sys.accessLog import getAccessLog, getLatestAccessLog
 from core.utils.langUtils import isNotNullBlank, isNullBlank
@@ -33,7 +34,7 @@ class Menu(ScreenAPIView):
 
     def beforeInitScreenData(self, screen: ikui.Screen):
         super().beforeInitScreenData(screen)
-        
+
         menuID1 = self.getSessionParameter('menuID1')
         activeRow1 = self.getSessionParameter('activeRow1')
         activeRow2 = self.getSessionParameter('activeRow2')
@@ -137,3 +138,22 @@ class Menu(ScreenAPIView):
             if isNotNullBlank(i.sub_menu_lct):
                 return True
         return False
+
+
+class MenuMnt(ScreenAPIView):
+    def __init__(self, **kwargs) -> None:
+        super().__init__(**kwargs)
+
+    def beforeInitScreenData(self, screen: ikui.Screen):
+        super().beforeInitScreenData(screen)
+
+    def getParentMenu(self):
+        return IkSccJsonResponse(data=menuMntManager.get_parent_menu())
+
+    def getMenuRcs(self):
+        return IkSccJsonResponse(data=menuMntManager.get_menu_tree())
+
+    def save(self):
+        menu_fg = self.getRequestData().get('menuFg', None)
+        result = menuMntManager.save_menus(self.getCurrentUserId(), menu_fg)
+        return result.toIkJsonResponse1()

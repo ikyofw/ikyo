@@ -23,27 +23,25 @@ def convertStr2Json(jsonStr, defaultKey=None) -> dict:
 
         defaultKey: e.g. text, used for "jsonStr" is only a dict value. E.g. jsonStr="1234", defaultKey="value", then convert to {'value': '1234'}
     '''
-    if isNullBlank(jsonStr):
+    if jsonStr is None:
         return None
     elif type(jsonStr) == dict:
         return jsonStr
     if type(jsonStr) != str:
         raise Exception('convertStr2Json unsupport data type %s: %s' % (type(jsonStr), jsonStr))
     testStr = jsonStr
-    if testStr[0] != '{':
+
+    if not testStr.startswith('{'):
         testStr = '{' + testStr
-    if testStr[-1] != '}':
+    if not testStr.endswith('}'):
         testStr += '}'
+    
     try:
+        if defaultKey is not None and ":" not in testStr:
+            testStr = "{\"%s\":\"%s\"}" % (defaultKey, jsonStr)
         return json5.loads(testStr)
     except:
-        if defaultKey is not None:
-            try:
-                testStr = "{\"%s\":\"%s\"}" % (defaultKey, jsonStr)
-                return json5.loads(testStr)
-            except:
-                pass
-    raise Exception('Convert string [%s] to json failed.' % jsonStr)
+        raise Exception('Convert string [%s] to json failed.' % jsonStr)
 
 
 def validateEmail(email) -> bool:

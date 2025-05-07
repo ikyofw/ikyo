@@ -1,0 +1,33 @@
+.MuiTypography-body1 {
+  font-size: 9pt !important;
+}
+
+.search-buttons input,
+.search-buttons button {
+  font-size: 12px;
+  margin: 1px;
+}
+
+.fixed-header {
+  padding: 10px 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.scroll-content {
+  flex-grow: 1;
+  overflow-y: auto;
+}
+
+.MuiTreeItem-content .MuiTreeItem-iconContainer {
+  transition: none !important;
+}
+
+.MuiCollapse-container {
+  transition: height 0s !important;
+}
+
+.MuiCollapse-wrapperInner {
+  transition: none !important;
+}

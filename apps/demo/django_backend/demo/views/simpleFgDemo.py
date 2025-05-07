@@ -14,11 +14,16 @@ class SimpleFgDemo(ScreenAPIView):
         super().__init__()
 
     def getCombo(self):
-        data = [{'nm': 'option 1'}, {'nm': 'option 2'}]
+        data = [{'id': '1', 'nm': 'option 1'}, {'id': '2', 'nm': 'option 2'}]
         return IkSccJsonResponse(data=data)
 
     def getCombo2(self):
         data = [{'id': '11', 'nm': 'option 11'}, {'id': '22', 'nm': 'option 22'}]
+        return IkSccJsonResponse(data=data)
+
+    def getCombo3(self):
+        data = [{'id': '1', 'nm': 'option 1'}, {'id': '2', 'nm': 'option 2'}, {'id': '3', 'nm': 'option 3'}, 
+                {'id': '4', 'nm': 'option 4'}, {'id': '5', 'nm': 'option 5'}, {'id': '6', 'nm': 'option 6'}]
         return IkSccJsonResponse(data=data)
 
     def getSimpleFg(self):
@@ -28,12 +33,15 @@ class SimpleFgDemo(ScreenAPIView):
             rmk1 = '11'
         if isNullBlank(simpleFg):
             schItems = {
-                'schTextbox': 'init',
-                'schCombobox1': 'option 1',
-                'schCombobox': 'option 1',
+                'schLabel': 'Testing simple label',
+                'schTextbox': 'test text',
+                'schTexterea': 'Testing Text Area',
+                'schCombobox1': '1',
+                'schCombobox': '11',
+                'schListbox': '1',
                 'schCheckbox1': 'True',
                 'schCheckbox2': 'Y',
-                'schDatebox': '2023-10-19',
+                'schDatebox': '2023-09-04',
                 'schAdvancedSelection': rmk1
             }
         else:

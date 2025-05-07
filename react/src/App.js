@@ -22,6 +22,26 @@ import pyiLogger from "./utils/log"
 import pyiLocalStorage from "./utils/pyiLocalStorage"
 
 function App() {
+  const debounce = (fn, delay) => {
+    let timer
+    return (...args) => {
+      if (timer) {
+        clearTimeout(timer)
+      }
+      timer = setTimeout(() => {
+        fn(...args)
+      }, delay)
+    }
+  }
+
+  const _ResizeObserver = window.ResizeObserver
+  window.ResizeObserver = class ResizeObserver extends _ResizeObserver {
+    constructor(callback) {
+      callback = debounce(callback, 200) // Add 200ms anti-shake delay
+      super(callback)
+    }
+  }
+
   const HttpGet = useHttp(pyiLocalStorage.globalParams.HTTP_TYPE_GET)
 
   ;(function () {

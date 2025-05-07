@@ -1,3 +1,4 @@
+import os
 import json
 import logging
 from importlib import import_module
@@ -10,6 +11,7 @@ from iktools import IkConfig
 from .langUtils import isNullBlank
 
 logger = logging.getLogger('ikyo')
+
 
 def model2Fields(modelRc):
     if type(modelRc) == list:
@@ -75,18 +77,109 @@ def getModelClass(modelName):
     '''
         return model classs
     '''
-    ss = modelName.split('.')
-    moduleName = ''
-    modelClassName = None
-    if len(ss) == 1:
-        modelClassName = ss[0]
-    else:
-        for i in range(len(ss) - 1):
-            if i > 0:
-                moduleName += '.'
-            moduleName += str(ss[i])
-        modelClassName = ss[-1]
-    return getattr(import_module(moduleName), modelClassName)
+    try:
+        module_name, class_name = modelName.rsplit('.', 1)
+
+        # Import the module and get the class
+        module = import_module(module_name)
+        return getattr(module, class_name)
+    except ValueError:
+        raise ImportError(f"Invalid modelName format: '{modelName}'.")
+    except ImportError as e:
+        raise ImportError(e)
+    except AttributeError as e:
+        raise AttributeError(e)
+
+
+def get_model_class_1(app_name: str, class_nm: str):
+    '''
+        return model class
+    '''
+    model_name = "%s.models.%s" % (app_name, class_nm)
+
+    viewClass = None
+    error_messages = []
+    try:
+        viewClass = getModelClass(class_nm)
+    except Exception as e:
+        error_messages.append(str(e))
+    if viewClass is None:
+        try:
+            viewClass = getModelClass(model_name)
+        except Exception as e:
+            error_messages.append(str(e))
+
+    if viewClass is None:
+        logger.error("Failed to load model [%s] from app [%s], errors: %s" % (class_nm, app_name, "; ".join(error_messages)))
+    return viewClass
+
+
+def get_model_class_2(app_name: str, screen_sn: str, class_nm: str):
+    '''
+        return module class
+    '''
+    module_name_1 = "%s.views.%s" % (app_name, screen_sn)
+    module_name_2 = "%s.views.%s.%s" % (app_name, screen_sn.lower(), screen_sn)
+
+    viewClass = None
+    error_messages = []
+    try:
+        viewClass = getModelClass(class_nm)
+    except Exception as e:
+        error_messages.append(str(e))
+    if viewClass is None:
+        try:
+            viewClass = getModelClass(module_name_1)
+        except Exception as e:
+            error_messages.append(str(e))
+    if viewClass is None:
+        try:
+            viewClass = getModelClass(module_name_2)
+        except Exception as e:
+            error_messages.append(str(e))
+
+    if viewClass is None:
+        logger.error("Failed to load module [%s] from app [%s], errors: %s" % (screen_sn, app_name, "; ".join(error_messages)))
+    return viewClass
+
+
+def is_model_class_exists(app_name: str, screen_sn: str, class_nm: str) -> bool:
+    '''
+    Check if the model class exists.
+    '''
+    try:
+        if not isNullBlank(class_nm):
+            module_name, class_name = class_nm.rsplit('.', 1)
+            module = import_module(module_name)
+            if hasattr(module, class_name):
+                return True
+            else:
+                logger.error("Failed to load module [%s] from app [%s], errors: [%s] is not found." % (screen_sn, app_name, class_nm))
+                return False
+    except ImportError as e:
+        logger.error("Failed to load module [%s] from app [%s], errors: %s" % (screen_sn, app_name, e))
+
+    module_name_1 = "%s.views" % app_name
+    try:
+        module = import_module(module_name_1)
+        if hasattr(module, screen_sn):
+            return True
+        else:
+            logger.error("Failed to load module [%s] from app [%s], errors: [%s.%s] is not found." % (screen_sn, app_name, module_name_1, screen_sn))
+    except ImportError as e:
+        logger.error("Failed to load module [%s] from app [%s], errors: %s" % (screen_sn, app_name, e))
+
+    module_name_2 = "%s.views.%s" % (app_name, screen_sn.lower())
+    try:
+        module = import_module(module_name_2)
+        if hasattr(module, screen_sn):
+            return True
+        else:
+            logger.error("Failed to load module [%s] from app [%s], errors: [%s.%s] is not found." % (screen_sn, app_name, module_name_2, screen_sn))
+    except ImportError as e:
+        logger.error("Failed to load module [%s] from app [%s], errors: %s" % (screen_sn, app_name, e))
+
+    return False
 
 
 def queryModel(modelNames, queryFields=None, distinct=False, queryWhere=None, orderBy=None,
@@ -202,7 +295,7 @@ def getModelPropertyValues(instance: Model) -> dict:
     """
     properties = vars(instance.__class__)
     property_methods = [name for name, value in properties.items() if isinstance(value, property)]
-    
+
     values = {}
     for name in property_methods:
         values[name] = getattr(instance, name)

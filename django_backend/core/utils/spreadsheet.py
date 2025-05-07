@@ -82,14 +82,11 @@ class SpreadsheetParser:
             self.__file = excelFile
         else:
             raise Exception('[' + excelFile + '] file does not exist.')
-        # f = pd.ExcelFile(excelFile)
+        
         with pd.ExcelFile(excelFile) as f:
             sheetData = []
             for sheetName in f.sheet_names:
                 d = pd.read_excel(f, sheet_name=sheetName)
-            sheetData = []
-            for sheetName in f.sheet_names:
-                d = pd.read_excel(excelFile, sheet_name=sheetName)
                 if len(d.columns) > 0 and d.columns[0] is not None \
                         and type(d.columns[0]) == str \
                         and d.columns[0].lower() == 'do not modify this column':
@@ -212,10 +209,10 @@ class SpreadsheetWriter:
         if not isinstance(templateFile, djangoUploadedfile.UploadedFile):
             if templateFile is None or not os.path.isfile(templateFile):
                 logger.error('Template file [%s] is not found.', templateFile)
-                raise IkValidateException('Template file is not found.')
+                raise IkValidateException('Template file not found.')
         if isNullBlank(outputFile):
             logger.error('Output file can not be empty.', outputFile)
-            raise IkValidateException('Template file is not found.')
+            raise IkValidateException('Template file not found.')
         if os.path.isfile(outputFile):
             logger.error('Output file [%s] is exists.', outputFile)
             raise IkValidateException('Output file is exists.')
@@ -265,33 +262,38 @@ class SpreadsheetWriter:
                         if str(content).upper() == 'EOD':
                             break
                         elif content.strip() != '':
-                            nameSheetDict[content.strip()] = st
+                            parameter_name = content.strip()
+                            if parameter_name not in nameSheetDict.keys():
+                                nameSheetDict[parameter_name] = [st]
+                            else:
+                                nameSheetDict[parameter_name].append(st)
         for name, value in self.__parameters.items():
             if name not in nameSheetDict.keys():
                 print('Parameter [%s] is not found in the tempate file [%s]' % (name, self.__templateFile))
-            st = nameSheetDict.get(name, None)
-            data = value
-            sheetName = None
-            columnIndex = DATA_START_COLUMN_INDEX
-            rowIndex = None
-            if type(value) == dict:  # Example: 'segmentation': {'data': segmentation, 'sheet': 'segmentation','rowIndex': 17, 'columnIndex': 'E'}
-                sheetName = value.get('sheet', None)
-                if sheetName is not None:
-                    st = wb[sheetName]
-                    if st is None:
-                        raise IkValidateException('Sheet [%s] does not exist. Plesae check.' % sheetName)
-                data = value.get('data', None)
-                columnIndex = value.get('columnIndex', DATA_START_COLUMN_INDEX)
-                if columnIndex is not None and type(columnIndex) == str:
-                    columnIndex = columnName2Index(columnIndex)
-                rowIndex = value.get('rowIndex', None)
-            if st is None:
-                raise IkValidateException('Parameter name [%s] does not exist. Plesae check.' % name)
+            sheet_objects = nameSheetDict.get(name, None)
+            for st in sheet_objects:
+                data = value
+                sheetName = None
+                columnIndex = DATA_START_COLUMN_INDEX
+                rowIndex = None
+                if type(value) == dict:  # Example: 'segmentation': {'data': segmentation, 'sheet': 'segmentation','rowIndex': 17, 'columnIndex': 'E'}
+                    sheetName = value.get('sheet', None)
+                    if sheetName is not None:
+                        st = wb[sheetName]
+                        if st is None:
+                            raise IkValidateException('Sheet [%s] does not exist. Plesae check.' % sheetName)
+                    data = value.get('data', None)
+                    columnIndex = value.get('columnIndex', DATA_START_COLUMN_INDEX)
+                    if columnIndex is not None and type(columnIndex) == str:
+                        columnIndex = columnName2Index(columnIndex)
+                    rowIndex = value.get('rowIndex', None)
+                if st is None:
+                    raise IkValidateException('Parameter name [%s] does not exist. Plesae check.' % name)
 
-            if self.__isSingleValue(st, name, data):
-                self.__writeSingleValue(st, name, data, columnIndex=columnIndex, rowIndex=rowIndex)
-            else:
-                self.__writeTableValue(st, name, data, columnIndex=columnIndex, rowIndex=rowIndex)
+                if self.__isSingleValue(st, name, data):
+                    self.__writeSingleValue(st, name, data, columnIndex=columnIndex, rowIndex=rowIndex)
+                else:
+                    self.__writeTableValue(st, name, data, columnIndex=columnIndex, rowIndex=rowIndex)
 
     def __isSingleValue(self, st, name, value) -> bool:
         return type(value) != list  # None can be single value or table value

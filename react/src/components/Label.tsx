@@ -1,11 +1,14 @@
 import React, { forwardRef, Ref } from "react"
 import { formatData } from "./tableFg/reducer"
+import * as simpleFg from "./SimpleFg"
+import classnames from "classnames"
 
 interface ILabel {
   ref: any
   labelLabel: string
   labelValue: any
   name: string
+  style?: any
   tip?: string
   widgetParameter?: any
 }
@@ -81,10 +84,12 @@ const Label: React.FC<ILabel> = forwardRef((props, ref: Ref<any>) => {
     }
   }, [props])
 
+  const { cellStyle, cellClass } = simpleFg.formatCss(props.style);
+
   return (
     <>
       <th className="property_key">{props.labelLabel}</th>
-      <td className="property_value tip_center">
+      <td className={classnames(cellClass, "property_value", "tip_center")}>
         <input ref={ref} type="hidden" name={props.name} id={props.name} value={value}></input>
         {display ? display : value}
         {tooltip ? <span className="tip">{tooltip}</span> : null}

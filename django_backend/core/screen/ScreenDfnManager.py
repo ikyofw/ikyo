@@ -4,8 +4,10 @@ version:
 Author: YL
 Date: 2023-04-19 11:49:27
 '''
-import logging
 import sys
+import time
+import os
+from pathlib import Path
 
 from django.apps import apps
 from django.db.models.fields.related import ForeignKey
@@ -16,13 +18,12 @@ import core.ui.uidb as ikuidb
 import core.utils.modelUtils as modelUtils
 import core.utils.spreadsheet as ikSpreadsheet
 import core.utils.strUtils as strUtils
+from core.log.logger import logger
 from core.core.exception import IkException
 from core.core.lang import Boolean2
 from core.db.transaction import IkTransaction
 from core.models import *
 from core.utils.langUtils import isNotNullBlank, isNullBlank
-
-logger = logging.getLogger('ikyo')
 
 
 NO_PARAMETERS_WIDGET = [ikui.SCREEN_FIELD_WIDGET_PLUGIN, ikui.SCREEN_FIELD_WIDGET_HTML, ikui.SCREEN_FIELD_WIDGET_PASSWORD]
@@ -44,6 +45,7 @@ PARAMETERS_NOT_REQUIRED_FOR_WIDGET = {
 def saveScreen(self, screenSn, isNew, currentBtnClick) -> Boolean2:
     try:
         screenDtlFg = self.getRequestData().get("screenDtlFg", None)
+        screenDtlFg: Screen
         if screenDtlFg:
             sn = strUtils.stripStr(screenDtlFg.screen_sn)
             if strUtils.isEmpty(sn):
@@ -57,13 +59,19 @@ def saveScreen(self, screenSn, isNew, currentBtnClick) -> Boolean2:
             if strUtils.isEmpty(layoutType):
                 return Boolean2(False, "Screen Layout Type is mandatory, please check.")
 
+            appNm = strUtils.stripStr(screenDtlFg.app_nm)
+            if strUtils.isEmpty(appNm):
+                return Boolean2(False, "Screen App Name is mandatory, please check.")
+
             classNm = strUtils.stripStr(screenDtlFg.class_nm)
-            if strUtils.isEmpty(classNm):
-                return Boolean2(False, "Screen Class Name is mandatory, please check.")
-            try:
-                viewClass = modelUtils.getModelClass(classNm)
-            except Exception as e:
-                return Boolean2(False, "The format of Screen Class Name is error: %s" % e)
+            if isNotNullBlank(classNm) and appNm not in classNm:
+                return Boolean2(False, "Screen Class Name must contain App Name, please check.")
+            if isNotNullBlank(classNm) and sn not in classNm:
+                return Boolean2(False, "Screen Class Name must contain Screen SN, please check.")
+
+            b = __is_model_class_exists(appNm, sn, classNm)
+            if not b.value:
+                return b
 
             # validate screen SN
             validateRcs = Screen.objects.all().values('screen_sn').distinct()
@@ -103,6 +111,10 @@ def deleteScreen(self, screenSn) -> Boolean2:
             screenFgLinkRcs = []
             screenFgHeaderFooterRcs = []
             for screenRc in screenRcs:
+                b = __is_excel_open(screenRc)
+                if b.value:
+                    return b
+
                 screenRc.ik_set_status_delete()
                 dfnRcs = ScreenDfn.objects.filter(screen=screenRc)
                 for i in dfnRcs:
@@ -165,6 +177,10 @@ def deleteLastScreen(self, screenSn) -> Boolean2:
         screenDtlFg = self.getRequestData().get("screenDtlFg", None)
         if screenDtlFg:
             screenRc = Screen.objects.filter(screen_sn__iexact=screenSn).order_by("-rev").first()
+            b = __is_excel_open(screenRc)
+            if b.value:
+                return b
+
             screenFileRcs = []
             screenRecordsetRcs = []
             screenFieldGroupRcs = []
@@ -233,10 +249,17 @@ def copyScreen(self, userID, screenSn, newScreenSn) -> Boolean2:
     try:
         screenRc = Screen.objects.filter(screen_sn__iexact=screenSn).order_by("-rev").first()
         screenRc.screen_sn = newScreenSn
-        __isValidClassNm(screenRc.class_nm, screenRc.screen_sn)
+        b = __is_excel_open(screenRc)
+        if b.value:
+            return b
+        b = __is_model_class_exists(screenRc.app_nm, screenRc.screen_sn, screenRc.class_nm)
+        if not b.value:
+            return b
+
         b = ikuidb.screenDbWriteToExcel(screenRc)
         if not b.value:
             return b
+        time.sleep(2)
 
         sp = ikSpreadsheet.SpreadsheetParser(b.data)
         ikuidb._updateDatabaseWithExcelFiles(ikui.ScreenDefinition(name='', fullName='', filePath=b.data, definition=sp.data), userID)
@@ -262,6 +285,9 @@ def resetRev(userID, screenSn, newRev) -> Boolean2:
     if lastScreenRc.rev > newRev:
         screenRcs = Screen.objects.filter(screen_sn__iexact=screenSn, rev__gte=newRev)
         for screenRc in screenRcs:
+            b = __is_excel_open(screenRc)
+            if b.value:
+                return b
             if screenRc.id != lastScreenRc.id:
                 screenRc.ik_set_status_delete()
                 fileRcs = ScreenFile.objects.filter(screen=screenRc)
@@ -805,9 +831,14 @@ def __createNewRevScreen(self,
 
         # ===== 1. new Screen
         if screenRc:
-            __isValidClassNm(screenRc.class_nm, screenRc.screen_sn)
+            b = __is_excel_open(screenRc)
+            if b.value:
+                return b
+            b = __is_model_class_exists(screenRc.app_nm, screenRc.screen_sn, screenRc.class_nm)
+            if not b.value:
+                return b
             if lastRevScreenRc:
-                if screenRc.class_nm != lastRevScreenRc.class_nm:
+                if screenRc.app_nm != lastRevScreenRc.app_nm:
                     lastScreenFileRc = ScreenFile.objects.filter(screen=lastRevScreenRc).order_by('-file_dt').first()
                     if isNotNullBlank(lastScreenFileRc):
                         ikuidb._deleteExcelAndCSV(lastScreenFileRc)
@@ -1026,7 +1057,8 @@ def __createNewRevScreen(self,
             currentFgHeaderFooterId = self.getSessionParameterInt("currentFgHeaderFooterID")
             newCurrentFgHeaderFooterId = None
             for rc in lastRevFgHeaderFooterRcs:
-                if rc.id == currentFgHeaderFooterId and isDeleteFgHeaderFooter or rc.field_group_id == currentFgId and isDeleteFieldGroup:  # delete  Delete the rows related to header footer table when deleting field group.
+                # delete  Delete the rows related to header footer table when deleting field group.
+                if rc.id == currentFgHeaderFooterId and isDeleteFgHeaderFooter or rc.field_group_id == currentFgId and isDeleteFieldGroup:
                     continue
                 if not strUtils.isEmpty(currentFgHeaderFooterId
                                         ) and fgHeaderFooterRc and rc.id == currentFgHeaderFooterId and not isDeleteFgHeaderFooter:  # modify current header footer table info
@@ -1076,11 +1108,13 @@ def __createNewRevScreen(self,
         if b.value:
             # XH 2023-05-08 START
             lastRevScreenRc = Screen.objects.filter(screen_sn__iexact=screenSn).order_by("-rev").first()
-            __isValidClassNm(lastRevScreenRc.class_nm, lastRevScreenRc.screen_sn)
-            c = ikuidb.screenDbWriteToExcel(lastRevScreenRc, "Saved on Screen Definition")
+            c = __is_model_class_exists(lastRevScreenRc.app_nm, lastRevScreenRc.screen_sn, lastRevScreenRc.class_nm)
             if not c.value:
-                logger.error("Screen [%s] excel file generation failed. Please check the database or the template file used for generating the Excel." % screenSn)
                 return c
+            d = ikuidb.screenDbWriteToExcel(lastRevScreenRc, "Saved on Screen Definition")
+            if not d.value:
+                logger.error("Screen [%s] excel file generation failed. Please check the database or the template file used for generating the Excel." % screenSn)
+                return d
             else:
                 # Saving new page definitions in the cache
                 screenDefinition = ikui.IkUI._getScreenDefinitionFromDB(screenRc.screen_sn)
@@ -1091,7 +1125,7 @@ def __createNewRevScreen(self,
                 self.setSessionParameters({"screenSN": screenSn})
 
                 from core.urls import apiScreenUrl, urlpatterns
-                viewClass = modelUtils.getModelClass(screenRc.class_nm)
+                viewClass = modelUtils.get_model_class_2(screenRc.app_nm, screenRc.screen_sn, screenRc.class_nm)
                 url = apiScreenUrl(viewClass, None if isNullBlank(screenRc.api_url) else screenRc.api_url.lower())
                 urlpatterns.append(url)
             return Boolean2(True, 'Saved.')
@@ -1132,8 +1166,27 @@ def getFieldDBKeys(screenRc, field_group):
 # XH 2023-04-24 END
 
 
-def __isValidClassNm(classNm, menuNm):
+def __is_model_class_exists(app_mm, screen_sn, class_nm):
+    if not modelUtils.is_model_class_exists(app_mm, screen_sn, class_nm):
+        module_name_1 = "%s.views.%s" % (app_mm, screen_sn)
+        module_name_2 = "%s.views.%s.%s" % (app_mm, screen_sn.lower(), screen_sn)
+        error = "Failed to import module for [%s]. Please check the following paths: [%s] or [%s]" % (screen_sn, module_name_1, module_name_2)
+        if isNotNullBlank(class_nm):
+            error += "  or [%s]." % class_nm
+        else:
+            error += "."
+        return Boolean2(False, error)
+    return Boolean2(True)
+
+
+def __is_excel_open(screenRc: Screen) -> Boolean2:
+    filename = '%s.xlsx' % screenRc.screen_sn
+    file_path = Path(os.path.join(screenRc.app_nm, ikui.SCREEN_RESOURCE_FOLDER_PATH, filename))
+
+    if not os.path.exists(file_path):
+        return Boolean2(False)
     try:
-        modelUtils.getModelClass(classNm)  # test the class exists or not
-    except Exception as e:
-        raise Exception("The format of Class Name in [%s] is error: %s" % (menuNm, e))
+        with open(file_path, 'r+'):
+            return Boolean2(False)
+    except IOError:
+        return Boolean2(True, "File [%s] is already open. Please close it and try again." % filename)

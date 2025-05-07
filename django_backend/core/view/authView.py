@@ -101,8 +101,11 @@ class AuthAPIView(APIView):
                 data[dataSetName] = screenData
                 data[self.__getSessionParameterTimestampName(dataSetName)] = datetime.now().timestamp()
             elif isDelete:
-                del data[self.__getSessionParameterTimestampName(dataSetName)]
-                del data[dataSetName]
+                timestampName = self.__getSessionParameterTimestampName(dataSetName)
+                if timestampName in data.keys():
+                    del data[self.__getSessionParameterTimestampName(dataSetName)]
+                if dataSetName in data.keys():
+                    del data[dataSetName]
             data = screenData
         return data
 

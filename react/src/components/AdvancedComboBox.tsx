@@ -1,13 +1,7 @@
-/*
- * @Description:
- * @version:
- * @Author: XH
- * @Date: 2023-08-09 10:42:59
- */
-
-import transform, { StyleTuple } from "css-to-react-native"
+import transform from "css-to-react-native"
 import React, { useImperativeHandle, Ref, forwardRef, useEffect, useState } from "react"
 import classnames from "classnames"
+import * as simpleFg from "./SimpleFg"
 import { useHttp } from "../utils/http"
 import pyiLocalStorage from "../utils/pyiLocalStorage"
 import { MultiSelect } from "react-multi-select-component"
@@ -28,7 +22,7 @@ const AdvancedComboBox: React.FC<IAdvancedComboBox> = forwardRef((props, ref: Re
 
   const [selectValues, setSelectValues] = useState([])
   const [valueAndDisplay, setValueAndDisplay] = useState([])
-  const [tooltip, setTooltip] = React.useState("String")
+  const [tooltip, setTooltip] = React.useState("")
 
   useImperativeHandle(ref, () => ({
     getSelected: () => {
@@ -38,8 +32,8 @@ const AdvancedComboBox: React.FC<IAdvancedComboBox> = forwardRef((props, ref: Re
 
   useEffect(() => {
     if (props.value) {
-      const selectedValues = props.value.split(",").map(s => s.trim())
-      const selectedOptions = valueAndDisplay.filter(option => selectedValues.includes(String(option.value)));
+      const selectedValues = props.value.split(",").map((s) => s.trim())
+      const selectedOptions = valueAndDisplay.filter((option) => selectedValues.includes(String(option.value)))
       setSelectValues(selectedOptions)
     } else {
       setSelectValues([])
@@ -57,7 +51,7 @@ const AdvancedComboBox: React.FC<IAdvancedComboBox> = forwardRef((props, ref: Re
         setTooltip(props.tip)
       }
     }
-  }, [props.value, props.tip])
+  }, [props])
 
   const data = props.widgetParameter.data
   useEffect(() => {
@@ -107,24 +101,13 @@ const AdvancedComboBox: React.FC<IAdvancedComboBox> = forwardRef((props, ref: Re
     }
   }, [props.widgetParameter, data])
 
-  let cellStyle: StyleTuple[] = []
-  let cellClass = []
-  if (props.style) {
-    const properties = Object.keys(props.style)
-    properties.forEach((property) => {
-      if (property.toLocaleLowerCase() === 'class') {
-        cellClass = props.style[property].split(',').map(str => str.trim());
-      } else {
-        cellStyle.push([property, props.style[property]])
-      }
-    })          
-  }  
+  const { cellStyle, cellClass } = simpleFg.formatCss(props.style)
 
   const IAdvancedComboBoxNode = React.useMemo(
     () => (
       <>
         <th className="property_key">{props.advancedComboBoxLabel}</th>
-        <td className={classnames(cellClass, 'property_value', 'tip_center')}>
+        <td className={classnames(cellClass, "tip_center")}>
           <MultiSelect
             options={valueAndDisplay}
             value={selectValues}
@@ -142,16 +125,30 @@ const AdvancedComboBox: React.FC<IAdvancedComboBox> = forwardRef((props, ref: Re
 
   useEffect(() => {
     function adjustSvgSize(selector) {
-      const svgElement = document.querySelector(selector)
-      if (svgElement) {
+      const svgElements = document.querySelectorAll(selector)
+      svgElements.forEach((svgElement) => {
         svgElement.setAttribute("viewBox", "0 0 24 24")
         svgElement.setAttribute("width", "18")
         svgElement.setAttribute("height", "18")
-      }
+      })
     }
 
     const selectors = [".dropdown-search-clear-icon", ".dropdown-heading-dropdown-arrow"]
     selectors.forEach((selector) => adjustSvgSize(selector))
+
+    const dropdownContainers = document.querySelectorAll(".advanced_select .dropdown-container") as any
+    dropdownContainers.forEach((dropdownContainer) => {
+      cellStyle.forEach((style) => {
+        let value = style[1]
+        if (style[0].toLocaleLowerCase() === "width" && !value.endsWith("%")) {
+          // If the property is "width" and the unit is not a percentage, it will be processed in the original: width + 3
+          const currentValue = parseFloat(value)
+          const unit = value.replace(String(currentValue), "").trim()
+          value = currentValue + 4 + unit
+        }
+        dropdownContainer.style.setProperty(style[0], value)
+      })
+    })
   }, [IAdvancedComboBoxNode])
 
   return <>{IAdvancedComboBoxNode}</>

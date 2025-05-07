@@ -43,34 +43,39 @@ const Login = () => {
 
   const login = async () => {
     Loading.show()
-    // RSA encryption
-    let _u = userName
-    let _p = userPwd
-    if (publicKey && publicKey != "") {
-      _u = "" + encrypt(userName)
-      _p = "" + encrypt(userPwd)
-    }
-    let formData = new FormData()
-    formData.append("username", _u)
-    formData.append("password", _p)
-    await HttpPostNoHeader("/api/auth", formData)
-      .then((response) => response.json())
-      .then((result) => {
-        if (Number(result.code) === 100001) {
-          pyiLocalStorage.clearStore()
-          window.location.href = "/login"
-          sysUtil.showMessage(result.messages)
-        } else if (result.code === 1) {
-          pyiLocalStorage.setCurrentUser(userName)
-          pyiLocalStorage.setToken(result.data.token)
-          window.location.href = lastSelectedMenu ? lastSelectedMenu : "/home"
-        } else if (result.code === 0) {
-          if (result.messages && result.messages.length > 0) {
-            setErrorMessage(result.messages[0]?.message)
+    try {
+      // RSA encryption
+      let _u = userName
+      let _p = userPwd
+      if (publicKey && publicKey != "") {
+        _u = "" + encrypt(userName)
+        _p = "" + encrypt(userPwd)
+      }
+      let formData = new FormData()
+      formData.append("username", _u)
+      formData.append("password", _p)
+      await HttpPostNoHeader("/api/auth", formData)
+        .then((response) => response.json())
+        .then((result) => {
+          if (Number(result.code) === 100001) {
+            pyiLocalStorage.clearStore()
+            window.location.href = "/login"
+            sysUtil.showMessage(result.messages)
+          } else if (result.code === 1) {
+            pyiLocalStorage.setCurrentUser(userName)
+            pyiLocalStorage.setToken(result.data.token)
+            window.location.href = lastSelectedMenu ? lastSelectedMenu : "/home"
+          } else if (result.code === 0) {
+            if (result.messages && result.messages.length > 0) {
+              setErrorMessage(result.messages[0]?.message)
+            }
           }
-        }
-      })
-    Loading.remove()
+        })
+    } catch (error) {
+      console.error("Login error:", error)
+    } finally {
+      Loading.remove()
+    }
   }
 
   const encrypt = (text) => {

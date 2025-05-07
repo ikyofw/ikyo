@@ -58,30 +58,48 @@ def getRelativeVarTempFolder(subPath=None) -> Path:
     return getRelativeVarFolder(s)
 
 
-def getVarTempProjectFolder(projectNo, function, subPath=None) -> Path:
+def getVarTempProjectFolder(projectNo, function, subPath=None, addTimestampPath: bool = True) -> Path:
     subFolder = None
     if subPath is None:
-        subFolder = os.path.join('projects', projectNo, function, toPath_Y_m_d_HMSf())
+        if addTimestampPath:
+            subFolder = os.path.join('projects', projectNo, function, toPath_Y_m_d_HMSf())
+        else:
+            subFolder = os.path.join('projects', projectNo, function)
     else:
-        subFolder = os.path.join('projects', projectNo, function, subPath, toPath_Y_m_d_HMSf())
+        if addTimestampPath:
+            subFolder = os.path.join('projects', projectNo, function, subPath, toPath_Y_m_d_HMSf())
+        else:
+            subFolder = os.path.join('projects', projectNo, function, subPath)
     return getVarTempFolder(subFolder)
 
 
-def getVarProjectFolder(projectNo, function, subPath=None) -> Path:
+def getVarProjectFolder(projectNo, function, subPath=None, addTimestampPath: bool = True) -> Path:
     subFolder = None
     if subPath is None:
-        subFolder = os.path.join('projects', projectNo, function, toPath_Y_m_d_HMSf())
+        if addTimestampPath:
+            subFolder = os.path.join('projects', projectNo, function, toPath_Y_m_d_HMSf())
+        else:
+            subFolder = os.path.join('projects', projectNo, function)
     else:
-        subFolder = os.path.join('projects', projectNo, function, subPath, toPath_Y_m_d_HMSf())
+        if addTimestampPath:
+            subFolder = os.path.join('projects', projectNo, function, subPath, toPath_Y_m_d_HMSf())
+        else:
+            subFolder = os.path.join('projects', projectNo, function, subPath)
     return getVarFolder(subFolder)
 
 
-def getVarFunctionFolder(function, subPath=None) -> Path:
+def getVarFunctionFolder(function, subPath=None, addTimestampPath: bool = True) -> Path:
     subFolder = None
     if subPath is None:
-        subFolder = os.path.join('fns', function, toPath_Y_m_d_HMSf())
+        if addTimestampPath:
+            subFolder = os.path.join('fns', function, toPath_Y_m_d_HMSf())
+        else:
+            subFolder = os.path.join('fns', function)
     else:
-        subFolder = os.path.join('fns', function, subPath, toPath_Y_m_d_HMSf())
+        if addTimestampPath:
+            subFolder = os.path.join('fns', function, subPath, toPath_Y_m_d_HMSf())
+        else:
+            subFolder = os.path.join('fns', function, subPath)
     return getVarFolder(subFolder)
 
 
@@ -182,7 +200,7 @@ def getLastRevisionFile(folder, filename) -> str:
     # check revision file
     if Path(os.path.join(folder, filename)).is_file():
         return Path(os.path.join(folder, filename))
-    return None  # file is not found
+    return None  # file not found
 
 
 def number2Path(number) -> str:
@@ -306,8 +324,8 @@ def zip(sourceFileList, outputFilePath) -> Boolean2:
         return Boolean2(False, e.args[0])
 
 
-def getFileStorageVarFolder(path) -> str:
-    return getFileStorageFolder(VAR_FOLDER_NAME + "/" + path, None)
+def getFileStorageVarFolder(app_nm: str) -> str:
+    return getFileStorageFolder(app_nm + "/resources", None)
 
 
 def getFileStorageFolder(path, defaultPath) -> str:

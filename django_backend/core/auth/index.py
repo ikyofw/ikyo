@@ -3,6 +3,9 @@ import logging
 import time
 import traceback
 
+from django.http import QueryDict
+from django.contrib.auth.hashers import check_password
+
 import core.utils.strUtils as strUtils
 from core.core.code import IkCode
 from core.core.exception import IkException
@@ -10,10 +13,10 @@ from core.core.http import IkErrJsonResponse, IkSccJsonResponse, IkSysErrJsonRes
 from core.core.lang import Boolean2
 from core.utils.encrypt import decryptData, generateRsaKeys, getPublicKey
 from core.utils.langUtils import isNullBlank
-from django.http import QueryDict
 from rest_framework import exceptions
 from rest_framework.authentication import BaseAuthentication
 from rest_framework.views import APIView
+from iktools import IkConfig
 
 from core.models import User, UsrToken
 
@@ -144,12 +147,24 @@ class AuthView(APIView):
             # YL.ikyo, 2022-10-21 - end
 
             try:
-                pswMd5 = hashlib.md5(password.encode("utf8")).hexdigest()
-                usrRc = User.objects.filter(usr_nm=username, psw=pswMd5).first()
+                usrRc = User.objects.filter(usr_nm=username).first()
                 if usrRc is None:
-                    return Boolean2(False, 'User or password is incorrect.').toIkJsonResponse1()
-                if usrRc.enable != 'Y':
+                    return Boolean2(False, 'User is not found.').toIkJsonResponse1()
+                if not usrRc.active:
                     return Boolean2(False, 'This user has been disabled.').toIkJsonResponse1()
+                
+                password_matches = False
+                password_encryption_method = IkConfig.getSystem('password_encryption_method').lower()
+                if password_encryption_method == 'md5':
+                    encrypted_password = hashlib.md5(password.encode("utf8")).hexdigest()
+                    password_matches = encrypted_password == usrRc.psw
+                elif password_encryption_method == 'pbkdf2':
+                    password_matches = check_password(password, usrRc.psw)
+                else:
+                    password_matches = check_password(password, usrRc.psw)  # The default encryption method is PBKDF2.
+                if not password_matches:
+                    return Boolean2(False, 'Password is incorrect.').toIkJsonResponse1()
+                
                 tokenStr = md5(usrRc) if sessionID is None else sessionID
                 # check the token is in use or not
                 oldRc = UsrToken.objects.filter(token=tokenStr).first()

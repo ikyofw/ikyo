@@ -1,5 +1,6 @@
-import transform, {StyleTuple} from "css-to-react-native"
+import transform, { StyleTuple } from "css-to-react-native"
 import React, { forwardRef, Ref } from "react"
+import * as simpleFg from "./SimpleFg"
 import classnames from "classnames"
 
 interface ITextbox {
@@ -36,21 +37,13 @@ const TextBox: React.FC<ITextbox> = forwardRef((props, ref: Ref<any>) => {
     }
   }, [props, props.textBoxValue])
 
-  let cellStyle: StyleTuple[] = [
+  let { cellStyle, cellClass } = simpleFg.formatCss(props.style)
+  const additionalStyles: StyleTuple[] = [
     ["overflow", "auto"],
     ["resize", "vertical"],
   ]
-  let cellClass = []
-  if (props.style) {
-    const properties = Object.keys(props.style)
-    properties.forEach((property) => {
-      if (property.toLocaleLowerCase() === "class") {
-        cellClass = props.style[property].split(",").map((str) => str.trim())
-      } else {
-        cellStyle.push([property, props.style[property]])
-      }
-    })
-  }
+  cellStyle = [...additionalStyles, ...cellStyle]
+
   const placeholder = props.widgetParameter.placeholder
 
   return (

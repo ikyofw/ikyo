@@ -1,7 +1,13 @@
-from django.db import models
+from datetime import datetime
 
-from core.db.model import IDModel
-from core.db.model import addModelHistoryFilter
+from core.db.model import IDModel, addModelHistoryFilter
+from django.conf import settings
+from django.db import models
+from django.db.models.signals import pre_save
+from django.dispatch import receiver
+from django.utils import timezone
+
+TABLE_NAME_PREFIX = 'ik_'
 
 
 class Menu(IDModel):
@@ -18,8 +24,7 @@ class Menu(IDModel):
     dsc = models.TextField(null=True, blank=True, verbose_name='Description')
 
     class Meta:
-        managed = True
-        db_table = 'ik_menu'
+        db_table = '%smenu' % TABLE_NAME_PREFIX
         verbose_name = 'Menu'
 
 
@@ -29,16 +34,47 @@ class User(IDModel):
     other_nm = models.CharField(max_length=50, blank=True, null=True, verbose_name='User Other Name')
     psw = models.CharField(max_length=255, verbose_name='User Password')
     email = models.CharField(max_length=255, blank=True, null=True, verbose_name='User Email')
-    enable = models.CharField(max_length=1, verbose_name='User Enable')
+    active = models.BooleanField(default=True, verbose_name='User Active')
     rmk = models.CharField(max_length=255, blank=True, null=True, verbose_name='User Remark')
 
     class Meta:
-        managed = True
-        db_table = 'ik_usr'
+        db_table = '%susr' % TABLE_NAME_PREFIX
         verbose_name = 'User'
 
     def __str__(self):
         return str(self.id) + '=' + self.usr_nm
+
+
+class TimestampMixin(models.Model):
+    DB_COLUMN_CREATE_USER_ID = 'cre_usr_id'
+    DB_COLUMN_CREATE_DATE = 'cre_dt'
+    DB_COLUMN_MODIFY_USER_ID = 'mod_usr_id'
+    DB_COLUMN_MODIFY_DATE = 'mod_dt'
+
+    cre_usr = models.ForeignKey(User, models.DO_NOTHING, db_column=DB_COLUMN_CREATE_USER_ID, related_name='+', blank=True, null=True, verbose_name='Create user')
+    cre_dt = models.DateTimeField(auto_now_add=True, db_column=DB_COLUMN_CREATE_DATE, blank=True, null=True, verbose_name='Create Date')
+    mod_usr = models.ForeignKey(User, models.DO_NOTHING, db_column=DB_COLUMN_MODIFY_USER_ID, related_name='+', blank=True, null=True, verbose_name='Update user')
+    mod_dt = models.DateTimeField(auto_now=True, db_column=DB_COLUMN_MODIFY_DATE, blank=True, null=True, verbose_name='Update Date')
+
+    class Meta:
+        abstract = True
+
+
+@receiver(pre_save)
+def updateModelTimestamps(sender, instance, **kwargs):
+    if issubclass(sender, TimestampMixin):
+        from core.core.requestMiddleware import getCurrentUser
+        userRc = getCurrentUser()
+        instance.mod_dt = timezone.now() if settings.USE_TZ else datetime.now()
+        instance.mod_usr = userRc
+        if instance._state.adding:
+            instance.cre_dt = timezone.now() if settings.USE_TZ else datetime.now()
+            instance.cre_usr = userRc
+
+
+class IdDateModel(IDModel, TimestampMixin):
+    class Meta:
+        abstract = True
 
 
 class Group(IDModel):
@@ -46,7 +82,7 @@ class Group(IDModel):
     rmk = models.TextField(blank=True, null=True, verbose_name='Remarks')
 
     class Meta:
-        db_table = 'ik_grp'
+        db_table = '%sgrp' % TABLE_NAME_PREFIX
         verbose_name = 'Group'
 
 
@@ -56,7 +92,7 @@ class UserGroup(IDModel):
     rmk = models.TextField(blank=True, null=True, verbose_name='Remarks')
 
     class Meta:
-        db_table = 'ik_usr_grp'
+        db_table = '%susr_grp' % TABLE_NAME_PREFIX
         unique_together = (('usr', 'grp'), )
         verbose_name = 'User Group'
 
@@ -64,21 +100,22 @@ class UserGroup(IDModel):
 class GroupMenu(IDModel):
     grp = models.ForeignKey(Group, models.CASCADE, verbose_name='Group')
     menu = models.ForeignKey(Menu, models.CASCADE, verbose_name='Menu')
-    acl = models.CharField(max_length=1, default='D', verbose_name='Access Rights')
+    acl = models.CharField(max_length=1, default='D',
+                           verbose_name='Access Rights')
 
     class Meta:
-        db_table = 'ik_grp_menu'
+        db_table = '%sgrp_menu' % TABLE_NAME_PREFIX
         unique_together = (('grp', 'menu'), )
         verbose_name = 'Group Menu'
 
 
 class UsrToken(IDModel):
     usr = models.ForeignKey(User, models.CASCADE, verbose_name='Iky User')
-    token = models.CharField(unique=True, max_length=32, verbose_name='Token Str')
+    token = models.CharField(unique=True, max_length=32,
+                             verbose_name='Token Str')
 
     class Meta:
-        managed = True
-        db_table = 'ik_usr_token'
+        db_table = '%susr_token' % TABLE_NAME_PREFIX
         verbose_name = 'User Token Information'
 
 
@@ -88,8 +125,7 @@ class UsrSessionPrm(IDModel):
     value = models.TextField(blank=True, null=True, verbose_name='Value')
 
     class Meta:
-        managed = True
-        db_table = 'ik_usr_session_prm'
+        db_table = '%susr_session_prm' % TABLE_NAME_PREFIX
         unique_together = (('token_id', 'key'), )
         verbose_name = 'User Session Information'
 
@@ -105,8 +141,7 @@ class AccessLog(IDModel):
     rmk = models.CharField(max_length=255, blank=True, null=True, verbose_name='Remarks')
 
     class Meta:
-        managed = True
-        db_table = 'ik_access_log'
+        db_table = '%saccess_log' % TABLE_NAME_PREFIX
         verbose_name = 'System Access Log'
 
 
@@ -117,8 +152,7 @@ class Setting(IDModel):
     rmk = models.TextField(blank=True, null=True, verbose_name='Remarks')
 
     class Meta:
-        managed = True
-        db_table = 'ik_setting'
+        db_table = '%ssetting' % TABLE_NAME_PREFIX
         unique_together = (('cd', 'key'), )
         verbose_name = 'System Setting'
 
@@ -128,8 +162,7 @@ class ScreenFgType(IDModel):
     rmk = models.CharField(max_length=255, blank=True, null=True, verbose_name='Remark')
 
     class Meta:
-        managed = True
-        db_table = 'ik_screen_fg_type'
+        db_table = '%sscreen_fg_type' % TABLE_NAME_PREFIX
         verbose_name = 'Field Group Type'
 
 
@@ -138,8 +171,7 @@ class ScreenFieldWidget(IDModel):
     rmk = models.CharField(max_length=255, blank=True, null=True, verbose_name='Remark')
 
     class Meta:
-        managed = True
-        db_table = 'ik_screen_field_widget'
+        db_table = '%sscreen_field_widget' % TABLE_NAME_PREFIX
         verbose_name = 'Field Widget'
 
 
@@ -149,18 +181,19 @@ class Screen(IDModel):
     screen_dsc = models.TextField(verbose_name='Screen Description')
     layout_type = models.SmallIntegerField(choices=[(1, 'grid')], default=1, verbose_name='Layout Type')
     layout_params = models.CharField(max_length=255, blank=True, null=True, verbose_name='Layout Parameters')
-    class_nm = models.CharField(max_length=255, verbose_name='Class Name')
+    app_nm = models.CharField(max_length=30, verbose_name='App Name')
+    class_nm = models.CharField(max_length=255, blank=True, null=True, verbose_name='Class Name')
     api_url = models.CharField(max_length=255, blank=True, null=True, verbose_name='API URL')
     editable = models.BooleanField(default=True, verbose_name='Editable')
     auto_refresh_interval = models.IntegerField(blank=True, null=True, verbose_name='Auto Refresh Interval')
     auto_refresh_action = models.CharField(max_length=255, blank=True, null=True, verbose_name='Auto Refresh Action')
-    api_version = models.SmallIntegerField(default=0, verbose_name='Api Version')
+    template_version = models.SmallIntegerField(default=0, verbose_name='Template File Version')
     rev = models.IntegerField(default=0, verbose_name='Revision')
+    spreadsheet_rev = models.BigIntegerField(blank=True, null=True, verbose_name='Spreadsheet Revision')
     rmk = models.CharField(max_length=255, blank=True, null=True, verbose_name='Remark')
 
     class Meta:
-        managed = True
-        db_table = 'ik_screen'
+        db_table = '%sscreen' % TABLE_NAME_PREFIX
         unique_together = (('screen_sn', 'rev'), )
         verbose_name = 'Page Screen'
 
@@ -177,8 +210,7 @@ class ScreenRecordset(IDModel):
     rmk = models.CharField(max_length=255, blank=True, null=True, verbose_name='Remark')
 
     class Meta:
-        managed = True
-        db_table = 'ik_screen_recordset'
+        db_table = '%sscreen_recordset' % TABLE_NAME_PREFIX
         unique_together = (('screen_id', 'recordset_nm'), )
         verbose_name = 'Screen Recordset'
 
@@ -194,12 +226,10 @@ class ScreenFieldGroup(IDModel):
     editable = models.BooleanField(default=False, verbose_name='Editable')
     insertable = models.BooleanField(default=False, verbose_name='Insertable')
     highlight_row = models.BooleanField(default=False, verbose_name='Highlight Select Row')
-    selection_mode = models.CharField(max_length=50, choices=[('single', 'Single'),
-                                      ('multiple', 'Multiple')], blank=True, null=True, verbose_name='Selection Mode')
+    selection_mode = models.CharField(max_length=50, choices=[('single', 'Single'), ('multiple', 'Multiple')], blank=True, null=True, verbose_name='Selection Mode')
     cols = models.IntegerField(blank=True, null=True, verbose_name='Columns')
     # sort_new_rows = models.BooleanField(blank=True, null=True, verbose_name='Whether to Sort New Rows')
-    data_page_type = models.CharField(max_length=50, choices=[('client', 'Client'),
-                                      ('server', 'Server')], blank=True, null=True, verbose_name='Data Page Type')
+    data_page_type = models.CharField(max_length=50, choices=[('client', 'Client'), ('server', 'Server')], blank=True, null=True, verbose_name='Data Page Type')
     data_page_size = models.IntegerField(blank=True, null=True, verbose_name='Data Page Size')
     outer_layout_params = models.TextField(blank=True, null=True, verbose_name="Outer Layout Parameters")
     inner_layout_type = models.TextField(blank=True, null=True, verbose_name="Inner Layout Type")
@@ -209,8 +239,7 @@ class ScreenFieldGroup(IDModel):
     rmk = models.CharField(max_length=255, blank=True, null=True, verbose_name='Remark')
 
     class Meta:
-        managed = True
-        db_table = 'ik_screen_field_group'
+        db_table = '%sscreen_field_group' % TABLE_NAME_PREFIX
         unique_together = (('screen', 'fg_nm'), )
         verbose_name = 'Screen Field Groups'
 
@@ -234,24 +263,20 @@ class ScreenField(IDModel):
     rmk = models.CharField(max_length=255, blank=True, null=True, verbose_name='Remark')
 
     class Meta:
-        managed = True
-        db_table = 'ik_screen_field'
+        db_table = '%sscreen_field' % TABLE_NAME_PREFIX
         verbose_name = 'Screen Field Groups Fields'
 
 
 class ScreenFgLink(IDModel):
     screen = models.ForeignKey(Screen, models.CASCADE, verbose_name="Screen")
-    field_group = models.ForeignKey(ScreenFieldGroup, models.CASCADE, blank=True, null=True,
-                                    verbose_name='Field Group', related_name='field_group')
+    field_group = models.ForeignKey(ScreenFieldGroup, models.CASCADE, blank=True, null=True, verbose_name='Field Group', related_name='field_group')
     local_key = models.CharField(max_length=50, blank=True, null=True, verbose_name='Local Key')
-    parent_field_group = models.ForeignKey(ScreenFieldGroup, models.CASCADE, blank=True, null=True,
-                                           verbose_name='Parent Field Group', related_name='parent_field_group')
+    parent_field_group = models.ForeignKey(ScreenFieldGroup, models.CASCADE, blank=True, null=True, verbose_name='Parent Field Group', related_name='parent_field_group')
     parent_key = models.CharField(max_length=50, blank=True, null=True, verbose_name='Parent Key')
     rmk = models.CharField(max_length=255, blank=True, null=True, verbose_name='Remark')
 
     class Meta:
-        managed = True
-        db_table = 'ik_screen_fg_link'
+        db_table = '%sscreen_fg_link' % TABLE_NAME_PREFIX
         unique_together = (('screen', 'field_group', 'parent_field_group'), )
         verbose_name = 'Screen Field Group Links'
 
@@ -267,8 +292,7 @@ class ScreenFgHeaderFooter(IDModel):
     rmk = models.CharField(max_length=255, blank=True, null=True, verbose_name='Remark')
 
     class Meta:
-        managed = True
-        db_table = 'ik_screen_fg_header_footer'
+        db_table = '%sscreen_fg_header_footer' % TABLE_NAME_PREFIX
         unique_together = (('screen', 'field_group', 'field'), )
         verbose_name = 'Screen Table Header and Footer'
 
@@ -283,8 +307,7 @@ class ScreenFile(IDModel):
     rmk = models.CharField(max_length=255, blank=True, null=True, verbose_name='Remark')
 
     class Meta:
-        managed = True
-        db_table = 'ik_screen_file'
+        db_table = '%sscreen_file' % TABLE_NAME_PREFIX
         verbose_name = 'Screen File'
 
 
@@ -295,8 +318,7 @@ class ScreenDfn(IDModel):
     rmk = models.CharField(max_length=255, blank=True, null=True, verbose_name="Remark")
 
     class Meta:
-        managed = True
-        db_table = 'ik_screen_dfn'
+        db_table = '%sscreen_dfn' % TABLE_NAME_PREFIX
         unique_together = (('screen', 'sub_screen_nm'), )
         verbose_name = "Screen Definition"
 
@@ -316,8 +338,7 @@ class IkInbox(IDModel):
     usr_rmk = models.TextField(blank=True, null=True, verbose_name='User Remark')
 
     class Meta:
-        managed = True
-        db_table = 'ik_inbox'
+        db_table = '%sinbox' % TABLE_NAME_PREFIX
         verbose_name = 'Inbox Table'
 
 
@@ -327,12 +348,153 @@ class IkInboxPrm(IDModel):
     v = models.CharField(max_length=255, blank=True, null=True, verbose_name='Parameter Value')
 
     class Meta:
-        managed = True
-        db_table = 'ik_inbox_prm'
+        db_table = '%sinbox_prm' % TABLE_NAME_PREFIX
         verbose_name = 'Inbox Parameters'
         unique_together = (('inbox', 'k'), )
 
 
-def accessLogHisotryFilder(sender, instance, **kwargs) -> bool:
+class Currency(IDModel):
+    seq = models.FloatField(verbose_name='Sequence')
+    code = models.CharField(max_length=3, unique=True, verbose_name='Code')
+    name = models.CharField(max_length=100, unique=True, verbose_name='Name')
+    dsc = models.CharField(max_length=255, blank=True, null=True, verbose_name='Description')
+
+    class Meta:
+        db_table = '%scurrency' % TABLE_NAME_PREFIX
+
+
+class Office(IDModel):
+    name = models.CharField(max_length=100, unique=True, verbose_name='Office Name')
+    code = models.CharField(max_length=3, unique=True, verbose_name='Office Code')
+    addr = models.CharField(max_length=255, verbose_name='Address')
+    city = models.CharField(max_length=100)
+    st = models.CharField(max_length=100, blank=True, null=True, verbose_name='State')
+    country = models.CharField(max_length=100)
+    postal_code = models.CharField(max_length=20, blank=True, null=True)
+    phone_num = models.CharField(max_length=20, blank=True, null=True, verbose_name='Phone Number')
+    email = models.EmailField(blank=True, null=True)
+    ccy = models.ForeignKey(Currency, models.DO_NOTHING, verbose_name="Currency")
+    dsc = models.CharField(max_length=255, blank=True, null=True, verbose_name='Description')
+
+    class Meta:
+        db_table = '%soffice' % TABLE_NAME_PREFIX
+
+
+class UserOffice(IDModel):
+    usr = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name="User")
+    office = models.ForeignKey(Office, on_delete=models.CASCADE, verbose_name="Office")
+    is_default = models.BooleanField(verbose_name="Default")
+    seq = models.FloatField(verbose_name='Sequence')
+    dsc = models.CharField(max_length=255, blank=True, null=True, verbose_name='Description')
+
+    class Meta:
+        db_table = '%susr_office' % TABLE_NAME_PREFIX
+        unique_together = (('usr', 'office'), )
+
+
+class Company(IdDateModel):
+    sn = models.CharField(max_length=10, unique=True, verbose_name='SN')
+    full_nm = models.CharField(max_length=255, unique=True, verbose_name='Company Full Name')
+    short_nm = models.CharField(max_length=50, unique=True, verbose_name='Company Short Name')
+    location = models.ForeignKey(Office, db_column='location', to_field='code', on_delete=models.DO_NOTHING, verbose_name='Location (Office)')
+    dsc = models.TextField(null=True, blank=True, verbose_name='Description')
+    ctg = models.CharField(max_length=20, verbose_name='Category')
+
+    class Meta:
+        db_table = '%scompany' % TABLE_NAME_PREFIX
+        verbose_name = 'Company'
+
+
+class Team(IdDateModel):
+    nm = models.CharField(max_length=255, unique=True, verbose_name='Team Name')
+    seq = models.DecimalField(null=True, blank=True, max_digits=10, decimal_places=4, verbose_name='Sequence')
+    company = models.ForeignKey(Company, on_delete=models.DO_NOTHING, verbose_name='Company')
+    enable = models.BooleanField(default=True, verbose_name='Enable')
+    dsc = models.CharField(max_length=255, null=True, blank=True, verbose_name='Description')
+    rmk = models.CharField(max_length=255, null=True, blank=True, verbose_name='Remarks')
+
+    class Meta:
+        db_table = '%steam' % TABLE_NAME_PREFIX
+        verbose_name = 'Team'
+
+
+class TeamMember(IdDateModel):
+    team = models.ForeignKey(Team, on_delete=models.CASCADE, verbose_name="Team ID")
+    usr = models.ForeignKey(User, models.CASCADE, verbose_name="User")
+    seq = models.DecimalField(max_digits=10, decimal_places=0, verbose_name="Seq")
+    role = models.SmallIntegerField(verbose_name="Role")
+    is_default_team = models.BooleanField(default=False, verbose_name="Is Default Team")
+    is_report_ts = models.BooleanField(default=True, verbose_name="Is Report Timesheet")
+    rmk = models.CharField(max_length=255, null=True, blank=True, verbose_name="Remark")
+
+    class Meta:
+        db_table = '%steam_member' % TABLE_NAME_PREFIX
+        unique_together = (('team', 'usr'),)
+        verbose_name = 'Team Member'
+
+
+class Mail(IDModel):
+    STATUS_PENDING = 'pending'
+    STATUS_IN_PROGRESS = 'in_progress'
+    STATUS_COMPLETE = 'complete'
+    STATUS_ERROR = 'error'
+    STATUS_CHOOSES = ((STATUS_PENDING, STATUS_PENDING), (STATUS_IN_PROGRESS, STATUS_IN_PROGRESS), (STATUS_COMPLETE, STATUS_COMPLETE), (STATUS_ERROR, STATUS_ERROR))
+
+    MAIL_TYPE_TEXT = 'text'
+    MAIL_TYPE_HTML = 'html'
+    MAIL_TYPE_CHOOSES = ((MAIL_TYPE_TEXT, MAIL_TYPE_TEXT), (MAIL_TYPE_HTML, MAIL_TYPE_HTML))
+
+    sender = models.CharField(max_length=255, verbose_name='Mail Sender')
+    request_ts = models.DateTimeField(auto_now_add=True, verbose_name='Request Date')
+    subject = models.CharField(max_length=255, verbose_name='Mail Subject')
+    content = models.TextField(verbose_name='Mail Content')
+    type = models.CharField(max_length=4, choices=MAIL_TYPE_CHOOSES, default=MAIL_TYPE_TEXT, verbose_name='Mail Type')
+    queue = models.BooleanField(default=True, verbose_name="Is queue mail")
+    dsc = models.TextField(blank=True, null=True, verbose_name='Description')
+    sts = models.CharField(max_length=20, choices=STATUS_CHOOSES, default=STATUS_PENDING, verbose_name='Status')
+    send_ts = models.DateTimeField(blank=True, null=True, verbose_name='Send Date')
+    duration = models.BigIntegerField(blank=True, null=True, verbose_name='Send Duration')
+    error = models.TextField(blank=True, null=True, verbose_name='Error')
+
+    class Meta:
+        managed = True
+        db_table = '%smail' % TABLE_NAME_PREFIX
+        verbose_name = 'Mail'
+
+
+class MailAddr(IDModel):
+    TYPE_TO = 'to'
+    TYPE_CC = 'cc'
+    TYPE_BCC = 'bcc'
+    TYPE_CHOOSES = ((TYPE_TO, TYPE_TO), (TYPE_CC, TYPE_CC), (TYPE_BCC, TYPE_BCC))
+
+    mail = models.ForeignKey(Mail, on_delete=models.CASCADE, verbose_name="Mail")
+    type = models.CharField(max_length=10, choices=TYPE_CHOOSES, verbose_name='Address Type')
+    name = models.CharField(max_length=100, verbose_name='Receiver Name')
+    address = models.CharField(max_length=100, verbose_name='Receiver Address')
+    seq = models.IntegerField(blank=True, null=True, verbose_name='Sequency')
+
+    class Meta:
+        managed = True
+        db_table = '%smail_addr' % TABLE_NAME_PREFIX
+        unique_together = (('mail', 'type', 'name'), )
+        verbose_name = 'Mail Address'
+
+
+class MailAttch(IDModel):
+    mail = models.ForeignKey(Mail, on_delete=models.CASCADE, verbose_name="Mail")
+    file = models.TextField(verbose_name='File')
+    size = models.IntegerField(verbose_name='File Size')
+    seq = models.IntegerField(blank=True, null=True, verbose_name='Sequency')
+
+    class Meta:
+        managed = True
+        db_table = '%smail_attch' % TABLE_NAME_PREFIX
+        verbose_name = 'Mail Attachment'
+
+
+def accessLogHistoryFilter(sender, instance, **kwargs) -> bool:
     return not isinstance(instance, AccessLog)
-addModelHistoryFilter(accessLogHisotryFilder)
+
+
+addModelHistoryFilter(accessLogHistoryFilter)

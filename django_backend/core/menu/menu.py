@@ -120,6 +120,8 @@ def __addSubMenu(usrID: int, parentMenu: Menu, subMenus: QuerySet[ikModels.Menu]
         menuAction = ''
         if isNullBlank(subMenu.screen_nm):
             subMenusRcs = MenuManager.getUserMenus(usrID, subMenu.id)
+            if len(subMenusRcs) == 0:
+                continue
             subMenuIDList = [str(i.id) for i in subMenusRcs]
             subMenuIDstr = ", ".join(subMenuIDList)
             latestAccessMenu = getLatestAccessLog(usrID, subMenuIDstr)

@@ -1,12 +1,7 @@
-/*
- * @Description:
- * @version:
- * @Author: XH
- * @Date: 2023-10-23 10:46:14
- */
-import transform, { StyleTuple } from "css-to-react-native"
+import transform  from "css-to-react-native"
 import React, { forwardRef, Ref, useContext } from "react"
 import classnames from "classnames"
+import * as simpleFg from "./SimpleFg"
 import { DialogContext } from "./ConText"
 import ImageButton from "./ImageButton"
 import * as Loading from "./Loading"
@@ -153,28 +148,17 @@ const AdvancedSelection: React.FC<IAdvancedSelection> = forwardRef((props, ref: 
     }
   }
 
-  let cellStyle: StyleTuple[] = []
-  let cellClass = []
-  if (props.style) {
-    const properties = Object.keys(props.style)
-    properties.forEach((property) => {
-      if (property.toLocaleLowerCase() === 'class') {
-        cellClass = props.style[property].split(',').map(str => str.trim());
-      } else {
-        cellStyle.push([property, props.style[property]])
-      }
-    })          
-  }  
+  const { cellStyle, cellClass } = simpleFg.formatCss(props.style)
 
   return (
     <>
       <th className="property_key">{props.labelLabel}</th>
       <td className={classnames(cellClass, 'property_value', 'tip_center')}>
-        <input ref={ref} type="hidden" name={props.name} id={props.name} value={selectValue}></input>
+        <input ref={ref} type="hidden" name={props.name} id={props.name + "_value"} value={selectValue}></input>
         <textarea
           rows={5}
           cols={40}
-          style={transform(cellStyle)}
+          style={cellStyle.length > 0 ? transform(cellStyle) : null}
           ref={ref}
           name={props.name}
           defaultValue={selectValue}
@@ -186,7 +170,7 @@ const AdvancedSelection: React.FC<IAdvancedSelection> = forwardRef((props, ref: 
         <ImageButton
           key={1}
           caption={""}
-          name={props.name}
+          name={props.name + "_button"}
           widgetParameter={props.widgetParameter}
           clickEvent={() => buttonClick()}
           editable={props.editable}

@@ -111,14 +111,7 @@ class UsrGrpMntView(ScreenAPIView):
         return IkJsonResponse(data=data)
 
     def getUsers(self):
-        usrRcs = User.objects.filter(enable='Y').order_by('usr_nm')
-        data = []
-        for i in usrRcs:
-            data.append({'usr_id': i.id, 'usr_nm': i.usr_nm})
-        return IkJsonResponse(data=data)
-
-    def getUsers(self):
-        data = User.objects.filter(enable='Y').order_by('usr_nm')
+        data = User.objects.filter(active=True).order_by('usr_nm')
         return IkJsonResponse(data=data)
 
     def getUsrRcs(self):

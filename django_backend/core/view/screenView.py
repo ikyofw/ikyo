@@ -1,14 +1,26 @@
-import datetime, inspect, logging, os, pathlib, random, string, traceback, json
+import datetime
+import inspect
+import json
+import logging
+import os
+import pathlib
+import random
+import re
+import string
+import traceback
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
+
 import sqlparse
 from django.core.handlers.wsgi import WSGIHandler
+from django.core.paginator import Paginator
 from django.db import connection
 from django.db.models import Model
 from django.db.models.query import QuerySet
-from django.core.paginator import Paginator
-from django.db.utils import DatabaseError, DataError, IntegrityError, ProgrammingError
+from django.db.utils import (DatabaseError, DataError, IntegrityError,
+                             ProgrammingError)
 from django.http.response import HttpResponseBase, StreamingHttpResponse
+
 import core.core.fs as ikfs
 import core.core.http as ikhttp
 import core.db.model as ikDbModels
@@ -17,8 +29,10 @@ import core.ui.ui as ikui
 import core.utils.db as dbUtils
 import core.utils.modelUtils as modelUtils
 import core.utils.spreadsheet as spreadsheet
+from core.utils import templateManager
 from core.core.code import MessageType
-from core.core.exception import IkException, IkMessageException, IkValidateException
+from core.core.exception import (IkException, IkMessageException,
+                                 IkValidateException)
 from core.core.lang import Boolean2
 from core.db.model import DummyModel, Model
 from core.db.transaction import IkTransaction, IkTransactionForeignKey
@@ -172,7 +186,7 @@ class ScreenAPIView(AuthAPIView):
             elif SCREEN_INIT_PRM_FNC_CODE == key:
                 self._functionCode = value
         self._initMenu(**kwargs)
-        if not isNullBlank(self._menuName) and (isNullBlank(self._functionCategory) or isNullBlank(self._functionCode)):
+        if isNullBlank(self._functionCategory) or isNullBlank(self._functionCode):
             self.__updateFunctionInfoFromMenu()
 
     def _initMenu(self, **kwargs) -> None:
@@ -323,17 +337,20 @@ class ScreenAPIView(AuthAPIView):
             return None
 
     def __updateFunctionInfoFromMenu(self) -> None:
-        if not isNullBlank(self._menuName) and (isNullBlank(self._functionCategory) or isNullBlank(self._functionCode)):
-            from django.forms import model_to_dict
-            menuInfoDict = model_to_dict(MenuManager.getMenuInfoByMenuName(self._menuName))
-            if menuInfoDict is None:
-                raise IkMessageException('System error: menu [%s] does not exist.' % self._menuName)
-            if isNullBlank(self._functionCategory):
-                ctg = menuInfoDict.get('ctg', None)
-                self._functionCategory = None if ctg == '' else ctg
-            if isNullBlank(self._functionCode):
-                code = menuInfoDict.get('code', None)
-                self._functionCode = None if code == '' else code
+        if isNullBlank(self._functionCategory) or isNullBlank(self._functionCode):
+            self._functionCategory = self.__module__.split('.')[0]
+            self._functionCode = self.__class__.__name__
+        # if not isNullBlank(self._menuName) and (isNullBlank(self._functionCategory) or isNullBlank(self._functionCode)):
+        #     from django.forms import model_to_dict
+        #     menuInfoDict = model_to_dict(MenuManager.getMenuInfoByMenuName(self._menuName))
+        #     if menuInfoDict is None:
+        #         raise IkMessageException('System error: menu [%s] does not exist.' % self._menuName)
+        #     if isNullBlank(self._functionCategory):
+        #         ctg = menuInfoDict.get('ctg', None)
+        #         self._functionCategory = None if ctg == '' else ctg
+        #     if isNullBlank(self._functionCode):
+        #         code = menuInfoDict.get('code', None)
+        #         self._functionCode = None if code == '' else code
 
     def setMenuName(self, menuName: str) -> None:
         self._menuName = menuName
@@ -382,8 +399,8 @@ class ScreenAPIView(AuthAPIView):
 
     # YL.ikyo, 2023-06-20 - end
 
-    def setFunctionCategory(self, category) -> None:
-        self._functionCategory = category
+    # def setFunctionCategory(self, category) -> None:
+    #     self._functionCategory = category
 
     def getFunctionCategory(self) -> str:
         '''
@@ -391,8 +408,8 @@ class ScreenAPIView(AuthAPIView):
         '''
         return self._functionCategory
 
-    def setFunctionCode(self, code) -> None:
-        self._functionCode = code
+    # def setFunctionCode(self, code) -> None:
+    #     self._functionCode = code
 
     def getFunctionCode(self) -> str:
         '''
@@ -435,6 +452,7 @@ class ScreenAPIView(AuthAPIView):
         '''
             return (getDataDone, returnData)
         '''
+        snake_get_data_method_name = camel_to_snake(getDataMethodName) if isNotNullBlank(getDataMethodName) else getDataMethodName
         _startTime = datetime.datetime.now()
         try:
             r = None
@@ -442,7 +460,7 @@ class ScreenAPIView(AuthAPIView):
             if fieldGroup.visible:
                 if getDataMethodName is not None:
                     for i in dir(self):
-                        if i == getDataMethodName and callable(getattr(self, i)):
+                        if (i == getDataMethodName or i == snake_get_data_method_name) and callable(getattr(self, i)):
                             getDataDone = True
                             fn = getattr(self, i)
                             r = None
@@ -452,7 +470,7 @@ class ScreenAPIView(AuthAPIView):
                                 logger.warning('Call method [%s] error: %s' % (i, e), exc_info=True)
                                 self._addErrorMessage(str(e))
                             break
-                if getDataDone is None:
+                if getDataDone is False:
                     # if the method is not found, then get data from recordset defination
                     if recordsetName is not None:
                         r = self.__getRecordSetData(fieldGroup, field, recordsetName)
@@ -469,10 +487,11 @@ class ScreenAPIView(AuthAPIView):
                     data = None
             else:
                 tableModelAdditionalFields = []
-                for field in fieldGroup.fields:
-                    if field.dataField and (ikDbModels.FOREIGN_KEY_VALUE_FLAG in field.dataField \
-                        or field.dataField.startswith(ikDbModels.MODEL_PROPERTY_ATTRIBUTE_NAME_PREFIX)):
-                        tableModelAdditionalFields.append(field.dataField)
+                if field is None: # table, if field is not None, then ignore it, e.g. get combox data
+                    for field2 in fieldGroup.fields:
+                        if field2.dataField and (ikDbModels.FOREIGN_KEY_VALUE_FLAG in field2.dataField
+                                                or field2.dataField.startswith(ikDbModels.MODEL_PROPERTY_ATTRIBUTE_NAME_PREFIX)):
+                            tableModelAdditionalFields.append(field2.dataField)
                 if isinstance(r, ikhttp.IkJsonResponse):
                     self._addMessages(r.messages)
                     self.__updateDataCursor(fieldGroup, r.data)
@@ -534,14 +553,14 @@ class ScreenAPIView(AuthAPIView):
             used for react ScreenRender
         '''
         # When jumping to open a new page, save the initial parameters(if any).
-        oldSUUID = self._SUUID #self.request.GET.get(PARAMETER_KEY_NAME_SCREEN_UUID, None)
+        oldSUUID = self._SUUID  # self.request.GET.get(PARAMETER_KEY_NAME_SCREEN_UUID, None)
         openScreenKey = "%s_%s" % (_OPEN_SCREEN_PARAM_KEY_NAME, oldSUUID)
         openScreenParams = self.getSessionParameter(openScreenKey, delete=True, isGlobal=True)
 
         # reset suuid for a new screen
         characters = string.ascii_letters + string.digits
-        SUUID = ''.join(random.choice(characters) for i in range(20)) # generate a new suuid
-        self._SUUID = SUUID # Reset
+        SUUID = ''.join(random.choice(characters) for i in range(20))  # generate a new suuid
+        self._SUUID = SUUID  # Reset
 
         if isNotNullBlank(openScreenParams):
             for key, value in openScreenParams.items():
@@ -553,7 +572,18 @@ class ScreenAPIView(AuthAPIView):
         logLevel = IkConfig.get('System', "browserLogLevel")
         return ikhttp.IkSccJsonResponse(data={'fieldGroupNames': fieldGroupNames, PARAMETER_KEY_NAME_SCREEN_UUID: SUUID, 'logLevel': logLevel})
 
-    def getLastTemplateRevisionFile(self, filename=None, category=None, code=None) -> str:
+    def get_templates_folder(self) -> str:
+        """
+        Get the template folder path in the current app.
+
+        :return: The full template folder path: resources/templates.
+        """
+        app_name = self.__module__.split('.')[0]
+        base_dir = Path(__file__).resolve().parent.parent.parent
+        template_dir = base_dir / app_name / 'resources' / 'templates'
+        return template_dir
+
+    def getLastTemplateRevisionFile(self, filename=None, code=None) -> str:
         ''' 
             filename: if filename is None, then try to find the last file named [code].xlsx, then [code]-Template.xlsx file if exists.
             return tempate file. E.g. var/templates/ikyo/GP/GP020/xxxx-v99.xlsx
@@ -561,17 +591,17 @@ class ScreenAPIView(AuthAPIView):
         templateFilename = filename
         if templateFilename is None and self._functionCode is not None:
             templateFilename = self._functionCode + "-Template.xlsx"
-        f = self.__getLastTemplateRevisionFile(templateFilename, category, code)
+        f = self.__getLastTemplateRevisionFile(templateFilename, code)
         if f is None and filename is None and self._functionCode is not None:
             templateFilename = self._functionCode + ".xlsx"
-            f = self.__getLastTemplateRevisionFile(templateFilename, category, code)
+            f = self.__getLastTemplateRevisionFile(templateFilename, code)
         return f
 
-    def __getLastTemplateRevisionFile(self, filename, category=None, code=None) -> str:
+    def __getLastTemplateRevisionFile(self, filename, code=None) -> str:
         '''
-            return tempate file. E.g. var/templates/ikyo/GP/GP020/xxxx-v99.xlsx
+            return template file. E.g. var/templates/ikyo/GP/GP020/xxxx-v99.xlsx
         '''
-        return self.__getLastTemplateRevisionFile2(filename, rootFolder=self.getTemplateFolderName(), category=category, code=code)
+        return self.__getLastTemplateRevisionFile2(filename, rootFolder=self.get_templates_folder(), code=code)
 
     def getTemplateFolderName(self) -> str:
         '''
@@ -579,22 +609,17 @@ class ScreenAPIView(AuthAPIView):
         '''
         return 'templates/ikyo'
 
-    def __getLastTemplateRevisionFile2(self, filename, rootFolder, category=None, code=None) -> str:
+    def __getLastTemplateRevisionFile2(self, filename, rootFolder, code=None) -> str:
         '''
-            return tempate file. E.g. var/{rootFolder}/ikyo/GP/GP020/xxxx-v99.xlsx
+            return template file. E.g. var/{rootFolder}/ikyo/GP/GP020/xxxx-v99.xlsx
         '''
-        category = self._functionCategory if category is None else category
         code = self._functionCode if code is None else code
         path = rootFolder
-        if code is not None and category is None:
-            raise IkValidateException('Parameter [category] is mandatory if the [code] is not null.')
-        if category is not None:
-            path += '/' + str(category)
         if code is not None:
-            path += '/' + str(code)
-        if category is None and code is None:
-            path += '/' + str(self.__class__.__name__)
-        templateFile = ikfs.getLastRevisionFile(ikfs.getVarFolder(path), filename)
+            path = path / str(code)
+        else:
+            path = path / str(self.__class__.__name__)
+        templateFile = ikfs.getLastRevisionFile(path, filename)
         return templateFile
 
     def downloadFile(self, file, filename: str = None) -> HttpResponseBase:
@@ -611,11 +636,11 @@ class ScreenAPIView(AuthAPIView):
             except Exception as e:
                 return ikhttp.IkErrJsonResponse(message="Download file failed: %s" % str(e))
 
-    def downloadLastTemplateRevisionFile(self, filename, category=None, code=None) -> HttpResponseBase:
+    def downloadLastTemplateRevisionFile(self, filename, code=None) -> HttpResponseBase:
         '''
             return StreamingHttpResponse if file exists otherwise return IkErrJsonResponse
         '''
-        f = self.getLastTemplateRevisionFile(filename, category, code)
+        f = self.getLastTemplateRevisionFile(filename, code)
         return self.downloadFile(file=f)
 
     def getUploadFolder(self, user) -> str:
@@ -874,7 +899,10 @@ class ScreenAPIView(AuthAPIView):
                 callViewFn = False
                 self._beforeProcessAction(actionFnName, {})  # TODO: actionParameters
                 try:
-                    actionFn = getattr(self, actionFnName)
+                    actionFn = getattr(self, actionFnName, None)
+                    if isNullBlank(actionFn):
+                        snake_action_fn_name = camel_to_snake(actionFnName)
+                        actionFn = getattr(self, snake_action_fn_name)
                     if len(inspect.getfullargspec(actionFn).args) > 1:
                         raise AttributeError('Function is not found: %s' % actionFnName)  # the action function only has one parameter - "self"
                     callViewFn = True
@@ -989,13 +1017,13 @@ class ScreenAPIView(AuthAPIView):
             if fg.isTable():
                 screenTableGroupNames.append(fg.name)
                 if not isNullBlank(screen.getRecordset(fg.recordSetName)) \
-                    and not isNullBlank(screen.getRecordset(fg.recordSetName).modelNames):
+                        and not isNullBlank(screen.getRecordset(fg.recordSetName).modelNames):
                     parameterModelMap[fg.name] = screen.getRecordset(fg.recordSetName).modelNames
             elif fg.isDetail():
                 screenFieldsGroupNames.append(fg.name)
                 if not isNullBlank(fg.recordSetName) \
-                    and not isNullBlank(screen.getRecordset(fg.recordSetName)) \
-                    and not isNullBlank(screen.getRecordset(fg.recordSetName).modelNames):
+                        and not isNullBlank(screen.getRecordset(fg.recordSetName)) \
+                        and not isNullBlank(screen.getRecordset(fg.recordSetName).modelNames):
                     parameterModelMap[fg.name] = screen.getRecordset(fg.recordSetName).modelNames
         for _fgName, recordName in parameterModelMap.items():
             if recordName is not None and ',' in recordName:
@@ -1056,19 +1084,26 @@ class ScreenAPIView(AuthAPIView):
             return data2
         return data2.get(name, default)
 
-    def readWebTemplateFile(self, filename) -> str:
+    def read_template_file(self, filename, code=None) -> str:
         '''
             return file content with \n
         '''
-        rootFolder = 'webTemplates'
-        templateFilename = filename
-        f = self.__getLastTemplateRevisionFile2(templateFilename, rootFolder)
+        f = self.__getLastTemplateRevisionFile2(filename, self.get_templates_folder(), code=code)
         if f is None or not pathlib.Path(f).is_file():
             raise IkException('Web template file [%s] does not exist. Please ask administrator to check.' % filename)
         content = None
         with open(f, newline='', encoding='utf-8') as f:
             content = f.read()
         return content
+
+    def read_template_file_with_prams(self, filename, code=None, pram=None) -> str:
+        '''
+            return file content 
+            default template folder: [app_nm]/resources/templates/[class_nm]/[file_nm]
+            example: el/resources/templates/EL001/xxxx-v99.xlsx
+        '''
+        file_path = (code if isNotNullBlank(code) else self._functionCode) + '/' + filename
+        return templateManager.loadTemplateFile(file_path, pram)
 
     def _beforeProcessAction(self, action: str, parameters: list[str]) -> None:
         pass
@@ -1193,14 +1228,27 @@ class ScreenAPIView(AuthAPIView):
         if parameters is None:
             parameters = {}
         parameters[PARAMETER_KEY_NAME_PREVIOUS_SCREEN_NAME] = self.getMenuName()
-        self.setSessionParameter(name="%s_%s" % (_OPEN_SCREEN_PARAM_KEY_NAME, self._SUUID), value=parameters, isGlobal=True)
+        self.setSessionParameter(name=_OPEN_SCREEN_PARAM_KEY_NAME, value=parameters, isGlobal=True)
         return ikhttp.IkSccJsonResponse(data=rspData)
+
+    def _getPreviousScreenRequestData(self) -> dict:
+        """
+            get previous screen's menu name from session
+        """
+        return self.getSessionParameter(name=_OPEN_SCREEN_PARAM_KEY_NAME, isGlobal=True)
+    
+    def _deletePreviousScreenRequestData(self) -> dict:
+        """
+            get previous screen's menu name from session
+        """
+        return self.getSessionParameter(name=_OPEN_SCREEN_PARAM_KEY_NAME, delete=True, isGlobal=True)
     
     def _getPreviousScreenName(self) -> str:
         """
             get previous screen's menu name from session
         """
-        return self.getSessionParameter(PARAMETER_KEY_NAME_PREVIOUS_SCREEN_NAME, default=None)
+        prms = self._getPreviousScreenRequestData()
+        return prms.get(PARAMETER_KEY_NAME_PREVIOUS_SCREEN_NAME, None) if prms is not None else None
 
     def convert2DummyModelRcs(self, dataList, initStatus=None) -> list:
         '''
@@ -1405,7 +1453,7 @@ class ScreenAPIView(AuthAPIView):
                 fgl = self._screen.getFieldGroupLink(fgName)
                 if fgl is not None:
                     self._deleteEditIndexFieldValue(fgl.parentFieldGroup.name)
-        return b
+        return b.toIkJsonResponse1()
 
     def _BIFSave(self) -> ikhttp.IkJsonResponse:
         '''
@@ -1487,7 +1535,7 @@ class ScreenAPIView(AuthAPIView):
                     if rc is not None:
                         keyValue = getattr(rc, fgl.localKey)
                     self._setEditIndexFieldValue(keyValue, fgl.parentFieldGroup.name)
-        return b
+        return b.toIkJsonResponse1()
 
     # YL, 2024-04-28
     def _BIFSearch(self, fieldGropName: str = None) -> ikhttp.IkJsonResponse:
@@ -1501,7 +1549,7 @@ class ScreenAPIView(AuthAPIView):
             raise IkValidateException('Field group: %s does not exist.' % tableName)
         if isNullBlank(screen.getFieldGroup(tableName).pageSize):
             logger.error('Page size does not exist. tableName=%s' % tableName)
-            raise IkValidateException('Page size does not exist. tableName=%s' % tableName)
+            return None
         return int(screen.getFieldGroup(tableName).pageSize)
 
     def _getPaginatorPageNumber(self, tableName: str) -> int:
@@ -1509,7 +1557,7 @@ class ScreenAPIView(AuthAPIView):
         pageNumStr = self.getRequestData().get(prmName)
         if isNullBlank(pageNumStr):
             logger.error('Page number does not exist. tableName=%s' % tableName)
-            raise IkValidateException('Page number does not exist. tableName=%s' % tableName)
+            return 0
         return int(pageNumStr)
 
     def _getPaginatorTableDataAmount(self, sql: str) -> int:
@@ -1560,7 +1608,7 @@ class ScreenAPIView(AuthAPIView):
             cursor.execute(sql)
             data = dbUtils.dictfetchall(cursor)
         return data
-    
+
     def _getPaginattorRecords(self, fieldGroupName: str, queryFilter: QuerySet) -> tuple:
         """
             return [rc1, rc2, rc3...], totalAmount
@@ -1609,11 +1657,11 @@ class ScreenAPIView(AuthAPIView):
             return None
         totalRecords = 0
         if models:
-            totalRecords = (len(models) if (type(models) == list or type(models) == tuple ) else 1)
+            totalRecords = (len(models) if (type(models) == list or type(models) == tuple) else 1)
         if modifyModels:
-            totalRecords += (len(modifyModels) if (type(modifyModels) == list or type(modifyModels) == tuple ) else 1)
+            totalRecords += (len(modifyModels) if (type(modifyModels) == list or type(modifyModels) == tuple) else 1)
         if deleteModels:
-            totalRecords += (len(deleteModels) if (type(deleteModels) == list or type(deleteModels) == tuple ) else 1)
+            totalRecords += (len(deleteModels) if (type(deleteModels) == list or type(deleteModels) == tuple) else 1)
         if totalRecords == 0:
             return None
         trn = IkTransaction()
@@ -1640,6 +1688,38 @@ class ScreenAPIView(AuthAPIView):
             return Boolean2(True, successMessage) if successMessage else rst
         return Boolean2(False, errorMessage) if errorMessage else rst
 
+    def getPagingResponse(self, table_name: str, table_data=None, table_sql=None, get_style_func=None, format_res_func=None, message: str = None):
+        page_size = self._getPaginatorPageSize(table_name)
+        page_num = self._getPaginatorPageNumber(table_name)
+        total_len = 0
+        results, css_style = [], []
+        if isNotNullBlank(table_data):
+            total_len = len(table_data)
+            if isNullBlank(page_size) or page_num == 0:
+                results = table_data
+            else:
+                paginator = Paginator(table_data, page_size)
+                results = paginator.get_page(page_num).object_list
+        elif isNotNullBlank(table_sql):
+            total_len = self._getPaginatorTableDataAmount(table_sql)
+            results = self._getPaginatorTableData(table_sql, pageNum=page_num, pageSize=page_size)
+
+        tableModelAdditionalFields = []
+        fields = self._screen.getFieldGroup(table_name).fields
+        for field in fields:
+            if field.dataField and (ikDbModels.FOREIGN_KEY_VALUE_FLAG in field.dataField
+                                    or field.dataField.startswith(ikDbModels.MODEL_PROPERTY_ATTRIBUTE_NAME_PREFIX)):
+                tableModelAdditionalFields.append(field.dataField)
+        if len(tableModelAdditionalFields) > 0:
+            results = ikhttp.IkSccJsonResponse(data=results).getJsonData(modelAdditionalFields=tableModelAdditionalFields)
+
+        if isNotNullBlank(format_res_func):
+            results = format_res_func(results)
+        if isNotNullBlank(get_style_func):
+            css_style = get_style_func(results)
+
+        return self.getSccJsonResponse(data=results, cssStyle=css_style, paginatorDataAmount=total_len, message=message)
+
     def getSccJsonResponse(self, data: any = None, cssStyle: list[dict] = None, paginatorDataAmount: int = None, message: str = None) -> ikhttp.IkSccJsonResponse:
         return ikhttp.IkSccJsonResponse(data={"data": data, "cssStyle": cssStyle, "paginatorDataAmount": paginatorDataAmount}, message=message)
 
@@ -1661,3 +1741,9 @@ def getCurrentView() -> ScreenAPIView:
     if screenView is None:
         raise IkException('Unsupport session caller.')
     return screenView
+
+
+def camel_to_snake(name):
+    s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
+    s2 = re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1)
+    return s2.lower()

@@ -1,6 +1,7 @@
 import classNames from "classnames"
 import moment from "moment"
 import React, { forwardRef, Ref, useEffect, useImperativeHandle, useState } from "react"
+import ReactDOM from "react-dom"
 import ReactHTMLTableToExcel from "react-html-table-to-excel"
 import { Tooltip } from "react-tooltip"
 import * as Loading from "./Loading"
@@ -15,11 +16,12 @@ import "../../public/static/css/TableFg.css"
 import { useHttp } from "../utils/http"
 import pyiLogger from "../utils/log"
 import pyiLocalStorage from "../utils/pyiLocalStorage"
-import { getResponseData, showErrorMessage, showInfoMessage, validateResponse } from "../utils/sysUtil"
+import { showErrorMessage, showInfoMessage, validateResponse } from "../utils/sysUtil"
 import * as tableUtil from "../utils/tableUtil"
 import ActiveCell from "./tableFg/ActiveCell"
 import { Cell as DefaultCell, enhance as enhanceCell } from "./tableFg/Cell"
 import DefaultColumnIndicator, { enhance as enhanceColumnIndicator, getFooterData } from "./tableFg/ColumnIndicator"
+import { handleData as handleRowData } from "./tableFg/ButtonCell"
 import context from "./tableFg/context"
 import DefaultDataEditor from "./tableFg/DataEditor"
 import DefaultDataViewer from "./tableFg/DataViewer"
@@ -210,7 +212,7 @@ const TableFg = forwardRef(<CellType extends Types.CellBase>(props: Props<CellTy
   const [pluginParams, setPluginParams] = useState([0])
   const [pageNation, setPageNation] = React.useState(1) // Actual page number
   const [pageSelect, setPageSelect] = React.useState(1) // Selected page number
-  const [totalPageNm, setTotalPageNm] = React.useState(0) // Total page numbers
+  const [totalPageNm, setTotalPageNm] = React.useState(1) // Total page numbers
   const [messageFlag, setMessageFlag] = React.useState(true) // Server-side paging flags whether the current page has been modified or not
   const [preShowRange, setPreShowRange] = React.useState([]) // When filtering data in the paging case, the showRange before filtering is saved, which is used to exit filtering and fallback when filtering is initialized.
   const [filterRow, setFilterRow] = React.useState(false) // Whether to display the filterRow
@@ -271,7 +273,7 @@ const TableFg = forwardRef(<CellType extends Types.CellBase>(props: Props<CellTy
       .then((response) => response.json())
       .then((result) => {
         if (validateResponse(result, true)) {
-          let data = getResponseData(result)
+          let data = result.data
           if (data) {
             if (pageType !== pyiGlobal.SERVER_PAGING) {
               setTableParamsData(data)
@@ -387,6 +389,7 @@ const TableFg = forwardRef(<CellType extends Types.CellBase>(props: Props<CellTy
       const theLastPage = Math.ceil((state.data.length + 1) / pageSize)
       setPageSelect(theLastPage)
       setPageNation(theLastPage)
+      setTotalPageNm(theLastPage)
       setShowRange(range(state.data.length + 1, (theLastPage - 1) * pageSize))
       setPreShowRange(range(state.data.length + 1, (theLastPage - 1) * pageSize))
     }
@@ -645,7 +648,7 @@ const TableFg = forwardRef(<CellType extends Types.CellBase>(props: Props<CellTy
         .then((response) => response.json())
         .then((result) => {
           if (validateResponse(result, true)) {
-            let data = getResponseData(result)
+            let data = result.data
             if (data) {
               let serverPageData = []
               if (data["data"]) {
@@ -752,7 +755,9 @@ const TableFg = forwardRef(<CellType extends Types.CellBase>(props: Props<CellTy
   }
 
   const setPageNum = (event: any) => {
-    setPageSelect(event.target.value.trim())
+    const value = event.target.value.trim()
+    const numericValue = Number(value)
+    setPageSelect(numericValue)
   }
 
   const refreshPage = () => {
@@ -798,7 +803,6 @@ const TableFg = forwardRef(<CellType extends Types.CellBase>(props: Props<CellTy
 
   React.useEffect(() => {
     if (pageType === pyiGlobal.CLIENT_PAGING) {
-      setTotalPageNm(Math.ceil(state.data.length / pageSize))
       getPageDataWithClient(pageNation)
     } else {
       setShowRange(range(state.data.length, 0))
@@ -1096,7 +1100,7 @@ const TableFg = forwardRef(<CellType extends Types.CellBase>(props: Props<CellTy
         <Table columns={size.columns} hideColumnIndicators={hideColumnIndicators} tableName={name} scrollPrams={scrollPrams}>
           {/* HeaderRow */}
           {headerPrams.headerLines.map((rowNumber) => (
-            <HeaderRow id={"row_-" + rowNumber + " " + name}>
+            <HeaderRow id={"row_-" + rowNumber + " " + name} key={-rowNumber}>
               {showRowNo && rowNumber === 2 ? (
                 <ColumnIndicator
                   key={-rowNumber}
@@ -1221,7 +1225,9 @@ const TableFg = forwardRef(<CellType extends Types.CellBase>(props: Props<CellTy
           {state.showRange.map((rowNumber) =>
             state.data[rowNumber] ? (
               <Row key={rowNumber} row={rowNumber} tableName={name}>
-                {showRowNo ? <RowIndicator key={-1} row={rowNumber} column={-1} tableName={name} label={rowNumber + 1} /> : null}
+                {showRowNo ? (
+                  <RowIndicator key={-1} row={rowNumber} column={-1} tableName={name} label={getRowNo(rowNumber, pageSelect, pageType, pageSize)} />
+                ) : null}
                 {type === TABLE
                   ? range(size.columns).map((columnNumber) =>
                       columnNumber === 0 && (insertable || deletable) ? (
@@ -1319,6 +1325,7 @@ const TableFg = forwardRef(<CellType extends Types.CellBase>(props: Props<CellTy
                       <plugin.IconCell
                         key={size.columns + pluginList.indexOf(plugin) + 1}
                         id={state.data[rowNumber][pluginParams[index]] ? state.data[rowNumber][pluginParams[index]].value : ""}
+                        row={handleRowData(state.data[rowNumber], fields)}
                         position={rowNumber + "_" + (size.columns + index - 2) + " " + name}
                         pluginActiveRows={pluginActiveRows}
                       />
@@ -1573,7 +1580,7 @@ export function createIconColumn(myCallback: any, pluginParams: any) {
             data-tooltip-place="top"
             data-tooltip-content={pluginParams.tooltip}
           ></img>
-          <Tooltip id={"th-tooltip_" + props.position} />
+          {ReactDOM.createPortal(<Tooltip id={"th-tooltip_" + props.position} style={{ zIndex: 2000 }} />, document.getElementById("root"))}
         </>
       ) : null}
     </th>
@@ -1584,7 +1591,7 @@ export function createIconColumn(myCallback: any, pluginParams: any) {
         <img
           src={props.pluginActiveRows && props.pluginActiveRows.indexOf(Number(props.id)) !== -1 ? current_icon : expand_icon}
           alt="plugin icon"
-          onClick={() => myCallback(props.id)}
+          onClick={() => myCallback(props.id, props.row)}
           style={{ cursor: "pointer" }}
         />
       }
@@ -1593,3 +1600,11 @@ export function createIconColumn(myCallback: any, pluginParams: any) {
   return { IconHeader, IconCell }
 }
 // XH 2022-04-24
+
+function getRowNo(rowNumber, pageSelect, pageType, pageSize) {
+  if (pageType !== pyiGlobal.SERVER_PAGING || pageSelect === 0) {
+    return rowNumber + 1
+  } else {
+    return (pageSelect - 1) * pageSize + rowNumber + 1
+  }
+}

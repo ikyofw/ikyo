@@ -1,6 +1,5 @@
-import * as React from "react";
-import * as Types from "./types";
+import * as Types from "./types"
 
-const Row: Types.RowComponent = (props) => <tr id={'row_' + props.row + ' ' + props.tableName} {...props} />;
+const Row: Types.RowComponent = ({ tableName, row, ...restProps }) => <tr id={"row_" + row + " " + tableName} {...restProps} />
 
-export default Row;
+export default Row

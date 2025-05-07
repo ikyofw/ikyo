@@ -24,7 +24,7 @@ class UsrMntView(ScreenAPIView):
             currentUsrID = self.getSessionParameterInt("currentUsrID")
             isNew = False if isNullBlank(self.getSessionParameterBool("createNew")) else self.getSessionParameterBool("createNew")
 
-            screen.setFieldGroupsVisible(fieldGroupNames=['usrDtlFg', 'grpFg', 'dtToolbar'], visible=isNotNullBlank(currentUsrID) or isNew)
+            screen.setFieldGroupsVisible(fieldGroupNames=['usrDtlFg', 'grpFg', 'officeFg', 'dtToolbar'], visible=isNotNullBlank(currentUsrID) or isNew)
             screen.setFieldGroupsVisible(fieldGroupNames=['schFg', 'schToolbar', 'usrListFg'], visible=isNullBlank(currentUsrID) and not isNew)
 
         self.beforeDisplayAdapter = beforeDisplayAdapter
@@ -50,18 +50,14 @@ class UsrMntView(ScreenAPIView):
     def getUserListRcs(self):
         schItems = self.getSessionParameter('schItems')
         usrRcs = UsrMntManager.getUsrList(schItems)
-        pageSize = self._getPaginatorPageSize("usrListFg")  # screen
-        pageNum = self._getPaginatorPageNumber("usrListFg")  # from client
 
-        totalLen = usrRcs.count()
-        paginator = Paginator(usrRcs, pageSize)
-        results = usrRcs if pageNum == 0 else paginator.get_page(pageNum)
-
-        data = [model_to_dict(instance) for instance in results]
-        for i in data:
-            i['grps'] = self.__getGroups(usr_id=i['id'])
-            # i['company'] = self.__getCompany(usr_id=i['id'])
-        return self.getSccJsonResponse(data=data, paginatorDataAmount=totalLen)
+        def format_res_func(results):
+            data = [model_to_dict(instance) for instance in results]
+            for i in data:
+                i['grps'] = self.__getGroups(usr_id=i['id'])
+                # i['company'] = self.__getCompany(usr_id=i['id'])
+            return data
+        return self.getPagingResponse(table_name="usrListFg", table_data=usrRcs, format_res_func=format_res_func)
 
     def showDtl(self):
         currentUsrID = self._getEditIndexField()
@@ -80,7 +76,7 @@ class UsrMntView(ScreenAPIView):
             data = model_to_dict(usrRc)
             self.setSessionParameters({'oldPsw': data['psw']})
         elif createNew:
-            data['enable'] = 'Y'
+            data['active'] = True
         data['psw'] = ''
         return IkSccJsonResponse(data=data)
 
@@ -94,6 +90,20 @@ class UsrMntView(ScreenAPIView):
         if isNotNullBlank(currentUsrID):
             grpIds = Group.objects.all().values_list('id', flat=True)
             data = UserGroup.objects.filter(usr_id=currentUsrID, grp_id__in=grpIds)
+        return IkSccJsonResponse(data=data)
+
+    def getOfficeRcs(self):
+        data = [
+            {"id": office.id, "code": f'{office.code} - {office.name}'}
+            for office in Office.objects.all().order_by('code')
+        ]
+        return IkSccJsonResponse(data=data)
+
+    def getUsrOfficeRcs(self):
+        currentUsrID = self.getSessionParameter('currentUsrID')
+        data = []
+        if isNotNullBlank(currentUsrID):
+            data = UserOffice.objects.filter(usr_id=currentUsrID).order_by("seq")
         return IkSccJsonResponse(data=data)
 
     def back(self):
@@ -110,7 +120,21 @@ class UsrMntView(ScreenAPIView):
         if b.value:
             self.deleteSessionParameters(nameFilters='createNew')
             self.setSessionParameters({'currentUsrID': b.data})
-            return IkSccJsonResponse(message='Saved!')
+            return IkSccJsonResponse(message='Saved.')
+        return b.toIkJsonResponse1()
+
+    def saveAndCreate(self):
+        saveUsrID = self.getCurrentUserId()
+        currentUsrID = self.getSessionParameter('currentUsrID')
+        createNew = self.getSessionParameter('createNew')
+        oldPsw = self.getSessionParameter('oldPsw')
+        requestData = self.getRequestData()
+
+        b = UsrMntManager.save(saveUsrID, currentUsrID, createNew, requestData, oldPsw)
+        if b.value:
+            self.setSessionParameter('createNew', True)
+            self._addInfoMessage("Saved.")
+            return self.addUser()
         return b.toIkJsonResponse1()
 
     def delete(self):
@@ -120,9 +144,9 @@ class UsrMntView(ScreenAPIView):
             self.back()
         elif isNotNullBlank(currentUsrID):
             usrRc = User.objects.filter(id=currentUsrID).first()
-            if isNullBlank(usrRc) or usrRc.enable == 'N':
+            if isNullBlank(usrRc) or usrRc.active == False:
                 self.back()
-            usrRc.enable = 'N'
+            usrRc.active = False
             usrRc.ik_set_status_modified()
             pytrn = IkTransaction(self)
             pytrn.add(usrRc)

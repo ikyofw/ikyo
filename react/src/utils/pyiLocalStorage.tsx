@@ -17,6 +17,7 @@ const pyiLocalStorage = {
     RSA_PRIVATE_KEY: "RSA_PRIVATE_KEY",
 
     // component info
+    TREE_TYPE: "tree",
     SEARCH_TYPE: "search",
     SIMPLE_TYPE: "fields",
     TABLE_TYPE: "table",

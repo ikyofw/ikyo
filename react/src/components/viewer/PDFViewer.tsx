@@ -34,33 +34,54 @@ const SwitchScrollModeInFullScreenModeExample: React.FC<SwitchScrollModeInFullSc
   })
   const { renderDefaultToolbar } = defaultLayoutPluginInstance.toolbarPluginInstance
 
-  // const defaultLayoutPluginInstance = defaultLayoutPlugin({
-  //   toolbarPlugin: {
-  //     fullScreenPlugin: {
-  //       onEnterFullScreen: (zoom) => {
-  //         zoom(SpecialZoomLevel.PageFit)
-  //         defaultLayoutPluginInstance.toolbarPluginInstance.scrollModePluginInstance.switchScrollMode(ScrollMode.Wrapped)
-  //       },
-  //       onExitFullScreen: (zoom) => {
-  //         zoom(SpecialZoomLevel.PageWidth)
-  //         defaultLayoutPluginInstance.toolbarPluginInstance.scrollModePluginInstance.switchScrollMode(ScrollMode.Vertical)
-  //       },
-  //     },
-  //   },
-  // })
-
   let divWidth = disWidth
   let divHeight = disHeight
+
+  const pdfContainerRef = React.useRef<HTMLDivElement | null>(null)
+
+  // disable mouse right click.
+  const handleContextMenu = (event: MouseEvent) => {
+    event.preventDefault()
+  }
+
+  // disable system hot keys.
+  const handleKeyDown = (event: KeyboardEvent) => {
+    if (
+      event.ctrlKey &&
+      (event.key === "p" || event.key === "s" || event.key === "c" || event.key === "x" || event.key === "v" || event.key === "a")
+    ) {
+      event.preventDefault()
+    }
+    if (event.key === "F12" || (event.ctrlKey && event.shiftKey && event.key === "I")) {
+      event.preventDefault()
+    }
+  }
+
+  // Add event listeners only to the PDF container.
+  React.useEffect(() => {
+    if (pdfContainerRef.current && !isOperate) {
+      const container = pdfContainerRef.current
+
+      container.addEventListener("contextmenu", handleContextMenu)
+      container.addEventListener("keydown", handleKeyDown)
+
+      return () => {
+        container.removeEventListener("contextmenu", handleContextMenu)
+        container.removeEventListener("keydown", handleKeyDown)
+      }
+    }
+  }, [isOperate])
+
   return (
     <div
+      ref={pdfContainerRef}
+      tabIndex={0} // 使 div 可聚焦，以便捕获键盘事件
       style={{
         border: "1px solid rgba(0, 0, 0, 0.3)",
         display: "flex",
         flexDirection: "column",
-        // height: '100%',
-        height: divHeight ? String(divHeight).concat("px") : "90vh",
-        // width:'100%',
-        width: divWidth ? String(divWidth).concat("px") : "100%",
+        height: divHeight ? `${divHeight}px` : "90vh",
+        width: divWidth ? `${divWidth}px` : "100%",
       }}
     >
       <Worker workerUrl="/static/js/pdf.worker.min.js">

@@ -45,7 +45,7 @@ const Button: React.FC<IButton> = (props) => {
   let iconUrl = ""
   if (btnIcon && btnIcon.length > 0) {
     if (btnIcon[0] === "{") {
-      iconUrl = pyiGlobal.PUBLIC_URL + JSON.parse(btnIcon)[value]
+      iconUrl = JSON.parse(btnIcon)[value] ? pyiGlobal.PUBLIC_URL + JSON.parse(btnIcon)[value] : null
     } else if (btnIcon[0] === "_") {
       if (value.length > 0) {
         iconUrl = pyiGlobal.PUBLIC_URL + btnIcon.slice(1)
@@ -64,6 +64,8 @@ const Button: React.FC<IButton> = (props) => {
     [dispatch]
   )
   const refreshTable = React.useCallback((refreshFlag: boolean) => dispatch(Actions.refreshTable(refreshFlag)), [dispatch])
+  const refreshPrams = props.dialogPrams.eventHandler[dialogIndex].refreshPrams
+  const refresh = () => refreshPrams.includes('false') ? refreshTable(false) : refreshTable(true)
 
   const domDownload = (fileName, blob, eventHandler) => {
     if (fileName) {
@@ -226,7 +228,7 @@ const Button: React.FC<IButton> = (props) => {
               window.location.href = result.data[pyiGlobal.OPEN_SCREEN_KEY_NAME]
             }
             if (validateResponse(result, false)) {
-              refreshTable(true)
+              refresh()
             }
           })
       } else if (btnType && btnType.toLocaleLowerCase() === pyiGlobal.TABLE_BTN_TYPE_SWITCH) {
@@ -273,14 +275,14 @@ const Button: React.FC<IButton> = (props) => {
                 reader.onload = (e) => {
                   let data = JSON.parse(e.target.result as string)
                   if (validateResponse(data, false)) {
-                    refreshTable(true)
+                    refresh()
                   }
                 }
                 reader.readAsText(blob)
               } else {
                 let fileName = response.headers.get("Content-Disposition")?.split("filename=")[1]
                 domDownload(fileName, blob, eventHandler)
-                refreshTable(true)
+                refresh()
               }
             } finally {
               Loading.remove()
@@ -296,7 +298,7 @@ const Button: React.FC<IButton> = (props) => {
             reader.onload = (e) => {
               let data = JSON.parse(e.target.result as string)
               if (validateResponse(data, false)) {
-                refreshTable(true)
+                refresh()
               }
             }
             reader.readAsText(response.data)
@@ -314,7 +316,7 @@ const Button: React.FC<IButton> = (props) => {
               window.location.href = result.data[pyiGlobal.OPEN_SCREEN_KEY_NAME]
             }
             if (validateResponse(result, false)) {
-              refreshTable(true)
+              refresh()
             }
           })
       }

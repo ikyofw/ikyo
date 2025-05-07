@@ -1,12 +1,13 @@
 '''
     User Manager
 '''
+from django.db import connection
+
 import core.utils.db as dbUtils
 from core.core.exception import IkException
 from core.core.mailer import EmailAddress
 from core.models import User
 from core.view.authView import getCurrentView
-from django.db import connection
 
 ADMINISTRATOR_USER_ID = -2
 '''
@@ -46,10 +47,10 @@ def getUserID(userNm) -> int:
 def isEnable(userID) -> bool:
     rs = None
     with connection.cursor() as cursor:
-        cursor.execute("SELECT enable FROM ik_usr WHERE id=" + str(userID))
+        cursor.execute("SELECT active FROM ik_usr WHERE id=" + str(userID))
         rs = dbUtils.dictfetchall(cursor)
         if not dbUtils.isEmpty(rs):
-            return "Y" == rs[0]['enable']
+            return rs[0]['active']
         else:
             raise IkException("User does not exist: id=" + str(userID))
 

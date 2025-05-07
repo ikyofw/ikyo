@@ -1,4 +1,5 @@
 // XH 2022-07-05 start
+import ReactDOM from "react-dom"
 import classNames from "classnames"
 import transform from "css-to-react-native"
 import { columnIndexToLabel } from "hot-formula-parser"
@@ -97,7 +98,10 @@ const ColumnIndicator: Types.ColumnIndicatorComponent = ({ tableName, row, colum
                     data-tooltip-place="top"
                     data-tooltip-content={tooltip}
                   ></img>
-                  <Tooltip id={"th-tooltip_" + row + "_" + (column - 2) + " " + tableName} />
+                  {ReactDOM.createPortal(
+                    <Tooltip id={"th-tooltip_" + row + "_" + (column - 2) + " " + tableName} style={{ zIndex: 2000 }} />,
+                    document.getElementById("root")
+                  )}
                 </>
               ) : null}
               {columnStatus === 1 ? (
@@ -131,7 +135,10 @@ const ColumnIndicator: Types.ColumnIndicatorComponent = ({ tableName, row, colum
                   data-tooltip-place="top"
                   data-tooltip-content={tooltip}
                 ></img>
-                <Tooltip id={"th-tooltip_" + row + "_" + (column - 2) + " " + tableName} />
+                {ReactDOM.createPortal(
+                  <Tooltip id={"th-tooltip_" + row + "_" + (column - 2) + " " + tableName} style={{ zIndex: 2000 }} />,
+                  document.getElementById("root")
+                )}
               </>
             ) : null}
           </span>
@@ -172,7 +179,8 @@ export const getFooterData = (footerPram, columnNumber, tableData, showRange) =>
   let columnDataList = []
   tableData.forEach((row, index) => {
     if (showRange.indexOf(index) !== -1) {
-      columnDataList.push(row[columnNumber].value)
+      const value = row[columnNumber].comboKey || row[columnNumber].comboKey === 0 ? row[columnNumber].comboKey : row[columnNumber].value
+      columnDataList.push(String(value))
     }
   })
   if (!formula) {
@@ -189,8 +197,9 @@ export const getFooterData = (footerPram, columnNumber, tableData, showRange) =>
   let res
   if (formula === "sum") {
     if (dataType === "int" || dataType === "float") {
+      res = 0
       columnDataList.forEach((data) => {
-        data = Number(data.replace(/,/g, ''))
+        data = Number(data.replace(/,/g, ""))
         res ? (res += data) : (res = data)
       })
     } else if ((dataType === "date" || dataType === "time" || dataType === "datetime") && format === "HH:mm:ss") {
@@ -224,7 +233,7 @@ export const getFooterData = (footerPram, columnNumber, tableData, showRange) =>
   } else if (formula === "avg") {
     if (dataType === "int" || dataType === "float") {
       columnDataList.forEach((data) => {
-        data = Number(data.replace(/,/g, ''))
+        data = Number(data.replace(/,/g, ""))
         res ? (res += data / columnDataList.length) : (res = data / columnDataList.length)
       })
     } else if ((dataType === "date" || dataType === "time" || dataType === "datetime") && format === "HH:mm:ss") {
@@ -247,7 +256,7 @@ export const getFooterData = (footerPram, columnNumber, tableData, showRange) =>
   } else if (formula === "max") {
     if (dataType === "int" || dataType === "float") {
       columnDataList.forEach((data) => {
-        data = Number(data.replace(/,/g, ''))
+        data = Number(data.replace(/,/g, ""))
         if (!res || res < data) {
           res = data
         }
@@ -263,7 +272,7 @@ export const getFooterData = (footerPram, columnNumber, tableData, showRange) =>
   } else if (formula === "min") {
     if (dataType === "int" || dataType === "float") {
       columnDataList.forEach((data) => {
-        data = Number(data.replace(/,/g, ''))
+        data = Number(data.replace(/,/g, ""))
         if (!res || res > data) {
           res = data
         }
@@ -291,8 +300,6 @@ export const getFooterData = (footerPram, columnNumber, tableData, showRange) =>
         res = res.replace(/\B(?<!\.\d*)(?=(\d{3})+(?!\d))/g, ",")
       }
     }
-  } else if (!res) {
-    res = ""
   }
   return res
 }

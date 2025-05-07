@@ -4,9 +4,8 @@ version:
 Author: YL
 Date: 2023-04-18 15:36:52
 '''
-import logging
 
-from django.db.models import Q
+from django.db.models import Q, OuterRef, Subquery, Prefetch
 from django.forms import model_to_dict
 
 import core.core.fs as ikfs
@@ -15,13 +14,11 @@ import core.ui.uidb as ikuidb
 import core.utils.strUtils as strUtils
 from core.core.http import *
 from core.core.lang import Boolean2
+from core.log.logger import logger
 from core.models import *
 from core.utils.langUtils import isNotNullBlank, isNullBlank
 from core.screen import ScreenDfnManager
 from core.view.screenView import ScreenAPIView
-
-logger = logging.getLogger('ikyo')
-
 
 class ScreenDfnView(ScreenAPIView):
 
@@ -152,7 +149,7 @@ class ScreenDfnView(ScreenAPIView):
         exampleFile = ikfs.getLastRevisionFile(exampleFileFolder, 'example.xlsx')
         if isNullBlank(exampleFile):
             logger.error("Example file does not exist in folder [%s]." % exampleFileFolder.absolute())
-            return Boolean2(False, 'Screen example file is not found. Please check.')
+            return Boolean2(False, 'Screen example file not found. Please check.')
         return self.downloadFile(exampleFile)
 
     def syncScreenDefinitions(self):
@@ -167,20 +164,27 @@ class ScreenDfnView(ScreenAPIView):
         # get all screens combobox
     def getScreens(self):
         data = []
-        qs = Screen.objects.values('screen_sn').distinct().order_by('screen_sn')
-        snFlag = ''
-        for q in qs:
-            if snFlag.lower() == q['screen_sn'].lower():
-                continue
-            snFlag = q['screen_sn']
-            sn = q['screen_sn']
-            screenRc = Screen.objects.filter(screen_sn__iexact=sn).order_by('-rev').first()
-            screenFileRc = ScreenFile.objects.filter(screen=screenRc).order_by('-file_dt').first()
+        subquery = Screen.objects.filter(screen_sn=OuterRef('screen_sn')).order_by('-rev').values('id')[:1]
+        screenRcs = Screen.objects.filter(id__in=Subquery(subquery)).order_by('screen_sn')
+
+        # Pre-fetch the latest ScreenFile for each Screen
+        screenFileRcs = ScreenFile.objects.filter(screen__in=screenRcs).order_by('screen', '-file_dt')
+        # Use Prefetch to fetch related ScreenFile objects into Screen objects
+        screenRcs = screenRcs.prefetch_related(Prefetch('screenfile_set', queryset=screenFileRcs, to_attr='screen_files'))
+
+        for screenRc in screenRcs:
+            if len(screenRc.screen_files) == 1:
+                screenFileRc = screenRc.screen_files[0]
+            elif len(screenRc.screen_files) > 1:
+                screenFileRc = sorted(screenRc.screen_files, key=lambda x: x.file_dt, reverse=True)[0]
+            else:
+                screenFileRc = None
             if isNullBlank(screenFileRc):
                 dt = ''
             else:
                 dt = screenFileRc.file_dt.strftime('%Y-%m-%d %H:%M:%S')
-            data.append({'screen_sn': screenRc.screen_sn, 'screen_full_sn': screenRc.screen_sn + " - v" + str(screenRc.rev) + " - " + dt})
+            data.append({'screen_sn': screenRc.screen_sn, 'screen_full_sn': screenRc.screen_sn + " - v" + str(screenRc.rev) + " - " + dt + " - " + screenRc.app_nm })
+        data = sorted(data, key=lambda x: x['screen_full_sn'])
         return data
 
     # get selected screen
@@ -206,7 +210,7 @@ class ScreenDfnView(ScreenAPIView):
         if not strUtils.isEmpty(screenSn) and not isNewScreen:
             data = Screen.objects.filter(screen_sn__iexact=screenSn).order_by("-rev").first()
         else:
-            data['api_version'] = 1
+            data['template_version'] = 1
             data['editable'] = True
         return data
 
@@ -273,7 +277,7 @@ class ScreenDfnView(ScreenAPIView):
         newScreenSn = dialogCopyPramsFg['screenSn']
         screenRcs = Screen.objects.filter(screen_sn__iexact=newScreenSn)
         if len(screenRcs) > 0:
-            return IkErrJsonResponse(message="This Screen ID [%s] already exists, please re-enter." % screenSn)
+            return IkErrJsonResponse(message="This Screen ID [%s] already exists, please re-enter." % newScreenSn)
         boo = ScreenDfnManager.copyScreen(self, userID, screenSn, newScreenSn)
         return boo.toIkJsonResponse1()
 
@@ -955,10 +959,11 @@ class ScreenDfnView(ScreenAPIView):
             if 'recordset' in cleanedDict and isNotNullBlank(cleanedDict['recordset']):
                 recordsetRc = ScreenRecordset.objects.filter(id=cleanedDict['recordset']).first()
                 recordsetClass = modelUtils.getModelClass(recordsetRc.sql_models)
-                if 'value' in cleanedDict and not hasattr(recordsetClass, cleanedDict['value']):
-                    return IkErrJsonResponse(message='The recordset [%s] does not have the field [%s].' % (recordsetRc.recordset_nm, cleanedDict['value']))
-                if 'display' in cleanedDict and not hasattr(recordsetClass, cleanedDict['display']):
-                    return IkErrJsonResponse(message='The recordset [%s] does not have the field [%s].' % (recordsetRc.recordset_nm, cleanedDict['display']))
+                if 'DummyModel' not in recordsetRc.sql_models:
+                    if 'value' in cleanedDict and not hasattr(recordsetClass, cleanedDict['value']):
+                        return IkErrJsonResponse(message='The recordset [%s] does not have the field [%s].' % (recordsetRc.recordset_nm, cleanedDict['value']))
+                    if 'display' in cleanedDict and not hasattr(recordsetClass, cleanedDict['display']):
+                        return IkErrJsonResponse(message='The recordset [%s] does not have the field [%s].' % (recordsetRc.recordset_nm, cleanedDict['display']))
                 cleanedDict['recordset'] = recordsetRc.recordset_nm
             if 'value' in cleanedDict and 'display' in cleanedDict and (cleanedDict['value'] != 'value' or cleanedDict['display'] != 'display'):
                 cleanedDict['values'] = '{"value": "%s", "display": "%s"}' % (cleanedDict['value'], cleanedDict['display'])

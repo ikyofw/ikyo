@@ -499,7 +499,7 @@ def GetRequestData(request, parameterModelMap={}, screen=None, initDataFromDatab
                         rows.append(rc)
                     data[key] = rows
                 else:
-                    modelClass = modelUtils.getModelClass(modelClassName)
+                    modelClass = modelUtils.get_model_class_1(screen.appName, modelClassName)
                     primaryKey = modelClass._meta.pk.name
                     dbFieldNamesAttrs = attr[2:]
                     for r in tableData:
@@ -593,7 +593,7 @@ def __GetRequestData_oneRecord(screen, parameterModelMap, name, values, initData
     if screenFieldGroup is None:
         return screenFieldGroup
 
-    modelClass = modelUtils.getModelClass(modelClassName)
+    modelClass = modelUtils.get_model_class_1(screen.appName , modelClassName)
     # XH 2023-04-21  Data from tables using DummyModel is not processed and directly returns the original data passed from the front end.
     if issubclass(modelClass, ikDbModels.DummyModel):
         return values
@@ -768,8 +768,8 @@ def responseFile(filePath, filename: str = None, params: dict = None) -> Streami
     '''
     p = Path(filePath)
     if not p.is_file():
-        logger.error('File is not found: %s' % p.absolute())
-        raise IkMessageException('File is not found.')
+        logger.error('File not found: %s' % p.absolute())
+        raise IkMessageException('File not found.')
     filename = filename if filename is not None else p.name
     fileType = '' if p.suffix is None else p.suffix[1:].lower()
 
@@ -797,7 +797,7 @@ def responseImage(imagePath):
     '''
     p = Path(imagePath)
     if not p.is_file():
-        raise Exception('File is not found.')
+        raise Exception('File not found.')
     fileType = '' if p.suffix is None else p.suffix[1:].lower()
 
     data = None

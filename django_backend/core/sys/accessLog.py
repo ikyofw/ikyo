@@ -75,6 +75,8 @@ def getAccessLog(userID):
 
 
 def getLatestAccessLog(userID, menuIDs: str):
+    if menuIDs == "":
+        return []
     sql = "SELECT a.screen_nm FROM ("
     sql += " SELECT l.menu_id, m.menu_caption, m.screen_nm, max(l.id) AS id FROM ik_access_log l LEFT JOIN ik_menu m ON m.id=l.menu_id WHERE usr_id=%s" % dbUtils.toSqlField(
         userID)

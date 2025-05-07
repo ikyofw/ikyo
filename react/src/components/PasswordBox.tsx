@@ -1,13 +1,7 @@
-/*
- * @Description:
- * @version:
- * @Author: XH
- * @Date: 2023-09-15 16:07:12
- */
-
-import React, { forwardRef, Ref, useState } from "react"
-import transform, { StyleTuple } from "css-to-react-native"
 import classnames from "classnames"
+import transform from "css-to-react-native"
+import React, { forwardRef, Ref, useState } from "react"
+import * as simpleFg from "./SimpleFg"
 
 interface IPasswordBox {
   ref: any
@@ -39,21 +33,12 @@ const PasswordBox: React.FC<IPasswordBox> = forwardRef((props, ref: Ref<any>) =>
       } else {
         setTooltip(props.tip)
       }
+    } else {
+      setTooltip("")
     }
   }, [props.value, props.tip, props.name])
 
-  let cellStyle: StyleTuple[] = []
-  let cellClass = []
-  if (props.style) {
-    const properties = Object.keys(props.style)
-    properties.forEach((property) => {
-      if (property.toLocaleLowerCase() === "class") {
-        cellClass = props.style[property].split(",").map((str) => str.trim())
-      } else {
-        cellStyle.push([property, props.style[property]])
-      }
-    })
-  }
+  const { cellStyle, cellClass } = simpleFg.formatCss(props.style)
 
   return (
     <>
@@ -66,6 +51,7 @@ const PasswordBox: React.FC<IPasswordBox> = forwardRef((props, ref: Ref<any>) =>
           id={props.name + "_psw"}
           disabled={!props.editable}
           style={cellStyle.length > 0 ? transform(cellStyle) : null}
+          autoComplete="new-password"
         />
         {tooltip ? <span className="tip">{tooltip}</span> : null}
       </td>

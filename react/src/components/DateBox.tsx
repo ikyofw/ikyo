@@ -3,7 +3,7 @@ import DatePicker from "./calendar/DatePicker"
 
 interface IDateBox {
   ref: any
-  widgetParameter: string
+  widgetParameter: any
   inputLabel: string
   inputValue?: string
   editable: boolean

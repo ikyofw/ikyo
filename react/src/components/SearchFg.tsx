@@ -141,6 +141,7 @@ const SearchFg: React.FC<ISearchFg> = forwardRef((props, ref: Ref<any>) => {
                                 labelValue={simpleFg.formatValue(searchData, field)}
                                 name={field.name}
                                 tip={field.tooltip}
+                                style={field.style}
                                 widgetParameter={field.widgetParameter}
                               />
                             ) : String(field.widget).trim().toLocaleLowerCase() === global.FIELD_TYPE_TEXT_BOX ? (
@@ -189,6 +190,7 @@ const SearchFg: React.FC<ISearchFg> = forwardRef((props, ref: Ref<any>) => {
                                 value={simpleFg.formatValue(searchData, field)}
                                 name={field.name}
                                 editable={editable && field.editable}
+                                style={field.style}
                                 widgetParameter={field.widgetParameter}
                               />
                             ) : String(field.widget).trim().toLocaleLowerCase() === global.FIELD_TYPE_DATE_BOX ? (

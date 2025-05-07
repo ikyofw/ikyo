@@ -18,6 +18,8 @@ from pathlib import Path
 from iktools import (TEMPLATE_FOLDER, IkConfig, getDjangoAppConfigs,
                      getStaticFolders)
 
+DEFAULT_LOGGER_NAME = 'ikyo'
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -73,6 +75,18 @@ for dirItem in IkConfig.get('System', 'templateDirs').split(','):
             __TEMPLATES_DIRS.append(dirItem)
         elif dirItem != TEMPLATE_FOLDER:
             __TEMPLATES_DIRS.append(os.path.join(BASE_DIR, dirItem))
+            
+for app in INSTALLED_APPS:
+    try:
+        # Dynamically concatenate template paths for each app
+        if "apps" in app:
+            app = app.split('.')[0]
+            app_path = os.path.join(BASE_DIR, app.replace('.', '/'), 'resources/templates')
+            if os.path.isdir(app_path):
+                __TEMPLATES_DIRS.append(app_path)
+    except Exception as e:
+        print(f"Error loading templates for app {app}: {e}")
+        
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
@@ -137,19 +151,29 @@ AUTH_PASSWORD_VALIDATORS = [
 # https://docs.djangoproject.com/en/4.2/topics/i18n/
 
 LANGUAGE_CODE = 'en-us'
-
-TIME_ZONE = IkConfig.get('System', 'timezone', defaultValue='UTC')
-
 USE_I18N = True
 
-USE_TZ = True
+USE_TZ = str(IkConfig.get('System', 'use_timezone', defaultValue='true')).strip().lower() == 'true'
+TIME_ZONE = IkConfig.get('System', 'timezone', defaultValue='UTC')
 
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.2/howto/static-files/
 
+__STATIC_DIRS = getStaticFolders()
+for app in INSTALLED_APPS:
+    try:
+        # Dynamically concatenate static paths for each app
+        if "apps" in app:
+            app = app.split('.')[0]
+            app_path = os.path.join(BASE_DIR, app.replace('.', '/'), 'resources/static')
+            if os.path.isdir(app_path):
+                __STATIC_DIRS.append(app_path)
+    except Exception as e:
+        print(f"Error loading static for app {app}: {e}")
+        
 STATIC_URL = '/static/'
-STATICFILES_DIRS = getStaticFolders()
+STATICFILES_DIRS = __STATIC_DIRS
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
@@ -266,7 +290,7 @@ LOGGING = {
             'propagate': True,
             'level': 'DEBUG' if IkConfig.isDebug else 'INFO',
         },
-        'ikyo': {
+        DEFAULT_LOGGER_NAME: {
             'handlers': ['console', 'ikFile'],
             'level': 'DEBUG' if IkConfig.isDebug else 'INFO',
             'propagate': True,

@@ -135,7 +135,7 @@ const ComboBox: React.FC<IComboBox> = forwardRef((props, ref: Ref<any>) => {
             ref={ref}
             name={props.name}
             id={props.name}
-            value={selectValue ? selectValue : ""}
+            value={selectValue}
             onChange={changeSelectedValue}
             disabled={!props.editable}
             style={cellStyle.length > 0 ? transform(cellStyle) : null}
@@ -146,8 +146,12 @@ const ComboBox: React.FC<IComboBox> = forwardRef((props, ref: Ref<any>) => {
               valueAndDisplay.map((item: any, index) => (
                 <option key={index} value={item["value"]} title={String(item["display"]).length < 50 ? null : item["display"]}>
                   {String(item["display"]).length < 50
-                    ? String(item["display"]).replace(/\s/g, "\u00a0")
-                    : String(item["display"]).slice(0, 50).replace(/\s/g, "\u00a0") + "..."}
+                    ? String(item["display"]).trim() == ""
+                      ? String(item["display"]).replace(/\s/g, "\u00a0")
+                      : String(item["display"])
+                    : (String(item["display"]).trim() == ""
+                        ? String(item["display"]).slice(0, 50).replace(/\s/g, "\u00a0")
+                        : String(item["display"]).slice(0, 50)) + "..."}
                 </option>
               ))}
           </select>

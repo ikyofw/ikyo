@@ -1,6 +1,7 @@
-import transform, { StyleTuple } from "css-to-react-native"
+import transform from "css-to-react-native"
 import React, { ChangeEvent, Ref, forwardRef, useEffect, useState } from "react"
 import classnames from "classnames"
+import * as simpleFg from "./SimpleFg"
 import { useHttp } from "../utils/http"
 import pyiLocalStorage from "../utils/pyiLocalStorage"
 
@@ -112,19 +113,8 @@ const ListBox: React.FC<IListBox> = forwardRef((props, ref: Ref<any>) => {
     }
   }
 
-  let cellStyle: StyleTuple[] = []
-  let cellClass = []
-  if (props.style) {
-    const properties = Object.keys(props.style)
-    properties.forEach((property) => {
-      if (property.toLocaleLowerCase() === "class") {
-        cellClass = props.style[property].split(",").map((str) => str.trim())
-      } else {
-        cellStyle.push([property, props.style[property]])
-      }
-    })
-  }
-  
+  const { cellStyle, cellClass } = simpleFg.formatCss(props.style)
+
   const IListBoxNode = React.useMemo(
     () => (
       <>

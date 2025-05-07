@@ -50,6 +50,12 @@ const TextArea: React.FC<ITextArea> = forwardRef((props, ref: Ref<any>) => {
     properties.forEach((property) => {
       if (property.toLocaleLowerCase() === "class") {
         cellClass = props.style[property].split(",").map((str) => str.trim())
+      } else if (property.toLocaleLowerCase() === "width" && !props.style[property].endsWith("%")) {
+        // If the property is "width" and the unit is not a percentage, it will be processed in the original: width + 3
+        const currentValue = parseFloat(props.style[property])
+        const unit = props.style[property].replace(currentValue, "").trim()
+        const newValue = currentValue + 2
+        cellStyle.push(["width", newValue + unit])
       } else {
         cellStyle.push([property, props.style[property]])
       }
@@ -64,7 +70,7 @@ const TextArea: React.FC<ITextArea> = forwardRef((props, ref: Ref<any>) => {
         <textarea
           rows={5}
           cols={40}
-          style={transform(cellStyle)}
+          style={cellStyle.length > 0 ? transform(cellStyle) : null}
           ref={ref}
           name={props.name}
           placeholder={placeholder}

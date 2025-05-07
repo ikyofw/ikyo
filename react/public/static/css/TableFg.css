@@ -62,6 +62,7 @@
 .Spreadsheet__active-cell {
   cursor: cell;
   white-space: pre-line;
+  overflow-wrap: anywhere;
 }
 
 .Spreadsheet__cell {
@@ -85,7 +86,7 @@
 .Spreadsheet__header {
   min-width: 1em;
   min-height: 1em;
-  height: 1em;
+  height: 18px;
   max-height: 1.9em;
   line-height: 1.5;
   border: 1px solid var(--border-color);
@@ -209,11 +210,11 @@
 div.rt-tr {
   align-items: center;
 }
-/* LHH.ikyo 2022-04-26 start */
+/* LHH 2022-04-26 start */
 /* *:focus {
   outline: none;
 } */
-/* LHH.ikyo 2022-04-26 end */
+/* LHH 2022-04-26 end */
 
 /* XH 2022-04-26 start*/
 /* img {
@@ -290,5 +291,5 @@ input:-internal-autofill-selected {
 
 .highlight-row:hover td, 
 .highlight-row:hover th {
-  background-color: lightgray;
+  background-color: lightgray !important;
 }

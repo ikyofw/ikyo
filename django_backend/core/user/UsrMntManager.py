@@ -4,18 +4,19 @@ version:
 Author: XH.ikyo
 Date: 2023-09-18 14:27:13
 '''
-import re
 import hashlib
+import re
 
-from django.db.models import Q, F, Value, Subquery
+from django.db.models import F, Q, Subquery, Value
 from django.db.models.functions import Concat
 from django.db.models.query import QuerySet
+from django.contrib.auth.hashers import make_password
 
-from core.utils.langUtils import isNullBlank, isNotNullBlank
 from core.core.lang import Boolean2
 from core.db.transaction import IkTransaction
-
 from core.models import *
+from core.utils.langUtils import isNotNullBlank, isNullBlank
+from iktools import IkConfig
 
 
 def getUsrList(schItems: dict) -> QuerySet:
@@ -30,9 +31,9 @@ def getUsrList(schItems: dict) -> QuerySet:
 
     usrRcs = User.objects.all()
     if isEnable and not isDisable:
-        usrRcs = usrRcs.filter(enable='Y')
+        usrRcs = usrRcs.filter(active=True)
     elif not isEnable and isDisable:
-        usrRcs = usrRcs.filter(Q(enable__isnull=True) | ~Q(enable='Y'))
+        usrRcs = usrRcs.filter(~Q(active=True))
 
     if isNotNullBlank(schKey):
         schFilter = Q(usr_nm__icontains=schKey) | Q(rmk__icontains=schKey)
@@ -50,6 +51,7 @@ def getUsrList(schItems: dict) -> QuerySet:
 def save(saveUsrID: int, currentUsrID, createNew, requestData, oldPsw) -> Boolean2:
     usrDtlFg: User = requestData.get('usrDtlFg')
     grpFg: list[UserGroup] = requestData.get('grpFg')
+    officeFg: list[UserOffice] = requestData.get('officeFg')
 
     if isNullBlank(currentUsrID) and createNew:
         usrDtlFg.ik_is_status_new()
@@ -82,11 +84,19 @@ def save(saveUsrID: int, currentUsrID, createNew, requestData, oldPsw) -> Boolea
     newPsw = usrDtlFg.psw if isNotNullBlank(usrDtlFg.psw) else None
     if isNullBlank(newPsw) and createNew:
         return Boolean2(False, 'Password is mandatory!')
-    if isNotNullBlank(newPsw) and len(newPsw) < 6:
-        return Boolean2(False, 'The password\'s length should be equal to or greater than 6 characters!')
+    if isNotNullBlank(newPsw):
+        if len(newPsw) < 6:
+            return Boolean2(False, 'The password\'s length should be equal to or greater than 6 characters!')
+        password_encryption_method = IkConfig.getSystem('password_encryption_method').lower()
+        if password_encryption_method == 'md5':
+            newPsw = hashlib.md5(newPsw.encode("utf8")).hexdigest()
+        elif password_encryption_method == 'pbkdf2':
+            newPsw = make_password(newPsw)
+        else:
+            return Boolean2(False, "Unsupported password encryption method: [%s], please choose in [MD5/PBKDF2]" % password_encryption_method)
 
-    if usrDtlFg.enable != 'Y':
-        usrDtlFg.enable = 'N'
+    if not usrDtlFg.active:
+        usrDtlFg.active = False
 
     # user groups
     grpRcs, groupIDs = [], []
@@ -111,17 +121,49 @@ def save(saveUsrID: int, currentUsrID, createNew, requestData, oldPsw) -> Boolea
         if not j.ik_is_status_retrieve():
             grpRcs.append(j)
 
+    # user office
+    officeRcs = []
+    hasDefault = False
+    allToBeDel = True
+    for o in officeFg:
+        if o.ik_is_status_delete():
+            officeRcs.append(o)
+            continue
+        allToBeDel = False
+        if hasDefault and o.is_default:
+            return Boolean2(False, "User can only have one default office, please check.")
+        if o.is_default:
+            hasDefault = True
+
+        if o.ik_is_status_new():
+            o.usr_id = usrDtlFg.id
+        officeRcs.append(o)
+    if (isNotNullBlank(officeFg) and len(officeFg) > 0) and not allToBeDel and not hasDefault:
+        return Boolean2(False, "Please set a default office.")
+    # sort
+    officeRcs.sort(key=lambda o: o.seq)
+    seq = 0
+    for o in officeRcs:
+        if o.ik_is_status_delete():
+            continue
+        seq += 1
+        if seq != o.seq:
+            o.seq = seq
+        if not o.ik_is_status_new():
+            o.ik_set_status_modified()
+
     if createNew:
-        usrDtlFg.psw = __getPswMD5(newPsw)
+        usrDtlFg.psw = newPsw
     elif usrDtlFg.ik_is_status_modified():
         if isNotNullBlank(newPsw):
-            usrDtlFg.psw = __getPswMD5(newPsw)
+            usrDtlFg.psw = newPsw
         else:
             usrDtlFg.psw = oldPsw
 
     pytrn = IkTransaction(userID=saveUsrID)
     pytrn.add(usrDtlFg)
     pytrn.add(grpFg)
+    pytrn.add(officeRcs)
     b = pytrn.save()
     if not b.value:
         return Boolean2(False, b.dataStr)

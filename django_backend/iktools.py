@@ -27,7 +27,7 @@ def getStaticFolders() -> list:
     ]
 
 
-def __getAppNames() -> list:
+def getAppNames() -> list:
     appNames = []
     projectRootDir = Path(os.path.join(os.path.dirname(__file__)))
     for dir in os.listdir(projectRootDir):
@@ -46,7 +46,7 @@ def getDjangoAppConfigs() -> list:
     '''
         Load django apps except "django_backend". Sorts by app name
     '''
-    appNames = __getAppNames()
+    appNames = getAppNames()
     appConfigs = []
     projectRootDir = Path(os.path.join(os.path.dirname(__file__)))
     for appName in appNames:
@@ -55,7 +55,11 @@ def getDjangoAppConfigs() -> list:
             # check the the apps.py file is exists or not
             appFile = Path(os.path.join(dir, 'apps.py'))
             # get configuration class name. E.g. testApp.apps.TestAppConfig
-            className = appName[0].upper() + appName[1:] + 'Config'
+            className = ''
+            for appNameItem in appName.split('_'):
+                appNameItem2 = appNameItem[0].upper() + appNameItem[1:] 
+                className = '%s%s' % (className, appNameItem2)
+            className = className + 'Config'
             configClassName = appName + '.apps.' + className
             # check the class is exists or not
             try:
@@ -78,7 +82,7 @@ def getAppUrlFiles() -> list:
     '''
     urlFiles = []
     if ikDjangoUtils.isRunDjangoServer():
-        appNames = __getAppNames()
+        appNames = getAppNames()
         projectRootDir = Path(os.path.join(os.path.dirname(__file__)))
         for appName in appNames:
             dir = os.path.join(projectRootDir, appName)
@@ -110,10 +114,22 @@ class __IkConfig():
         self.conf = configparser.ConfigParser()
         self.conf.read(p.absolute())
 
-    def get(self, section, name, defaultValue=None) -> str:
+    def get(self, section: str, name:str, defaultValue:str = None) -> str:
         try:
             v = self.conf.get(section, name)
             return v if v is not None and str(v).strip() != '' else defaultValue
+        except:
+            return defaultValue
+        
+    def get_bool(self, section: str, name:str, defaultValue: bool = None) -> bool:
+        """
+            return None if the config doesn't exist. Otherwise true/false
+        """
+        try:
+            v = self.get(section, name, defaultValue=None)
+            if v is None or str(v).strip() == '':
+                return None
+            return str(v).strip().lower() == 'true'
         except:
             return defaultValue
 

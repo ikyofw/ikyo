@@ -1,5 +1,6 @@
 import transform from "css-to-react-native"
 import React, { Ref, forwardRef, useImperativeHandle, useState } from "react"
+
 import { createIconColumn } from "../components/TableFg"
 import { useHttp } from "../utils/http"
 import pyiLogger from "../utils/log"
@@ -13,6 +14,7 @@ import SearchFg from "./SearchFg"
 import SimpleFg from "./SimpleFg"
 import TableFg from "./TableFg"
 import ToolBar from "./ToolBar"
+import Tree from "./TreeView"
 import Html from "./html/Html"
 import IFrame from "./html/IFrame"
 import GetSitePlan from "./sitePlan/GetSitePlan"
@@ -95,17 +97,17 @@ const Screen: React.FC<IScreenBox> = forwardRef((props, ref: Ref<any>) => {
   const createEventData = (eventHandlerParameter: any) => {
     let isUploadFg = false
     const processEventHandlerParameter = (fgName: string) => {
-      const fgData = createDataByFgName(fgName);
+      const fgData = createDataByFgName(fgName)
       if (fgData) {
-        const isFormData = fgData instanceof FormData;
+        const isFormData = fgData instanceof FormData
         if (isFormData) {
           isUploadFg = true
-          newFormData = getFormData(newFormData, fgData);
+          newFormData = getFormData(newFormData, fgData)
         } else {
-          newFormData.append(fgName, typeof fgData === "string" ? fgData : JSON.stringify(fgData));
+          newFormData.append(fgName, typeof fgData === "string" ? fgData : JSON.stringify(fgData))
         }
       }
-    };
+    }
 
     let newFormData = new FormData()
     if (!eventHandlerParameter || eventHandlerParameter.length <= 0) {
@@ -118,25 +120,25 @@ const Screen: React.FC<IScreenBox> = forwardRef((props, ref: Ref<any>) => {
       eventHandlerParameter.forEach((fgName: string) => {
         processEventHandlerParameter(fgName)
       })
-    }    
+    }
 
     if (!isUploadFg) {
-      const dictFormData: Record<string, string> = {};
+      const dictFormData: Record<string, string> = {}
       newFormData.forEach((value, key) => {
-        dictFormData[key] = value.toString();
-      });
+        dictFormData[key] = value.toString()
+      })
       return dictFormData
     }
     return newFormData
   }
   const createDataByFgName = (fgName: string) => {
     let data
+
     if (screenJson[fgName] && refs[fgName].current) {
-      if (screenJson[fgName].type === pyiGlobal.TABLE_TYPE) {
+      const fgType = screenJson[fgName].type
+      if (fgType === pyiGlobal.TABLE_TYPE || fgType === pyiGlobal.TABLE_TYPE_RESULT || fgType === pyiGlobal.TREE_TYPE) {
         data = refs[fgName].current.data
-      } else if (screenJson[fgName].type === pyiGlobal.TABLE_TYPE_RESULT) {
-        data = refs[fgName].current.data
-      } else if (screenJson[fgName].type === pyiGlobal.SIMPLE_TYPE || screenJson[fgName].type === pyiGlobal.SEARCH_TYPE) {
+      } else if (fgType === pyiGlobal.SIMPLE_TYPE || fgType === pyiGlobal.SEARCH_TYPE) {
         if (isUploadFg(screenJson[fgName])) {
           data = refs[fgName].current.formData()
         } else {
@@ -183,7 +185,7 @@ const Screen: React.FC<IScreenBox> = forwardRef((props, ref: Ref<any>) => {
         })
         .then((result) => {
           // YL, 2022-12-27 load static files.
-          let screenDfn_0 = getScreenDfn(result, true)
+          let screenDfn_0 = getScreenDfn(result)
           if (!screenDfn_0) {
             pyiLogger.error("get screenDfn error, please check.", true)
             return
@@ -352,7 +354,7 @@ const Screen: React.FC<IScreenBox> = forwardRef((props, ref: Ref<any>) => {
       Loading.remove()
       return
     }
-    const fieldGroups = e.eventHandlerParameter.fieldGroups
+    const refreshPrams = e.eventHandlerParameter.refreshPrams
     let data = {}
     data[e.fgName] = refs[e.fgName].current.formDataToJson()
 
@@ -367,12 +369,12 @@ const Screen: React.FC<IScreenBox> = forwardRef((props, ref: Ref<any>) => {
           throw response
         })
         .then((result) => {
-          if (fieldGroups.length === 0) {
+          if (refreshPrams.length === 0) {
             saveMessage(result.messages)
             refreshList()
             removeLoadingDiv = false
           } else if (validateResponse(result, false)) {
-            fieldGroups.map((fgName) => {
+            refreshPrams.map((fgName) => {
               const fgNames = Object.keys(result.data)
               if (fgNames.indexOf(fgName) !== -1) {
                 const fgData = result.data[fgName][pyiGlobal.SCREEN_FIELD_GROUP_DATA]
@@ -661,10 +663,11 @@ const Screen: React.FC<IScreenBox> = forwardRef((props, ref: Ref<any>) => {
         let pluginCallBack = []
         let pluginLists = []
         screenPlugin[fgName].forEach((plugin: any, index: number) => {
-          pluginCallBack[index] = async (id: number) => {
+          pluginCallBack[index] = async (id: number, row) => {
+            const pluginData = { EditIndexField: id, row: row }
             Loading.show()
             try {
-              await HttpPost(plugin.eventHandler, JSON.stringify({ EditIndexField: id }))
+              await HttpPost(plugin.eventHandler, JSON.stringify(pluginData))
                 .then((response) => response.json())
                 .then((result) => {
                   if (result.data && result.data[pyiGlobal.OPEN_SCREEN_KEY_NAME]) {
@@ -696,7 +699,19 @@ const Screen: React.FC<IScreenBox> = forwardRef((props, ref: Ref<any>) => {
           {Object.keys(screenJson).length > 0 &&
             props.fgNames.map((fgName: any, index: number) =>
               screenJson[fgName] ? (
-                <div style={screenJson[fgName].outerLayoutParams ? transform(parseLayoutParams(screenJson[fgName].outerLayoutParams)) : null}>
+                <div
+                  key={index}
+                  style={screenJson[fgName].outerLayoutParams ? transform(parseLayoutParams(screenJson[fgName].outerLayoutParams)) : null}
+                >
+                  {String(screenJson[fgName].type) === pyiGlobal.TREE_TYPE ? (
+                    <Tree
+                      key={index}
+                      ref={refs[fgName]}
+                      selectable={screenJson[fgName].selectionMode ? true : false}
+                      data={screenJson[fgName].data}
+                    />
+                  ) : null}
+
                   {pageRefreshFlag[fgName] && String(screenJson[fgName].type) === pyiGlobal.SEARCH_TYPE ? (
                     <SearchFg
                       key={index}

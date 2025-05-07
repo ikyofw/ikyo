@@ -144,6 +144,9 @@ input[type="radio"] {
 .property_value input {
   width: 150px;
 }
+.property_value select {
+  min-width: 153px;
+}
 
 .bar_layout {
   text-align: left;
@@ -255,9 +258,9 @@ table {
 
 /* Set the border color of the comboBox to black and add rounded corners. */
 body .advanced_select .dropdown-container {
-  border: 1px solid black;
-  border-radius: 4px;
-  min-width: 120px;
+  border: 1px solid gray;
+  border-radius: 2px;
+  min-width: 153px;
   font-size: 16px;
 }
 

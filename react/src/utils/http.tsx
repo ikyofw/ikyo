@@ -1,7 +1,9 @@
 import axios from "axios"
+import pyiLocalStorage from "./pyiLocalStorage"
 import { useContext } from "react"
 import { suuidContext } from "../components/ConText"
-import pyiLocalStorage from "./pyiLocalStorage"
+import { showErrorMessage } from "../utils/sysUtil"
+import pyiLogger from "../utils/log"
 
 const TOKEN_NAME = "token"
 const SCREEN_UUID_NAME = "SUUID"
@@ -31,46 +33,71 @@ export function useHttp(type: string) {
   }
 
   if (type === pyiLocalStorage.globalParams.HTTP_TYPE_GET) {
-    return function (url: string, data?: any) {
-      var result = fetch(getNewUrl(url), {
-        method: "GET",
-      })
-      return result
+    return async function (url: string, data?: any) {
+      try {
+        var result = await fetch(getNewUrl(url), {
+          method: "GET",
+        })
+        return result
+      } catch (error) {
+        showErrorMessage("Failed to connect to the server.")
+        pyiLogger.error("Connect to the server failed: " + error, true)
+      }
     }
   } else if (type === pyiLocalStorage.globalParams.HTTP_TYPE_POST) {
-    return function HttpPost(url: string, data: any) {
-      var result = fetch(getNewUrl(url), {
-        method: "POST",
-        headers: {
-          Accept: "application/json,text/plain, */*",
-          "Content-Type": "application/json",
-        },
-        body: data.body ? data.body : data,
-      })
-      return result
+    return async function HttpPost(url: string, data: any) {
+      try {
+        var result = await fetch(getNewUrl(url), {
+          method: "POST",
+          headers: {
+            Accept: "application/json,text/plain, */*",
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+          body: data.body ? data.body : data,
+        })
+        return result
+      } catch (error) {
+        showErrorMessage("Failed to connect to the server.")
+        pyiLogger.error("Connect to the server failed: " + error, true)
+      }
     }
   } else if (type === pyiLocalStorage.globalParams.HTTP_TYPE_DELETE) {
-    return function HttpDelete(url: string, data?: any) {
-      var result = fetch(getNewUrl(url), {
-        method: "DELETE",
-      })
-      return result
+    return async function HttpDelete(url: string, data?: any) {
+      try {
+        var result = await fetch(getNewUrl(url), {
+          method: "DELETE",
+        })
+        return result
+      } catch (error) {
+        showErrorMessage("Failed to connect to the server.")
+        pyiLogger.error("Connect to the server failed: " + error, true)
+      }
     }
   } else if (type === pyiLocalStorage.globalParams.HTTP_TYPE_POST_NO_HEADER) {
-    return function HttpPostNoHeader(url: string, data: any) {
-      var result = fetch(getNewUrl(url), {
-        method: "POST",
-        body: data.body ? data.body : data,
-      })
-      return result
+    return async function HttpPostNoHeader(url: string, data: any) {
+      try {
+        var result = await fetch(getNewUrl(url), {
+          method: "POST",
+          body: data.body ? data.body : data,
+        })
+        return result
+      } catch (error) {
+        showErrorMessage("Failed to connect to the server.")
+        pyiLogger.error("Connect to the server failed: " + error, true)
+      }
     }
   } else if (type === pyiLocalStorage.globalParams.HTTP_TYPE_DOWNLOAD) {
-    return function HttpDownload(url: string, data?: any) {
-      var result = axios.post(getNewUrl(url), data ? data : "", {
-        method: "POST",
-        responseType: "blob", // Set the data type of the response to a Blob object containing binary data, MUST BE SET!!!!
-      })
-      return result
+    return async function HttpDownload(url: string, data?: any) {
+      try {
+        var result = await axios.post(getNewUrl(url), data ? data : "", {
+          method: "POST",
+          responseType: "blob", // Set the data type of the response to a Blob object containing binary data, MUST BE SET!!!!
+        })
+        return result
+      } catch (error) {
+        showErrorMessage("Failed to connect to the server.")
+        pyiLogger.error("Connect to the server failed: " + error, true)
+      }
     }
   }
 }

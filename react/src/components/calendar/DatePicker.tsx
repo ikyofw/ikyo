@@ -4,6 +4,7 @@ import moment from "moment"
 import React, { ChangeEvent, forwardRef, Ref, useEffect, useState } from "react"
 import pyiLogger from "../../utils/log"
 import pyiLocalStorage from "../../utils/pyiLocalStorage"
+import * as simpleFg from "../SimpleFg"
 import { verifyIsDate, verifyIsTime } from "../../utils/sysUtil"
 import * as calendar from "./calendar"
 import "./calendar-blue.css"
@@ -204,18 +205,7 @@ export const Calendar: React.FC<Props> = forwardRef((props, ref: Ref<any>) => {
     var inputId = cid === undefined ? "input_".concat(generateCalWidgetId()) : cid
     var buttonId = cid === undefined ? "button".concat(generateCalWidgetId()) : "button".concat(cid)
     // LHH 2022-04-26 start
-    var inputStyle: StyleTuple[] = []
-    let inputClass = []
-    if (props.style) {
-      const properties = Object.keys(props.style)
-      properties.forEach((property) => {
-        if (property.toLocaleLowerCase() === "class") {
-          inputClass = props.style[property].split(",").map((str) => str.trim())
-        } else {
-          inputStyle.push([property, props.style[property]])
-        }
-      })
-    }
+    const { cellStyle: inputStyle, cellClass: inputClass } = simpleFg.formatCss(props.style)
 
     var cellStyle = {}
     const inCell = props?.inCell ?? false

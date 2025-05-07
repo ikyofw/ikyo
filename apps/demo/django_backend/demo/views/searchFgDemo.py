@@ -16,9 +16,10 @@ class SearchFgDemo(ScreenAPIView):
         return IkSccJsonResponse(data=schItems)
 
     def getCombo(self):
-        data = [{'nm': 'option 1'}, {'nm': 'option 2'}]
+        data = [{'id': '1', 'nm': 'option 1'}, {'id': '2', 'nm': 'option 2'}, {'id': '3', 'nm': 'option 3'}, 
+                {'id': '4', 'nm': 'option 4'}, {'id': '5', 'nm': 'option 5'}, {'id': '6', 'nm': 'option 6'}]
         return IkSccJsonResponse(data=data)
-
+    
     # def search(self):
     #     requestData = self.getRequestData()
     #     schItems = requestData.get('searchFg')

@@ -11,6 +11,8 @@ from core.utils.langUtils import isNullBlank, isNotNullBlank
 from core.models import ScreenFgType, ScreenFieldWidget
 from core.view.screenView import ScreenAPIView
 
+from core.ui import uiCache as ikuiCache
+
 
 class TypeWidgetMntView(ScreenAPIView):
 
@@ -33,6 +35,8 @@ class TypeWidgetMntView(ScreenAPIView):
         if isNotNullBlank(customFgTypeFg):
             ptrn.add(customFgTypeFg)
         b = ptrn.save()
+        if b.value:
+            ikuiCache.setFieldGroupTypeCache()
         return b.toIkJsonResponse1()
 
     def getSystemFieldWidgetRcs(self):
@@ -51,4 +55,6 @@ class TypeWidgetMntView(ScreenAPIView):
         if isNotNullBlank(customFieldWidgetFg):
             ptrn.add(customFieldWidgetFg)
         b = ptrn.save()
+        if b.value:
+            ikuiCache.setFieldWidgetCache()
         return b.toIkJsonResponse1()

@@ -61,7 +61,7 @@ const Menu = () => {
           throw response
         })
         .then((result) => {
-          let screenDfn = getScreenDfn(result, false)
+          let screenDfn = getScreenDfn(result)
           if (!screenDfn) {
             pyiLogger.error("get screenDfn error, please check.", true)
             return

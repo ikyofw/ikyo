@@ -3,7 +3,6 @@ import logging
 from django.db import connection
 from django.db.models import Q
 
-import core.menu.menu as coreMenu
 import core.models as ikModels
 import core.utils.db as dbUtils
 from core.core.exception import IkValidateException
@@ -179,6 +178,7 @@ class _MenuManager():
     def getMenuNameByScreenName(self, screenName: str) -> list[str]:
         """Get menu names by screen name.
         """
+        import core.menu.menu as coreMenu
         menuRcs = ikModels.Menu.objects.filter(screen_nm__iexact=screenName).order_by('-id')
         menuRc = menuRcs.first()
         if coreMenu.MENU_FILTERS:
@@ -191,6 +191,7 @@ class _MenuManager():
         return menuRc.menu_nm
 
     def getMenuIdByScreenName(self, screenName: str) -> int:
+        import core.menu.menu as coreMenu
         menuRcs = ikModels.Menu.objects.filter(screen_nm__iexact=screenName).order_by('-id')
         menuRc = menuRcs.first()
         if coreMenu.MENU_FILTERS:
@@ -242,7 +243,7 @@ class _MenuManager():
         '''
             return ik_menu.screen_nm
         '''
-        sql = "select distinct screen_nm from ik_menu where screen_nm is not null and enable=true order by screen_nm"
+        sql = "select distinct screen_nm from ik_menu where screen_nm is not null and enable is not false order by screen_nm"
         rcs = None
         with connection.cursor() as cursor:
             cursor.execute(sql)
@@ -253,14 +254,15 @@ class _MenuManager():
         return screenNames
 
     def getTopMenu(self, menu: ikModels.Menu):
-        if menu is None:
-            return None
-
-        while True:
-            if menu.parent_menu_id is None:
-                return menu
-            else:
-                menu = ikModels.Menu.objects.filter(id=menu.parent_menu_id).first()
+        if menu is not None:
+            while True:
+                if menu.parent_menu_id is None:
+                    return menu
+                else:
+                    menu = ikModels.Menu.objects.filter(id=menu.parent_menu_id).first()
+                    if menu is None:
+                        break
+        return None
 
     def isSubMenus(self, menuID1, menuID2, max_loop=10):
         if menuID1 == menuID2:

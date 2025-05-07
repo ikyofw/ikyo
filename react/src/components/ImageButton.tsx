@@ -1,4 +1,7 @@
 import React from "react"
+import ReactDOM from "react-dom"
+import classnames from "classnames"
+import * as simpleFg from "./SimpleFg"
 import { Tooltip } from "react-tooltip"
 import pyiLocalStorage from "../utils/pyiLocalStorage"
 
@@ -13,20 +16,23 @@ interface IImageButton {
   widgetParameter: any
   clickEvent: any
   editable: boolean
+  style?: any
 }
 
 const ImageButton: React.FC<IImageButton> = (props) => {
   const imgUrl = pyiGlobal.PUBLIC_URL + props.widgetParameter["icon"]
+
+  const { cellStyle, cellClass } = simpleFg.formatCss(props.style)
   return (
     <>
       {props.isField ? (
         <>
           <th className="property_key">{props.caption}</th>
-          <td className="property_value tip_center">
+          <td className={classnames(cellClass, 'property_value', 'tip_center')}>
             <a id={props.name}>
               <img
                 src={imgUrl}
-                alt=""
+                alt={props.name}
                 onClick={props.editable ? props.clickEvent : null}
                 style={props.editable ? { cursor: "pointer" } : { cursor: "not-allowed" }}
               />
@@ -38,7 +44,7 @@ const ImageButton: React.FC<IImageButton> = (props) => {
           <a id={props.name}>
             <img
               src={imgUrl}
-              alt=""
+              alt={props.name}
               onClick={props.editable ? props.clickEvent : null}
               style={props.editable ? { cursor: "pointer" } : { cursor: "not-allowed", filter: "grayscale(1)" }}
             />
@@ -50,11 +56,11 @@ const ImageButton: React.FC<IImageButton> = (props) => {
                 src={img_tip}
                 alt="tooltip img"
                 style={{ paddingLeft: "3px", paddingBottom: "2px" }}
-                data-tooltip-id={props.name}
+                data-tooltip-id={"btt-tooltip_" + props.name}
                 data-tooltip-place="top"
                 data-tooltip-content={props.tooltip}
               ></img>
-              <Tooltip id={props.name} />
+              {ReactDOM.createPortal(<Tooltip id={"btt-tooltip_" + props.name} style={{ zIndex: 2000 }} />, document.getElementById("root"))} 
             </>
           ) : null}
           &nbsp;&nbsp;&nbsp;&nbsp;

@@ -1,6 +1,5 @@
 import copy
 import json
-import logging
 import os
 import re
 import time
@@ -13,6 +12,7 @@ from django.db.models.query import QuerySet
 
 import core.core.http as ikhttp
 import core.db.model as ikDbModels
+from core.log.logger import logger
 import core.models as ikModels
 import core.utils.djangoUtils as ikDjangoUtils
 import core.utils.httpUtils as ikHttpUtils
@@ -26,39 +26,38 @@ from iktools import IkConfig
 from . import uiCache as ikuiCache
 from . import uidb as ikuidb
 
-logger = logging.getLogger('ikyo')
 
-SCREEN_FIELD_TYPE_TABLE                 = 'table'
-SCREEN_FIELD_TYPE_RESULT_TABLE          = 'resultTable'
-SCREEN_FIELD_TYPE_FIELDS                = 'fields'
-SCREEN_FIELD_TYPE_SEARCH                = 'search'
-SCREEN_FIELD_TYPE_ICON_BAR              = 'iconBar'
-SCREEN_FIELD_TYPE_HTML                  = 'html'
-SCREEN_FIELD_TYPE_IFRAME                = 'iframe'
-SCREEN_FIELD_TYPE_UDF_VIEWER            = 'viewer'              
+SCREEN_FIELD_TYPE_TREE = 'tree'
+SCREEN_FIELD_TYPE_TABLE = 'table'
+SCREEN_FIELD_TYPE_RESULT_TABLE = 'resultTable'
+SCREEN_FIELD_TYPE_FIELDS = 'fields'
+SCREEN_FIELD_TYPE_SEARCH = 'search'
+SCREEN_FIELD_TYPE_ICON_BAR = 'iconBar'
+SCREEN_FIELD_TYPE_HTML = 'html'
+SCREEN_FIELD_TYPE_IFRAME = 'iframe'
+SCREEN_FIELD_TYPE_UDF_VIEWER = 'viewer'
 
-SCREEN_FIELD_GROUP_TYPES_TABLE  = (SCREEN_FIELD_TYPE_TABLE,        SCREEN_FIELD_TYPE_RESULT_TABLE)
-SCREEN_FIELD_GROUP_TYPE_DETAILS = (SCREEN_FIELD_TYPE_FIELDS,       SCREEN_FIELD_TYPE_SEARCH)
-SCREEN_FIELD_NORMAL_GROUP_TYPES = (SCREEN_FIELD_TYPE_TABLE,        SCREEN_FIELD_TYPE_RESULT_TABLE,
-                                   SCREEN_FIELD_TYPE_FIELDS,       SCREEN_FIELD_TYPE_SEARCH,
-                                   SCREEN_FIELD_TYPE_ICON_BAR,     SCREEN_FIELD_TYPE_HTML,
-                                   SCREEN_FIELD_TYPE_IFRAME,       SCREEN_FIELD_TYPE_UDF_VIEWER)
+SCREEN_FIELD_GROUP_TYPES_TABLE = (SCREEN_FIELD_TYPE_TABLE, SCREEN_FIELD_TYPE_RESULT_TABLE)
+SCREEN_FIELD_GROUP_TYPE_DETAILS = (SCREEN_FIELD_TYPE_FIELDS, SCREEN_FIELD_TYPE_SEARCH)
+SCREEN_FIELD_NORMAL_GROUP_TYPES = (SCREEN_FIELD_TYPE_TREE, SCREEN_FIELD_TYPE_TABLE, SCREEN_FIELD_TYPE_RESULT_TABLE,
+                                   SCREEN_FIELD_TYPE_FIELDS, SCREEN_FIELD_TYPE_SEARCH, SCREEN_FIELD_TYPE_ICON_BAR,
+                                   SCREEN_FIELD_TYPE_HTML, SCREEN_FIELD_TYPE_IFRAME, SCREEN_FIELD_TYPE_UDF_VIEWER)
 
-SCREEN_FIELD_WIDGET_LABEL               = 'Label'
-SCREEN_FIELD_WIDGET_TEXT_BOX            = 'TextBox'
-SCREEN_FIELD_WIDGET_TEXT_AREA           = 'TextArea'
-SCREEN_FIELD_WIDGET_PASSWORD            = 'Password'
-SCREEN_FIELD_WIDGET_DATE_BOX            = 'DateBox'
-SCREEN_FIELD_WIDGET_COMBO_BOX           = 'ComboBox'
-SCREEN_FIELD_WIDGET_LIST_BOX            = 'ListBox'
-SCREEN_FIELD_WIDGET_ADVANCED_COMBOBOX   = 'AdvancedComboBox'
-SCREEN_FIELD_WIDGET_ADVANCED_SELECTION  = 'AdvancedSelection'
-SCREEN_FIELD_WIDGET_CHECK_BOX           = 'CheckBox'
-SCREEN_FIELD_WIDGET_BUTTON              = 'Button'
-SCREEN_FIELD_WIDGET_ICON_AND_TEXT       = 'IconAndText'
-SCREEN_FIELD_WIDGET_FILE                = 'File'
-SCREEN_FIELD_WIDGET_PLUGIN              = 'Plugin'
-SCREEN_FIELD_WIDGET_HTML                = 'Html'
+SCREEN_FIELD_WIDGET_LABEL = 'Label'
+SCREEN_FIELD_WIDGET_TEXT_BOX = 'TextBox'
+SCREEN_FIELD_WIDGET_TEXT_AREA = 'TextArea'
+SCREEN_FIELD_WIDGET_PASSWORD = 'Password'
+SCREEN_FIELD_WIDGET_DATE_BOX = 'DateBox'
+SCREEN_FIELD_WIDGET_COMBO_BOX = 'ComboBox'
+SCREEN_FIELD_WIDGET_LIST_BOX = 'ListBox'
+SCREEN_FIELD_WIDGET_ADVANCED_COMBOBOX = 'AdvancedComboBox'
+SCREEN_FIELD_WIDGET_ADVANCED_SELECTION = 'AdvancedSelection'
+SCREEN_FIELD_WIDGET_CHECK_BOX = 'CheckBox'
+SCREEN_FIELD_WIDGET_BUTTON = 'Button'
+SCREEN_FIELD_WIDGET_ICON_AND_TEXT = 'IconAndText'
+SCREEN_FIELD_WIDGET_FILE = 'File'
+SCREEN_FIELD_WIDGET_PLUGIN = 'Plugin'
+SCREEN_FIELD_WIDGET_HTML = 'Html'
 
 SCREEN_FIELD_SELECT_WIDGETS = (SCREEN_FIELD_WIDGET_COMBO_BOX, SCREEN_FIELD_WIDGET_LIST_BOX, SCREEN_FIELD_WIDGET_ADVANCED_COMBOBOX, SCREEN_FIELD_WIDGET_ADVANCED_SELECTION)
 SCREEN_FIELD_NORMAL_WIDGETS = (SCREEN_FIELD_WIDGET_LABEL, SCREEN_FIELD_WIDGET_TEXT_BOX, SCREEN_FIELD_WIDGET_TEXT_AREA, SCREEN_FIELD_WIDGET_PASSWORD, SCREEN_FIELD_WIDGET_DATE_BOX,
@@ -77,41 +76,17 @@ MAIN_SCREEN_NAME = 'Main Screen'
 
 REFRESH_INTERVAL = 1  # seconds
 
-
-def getRelativeScreenFileFolder() -> Path:
-    return Path(os.path.join('var', 'sys', 'screen'))
-
-
-def getRelativeScreenCsvFileFolder() -> Path:
-    return Path(os.path.join('var', 'sys', 'screen-csv'))
-
-
-def getScreenFileFolder() -> Path:
-    return Path(os.path.join(BASE_DIR, 'var', 'sys', 'screen'))
-
-
-def getScreenCsvFileFolder() -> Path:
-    return Path(os.path.join(BASE_DIR, 'var', 'sys', 'screen-csv'))
+SCREEN_RESOURCE_FOLDER_PATH = "resources/screen"
+SCREEN_TEMPLATE_RESOURCE_FOLDER_PATH = "resources/screen-template"
 
 
 def getScreenFileTemplateFolder() -> Path:
-    return Path(os.path.join(BASE_DIR, 'var', 'sys', 'screen-template'))
+    app_name = __package__.split('.')[0]
+    return Path(os.path.join(BASE_DIR, app_name, SCREEN_TEMPLATE_RESOURCE_FOLDER_PATH))
 
 
-def getScreenFieldGroupType(typeName) -> str:
-    if not isNullBlank(typeName) and type(typeName) == str:
-        fgTypeRc = ScreenFgType.objects.filter(type_nm=typeName).first()
-        if isNotNullBlank(fgTypeRc):
-            return fgTypeRc.type_nm
-    raise IkValidateException('Unsupported screen field group type: %s' % typeName)
-
-
-def getScreenFieldWidget(widgetName) -> str:
-    if not isNullBlank(widgetName) and type(widgetName) == str:
-        fieldWidgetRc = ScreenFieldWidget.objects.filter(widget_nm=widgetName).first()
-        if isNotNullBlank(fieldWidgetRc):
-            return fieldWidgetRc.widget_nm
-    raise IkValidateException('Unsupported screen field widget: %s' % widgetName)
+def getScreenFileFolder(app_name: str, screen_id: str) -> Path:
+    return Path(os.path.join(BASE_DIR, app_name, SCREEN_RESOURCE_FOLDER_PATH, screen_id))
 
 
 def getScreenFieldGroupSelectionMode(selectionMode) -> str:
@@ -372,7 +347,7 @@ class ScreenFieldGroup:
                     return field
         return None
 
-    def _initData(self, getFieldGroupDataFn=None, getHtmlDataUrlFn=None, getPDFDataUrlFn=None, getFieldWidgetDataFn=None) -> None:
+    def _initData(self, getFieldGroupDataFn=None, getTreeDataUrlFn=None, getHtmlDataUrlFn=None, getPDFDataUrlFn=None, getFieldWidgetDataFn=None) -> None:
         if isTableFieldGroup(self.groupType) or isDetailFieldGroup(self.groupType):
             jTableColumns = []
             fieldCounter = -1
@@ -401,6 +376,10 @@ class ScreenFieldGroup:
                 self.data = fgData
                 self.__dataUrl = fgDataUrl
 
+        elif self.groupType == SCREEN_FIELD_TYPE_TREE:
+            fgData, fgDataUrl = getTreeDataUrlFn(self)
+            self.data = fgData
+            self.__dataUrl = fgDataUrl
         elif self.groupType == SCREEN_FIELD_TYPE_HTML or self.groupType == SCREEN_FIELD_TYPE_IFRAME:
             self.__dataUrl = getHtmlDataUrlFn(self.name)
         elif self.groupType == SCREEN_FIELD_TYPE_UDF_VIEWER:
@@ -454,6 +433,14 @@ class ScreenFieldGroup:
                 del jFg['insertable']
                 del jFg['deletable']
                 # del jFg['beforeDisplayAdapter']
+        elif self.groupType == SCREEN_FIELD_TYPE_TREE:
+            jFg = {
+                'name': self.name,
+                'type': self.groupType,
+                'data': self.data,
+                'dataUrl': self.__dataUrl,
+                'selectionMode': self.selectionMode
+            }
         elif self.groupType == SCREEN_FIELD_TYPE_ICON_BAR:
             jIcons = []
             for button in self.fields:
@@ -533,13 +520,14 @@ class Screen:
     def __init__(self, screenDefinition) -> None:
         self.__screenDefinition = screenDefinition
         self.subScreenName = None
-        self.apiVersion = None
+        self.templateVersion = None
         self.id = None
         self.title = None
         self.caption = None
         self.description = None
         self.layoutType = None
         self.layoutParams = None
+        self.appName = None
         self.className = None
         self.editable = True
         self.autoRefreshInterval = None  # seconds
@@ -610,12 +598,12 @@ class Screen:
             return None
         return self.getRecordSet(fg.recordSetName)
 
-    def _initData(self, getFieldGroupDataFn=None, getHtmlDataUrlFn=None, getPDFDataUrlFn=None, getFieldWidgetDataFn=None,
+    def _initData(self, getFieldGroupDataFn=None, getTreeDataUrlFn=None, getHtmlDataUrlFn=None, getPDFDataUrlFn=None, getFieldWidgetDataFn=None,
                   getScreenHelpFn=None) -> None:
         self.__helpUrl = None if getScreenHelpFn is None else getScreenHelpFn(self.id)
         for fg in self.fieldGroups:
             if fg.visible:
-                fg._initData(getFieldGroupDataFn, getHtmlDataUrlFn, getPDFDataUrlFn, getFieldWidgetDataFn)
+                fg._initData(getFieldGroupDataFn, getTreeDataUrlFn, getHtmlDataUrlFn, getPDFDataUrlFn, getFieldWidgetDataFn)
 
     def toJson(self) -> dict:
         '''
@@ -871,7 +859,7 @@ class Screen:
         '''
             fieldGroupName(str): html field group name
         '''
-        if fieldGroupName is None or fieldName is None or value is None:
+        if fieldGroupName is None or value is None:
             return
         if type(fieldGroupName) != str:
             raise IkValidateException('Parameter "fieldGroupName" should be a str value.')
@@ -989,7 +977,6 @@ def acceptScreenFolder(foldername) -> bool:
 class __ScreenManager:
     def __init__(self):
         self.__screenDefinitions = {}  # {screen name: screen definition}
-        self.__screenFileFolder = self.getScreenFileFolder()
         self.__readLock = Lock()
 
     def refresh(self) -> None:
@@ -998,9 +985,6 @@ class __ScreenManager:
         """
         if ikDjangoUtils.isRunDjangoServer():
             self.__parseScreenFiles()
-
-    def getScreenFileFolder(self) -> Path:
-        return getScreenFileFolder()
 
     def getScreenFileTemplateFolder(self) -> Path:
         return getScreenFileTemplateFolder()
@@ -1019,6 +1003,9 @@ class __ScreenManager:
             # Restart Server Run
             ikuidb.syncScreenDefinitions()
             ikuiCache.clearAllCache()
+
+            ikuiCache.setFieldGroupTypeCache()
+            ikuiCache.setFieldWidgetCache()
 
             if not DNF_Summary.hasPrintOnce():
                 for screenName in screenFiles.keys():
@@ -1040,12 +1027,13 @@ class __ScreenManager:
         screenRc = ikModels.Screen.objects.filter(screen_sn__iexact=name).order_by("-rev").first()
         if screenRc:
             dfn = {}
-            dfn['viewAPIRev'] = screenRc.api_version
+            dfn['templateVersion'] = screenRc.template_version
             dfn['viewID'] = screenRc.screen_sn
             dfn['viewTitle'] = screenRc.screen_title
             dfn['viewDesc'] = screenRc.screen_dsc
             dfn['layoutType'] = screenRc.layout_type
             dfn['layoutParams'] = screenRc.layout_params
+            dfn['appName'] = screenRc.app_nm
             dfn['viewName'] = screenRc.class_nm
             dfn['editable'] = screenRc.editable
             # YL, 2024-02-28, Bugfix for auto refresh - start
@@ -1056,107 +1044,36 @@ class __ScreenManager:
             # YL, 2024-02-28 - end
 
             # Recordset
-            dfn['recordsetTable'] = []
-            recordsetRcs = ikModels.ScreenRecordset.objects.filter(screen=screenRc).order_by("id")
-            for rc in recordsetRcs:
-                data = []
-                data.append(rc.recordset_nm)
-                data.append(rc.sql_fields)
-                data.append(rc.sql_models)
-                data.append(rc.sql_where)
-                data.append(rc.sql_order)
-                data.append(rc.sql_limit)
-                # data.append('') # old page size(no use)
-                # data.append('') # old ReadOnly(no use)
-                data.append(rc.rmk)
-                dfn['recordsetTable'].append(data)
+            recordsetRcs = ikModels.ScreenRecordset.objects.filter(screen=screenRc).order_by(
+                "seq").values_list("recordset_nm", "sql_fields", "sql_models", "sql_where", "sql_order", "sql_limit", "rmk")
+            dfn['recordsetTable'] = [r for r in recordsetRcs]
 
             # Field Groups
-            dfn['fieldGroupTable'] = []
-            fieldGroupRcs = ikModels.ScreenFieldGroup.objects.filter(screen=screenRc).order_by("seq")
-            for rc in fieldGroupRcs:
-                data = []
-                data.append(rc.fg_nm)
-                data.append(rc.fg_type.type_nm if rc.fg_type else None)
-                data.append(rc.caption)
-                data.append(rc.recordset.recordset_nm if rc.recordset else None)
-                data.append(rc.deletable)
-                data.append(rc.editable)
-                data.append(rc.insertable)
-                data.append(rc.highlight_row)
-                data.append(rc.selection_mode)
-                data.append(rc.cols)
-                # data.append(rc.sort_new_rows)
-                data.append(rc.data_page_type)
-                data.append(rc.data_page_size)
-                data.append(rc.outer_layout_params)
-                data.append(rc.inner_layout_type)
-                data.append(rc.inner_layout_params)
-                data.append(rc.html)
-                data.append(rc.additional_props)
-                data.append(rc.rmk)
-                dfn['fieldGroupTable'].append(data)
+            fieldGroupRcs = ikModels.ScreenFieldGroup.objects.filter(screen=screenRc).order_by("seq").values_list(
+                "fg_nm", "fg_type__type_nm", "caption", "recordset__recordset_nm", "deletable", "editable", "insertable", "highlight_row", "selection_mode", "cols", "data_page_type",
+                "data_page_size", "outer_layout_params", "inner_layout_type", "inner_layout_params", "html", "additional_props", "rmk")
+            dfn['fieldGroupTable'] = [r for r in fieldGroupRcs]
 
             # Fields
-            dfn['fieldTable'] = []
-            fieldRcs = ikModels.ScreenField.objects.filter(screen=screenRc).order_by("seq")
-            lastFgNm = None
-            for rc in fieldRcs:
-                data = []
-                fgNm = rc.field_group.fg_nm if rc.field_group else None
-                data.append(fgNm)
-                # data.append(fgNm if lastFgNm != fgNm else None)
-                # lastFgNm = fgNm
-
-                data.append(rc.field_nm)
-                data.append(rc.caption)
-                data.append(rc.tooltip)
-                data.append(rc.visible)
-                data.append(rc.editable)
-                data.append(rc.db_unique)
-                data.append(rc.db_required)
-                data.append(rc.widget.widget_nm if rc.widget else None)
-                data.append(rc.widget_parameters)
-                data.append(rc.db_field)
-                data.append(rc.event_handler)
-                data.append(rc.styles)
-                data.append(rc.rmk)
-                dfn['fieldTable'].append(data)
+            fieldRcs = ikModels.ScreenField.objects.filter(screen=screenRc).order_by("seq").values_list(
+                "field_group__fg_nm", "field_nm", "caption", "tooltip", "visible", "editable", "db_unique", "db_required", "widget__widget_nm", "widget_parameters", "db_field",
+                "event_handler", "styles", "rmk")
+            dfn['fieldTable'] = [r for r in fieldRcs]
 
             # Sub Screen
-            dfn['subScreenTable'] = []
-            dfnRcs = ikModels.ScreenDfn.objects.filter(screen=screenRc)
-            for rc in dfnRcs:
-                data = []
-                data.append(rc.sub_screen_nm)
-                data.append(rc.field_group_nms)
-                dfn['subScreenTable'].append(data)
+            dfnRcs = ikModels.ScreenDfn.objects.filter(screen=screenRc).values_list("sub_screen_nm", "field_group_nms")
+            dfn['subScreenTable'] = [r for r in dfnRcs]
 
             # Field Group Links
-            dfn['fieldGroupLinkTable'] = []
-            fgLinkRcs = ikModels.ScreenFgLink.objects.filter(screen=screenRc).order_by("field_group__seq")
-            for rc in fgLinkRcs:
-                data = []
-                data.append(rc.field_group.fg_nm if rc.field_group else None)
-                data.append(rc.parent_field_group.fg_nm if rc.parent_field_group else None)
-                data.append(rc.parent_key)
-                data.append(rc.local_key)
-                data.append(rc.rmk)
-                dfn['fieldGroupLinkTable'].append(data)
+            fgLinkRcs = ikModels.ScreenFgLink.objects.filter(screen=screenRc).order_by(
+                "field_group__seq").values_list("field_group__fg_nm", "parent_field_group__fg_nm", "parent_key", "local_key", "rmk")
+            dfn['fieldGroupLinkTable'] = [r for r in fgLinkRcs]
 
             # Table Header and Footer
-            dfn['headerFooterTable'] = []
-            fgHeaderFooterRcs = ikModels.ScreenFgHeaderFooter.objects.filter(screen=screenRc).order_by("field_group__seq", "field__seq")
-            for rc in fgHeaderFooterRcs:
-                data = []
-                data.append(rc.field_group.fg_nm if rc.field_group else None)
-                data.append(rc.field.field_nm if rc.field else None)
-                data.append(rc.header_level1)
-                data.append(rc.header_level2)
-                data.append(rc.header_level3)
-                data.append(rc.footer)
-                data.append(rc.rmk)
-                dfn['headerFooterTable'].append(data)
+            fgHeaderFooterRcs = ikModels.ScreenFgHeaderFooter.objects.filter(screen=screenRc).order_by("field_group__seq", "field__seq").values_list(
+                "field_group__fg_nm", "field__field_nm", "header_level1", "header_level2", "header_level3", "footer", "rmk")
+            dfn['headerFooterTable'] = [r for r in fgHeaderFooterRcs]
+
         if dfn is None:
             logger.debug('getScreenDefinitionFromDB(%s) from database is empty.' % name)
             return None
@@ -1169,7 +1086,6 @@ class __ScreenManager:
             globalRequestUrlParameters (dict, optional):  add parameters to all request urls (e.g. get data request, button action ...)
         '''
         global DNF_Summary
-        # screenDfn = self.__getScreenDefinition(screenName)
         screenDfn = ikuiCache.getPageDefinitionFromCache(screenName)
         if isNullBlank(screenDfn):
             screenDfn = self._getScreenDefinitionFromDB(screenName)  # YL.ikyo, 2023-04-18 get screen from database
@@ -1182,12 +1098,13 @@ class __ScreenManager:
 
         screen = Screen(screenDefinition=dfn)
         # 1. screen information
-        screen.apiVersion = dfn['viewAPIRev']
+        screen.templateVersion = dfn['templateVersion']
         screen.id = dfn['viewID']
         screen.title = dfn['viewTitle']
         screen.description = dfn['viewDesc']
         screen.layoutType = dfn['layoutType']
         screen.layoutParams = dfn['layoutParams']
+        screen.appName = dfn['appName']
         screen.className = dfn['viewName']
         # YL.ikyo, 2023-04-20 - start
         # screen.editable = ('yes' == dfn.get('editable', '').lower())
@@ -1220,7 +1137,7 @@ class __ScreenManager:
         if subScreenNm is None:
             subScreenNm = MAIN_SCREEN_NAME
         for i in subScreenTable:
-            if i[0].strip().lower() == subScreenNm.strip().lower():
+            if i[0].strip().lower() == subScreenNm.strip().lower() and isNotNullBlank(i[1]):
                 displayFgs = [item.strip() for item in i[1].split(',')]
         if displayFgs is None and subScreenNm is not None and subScreenNm.strip().lower() != MAIN_SCREEN_NAME.lower():
             displayFgs = []
@@ -1232,7 +1149,7 @@ class __ScreenManager:
                 continue
             sfg = ScreenFieldGroup(parent=screen)
             sfg.name = fgName
-            sfg.groupType = getScreenFieldGroupType(fgType)
+            sfg.groupType = ikuiCache.isFieldGroupTypeExist(fgType)
             sfg.caption = caption
             sfg.recordSetName = recordsetName
             sfg.deletable = self.__toBool(deletable)
@@ -1291,7 +1208,7 @@ class __ScreenManager:
             field.name = _getSceenFieldName(name, dataField if isNotNullBlank(dataField) else eventHandlerUrl, fieldGroupName)
             field.caption = caption
             field.tooltip = tooltip
-            field.widget = getScreenFieldWidget(widget)
+            field.widget = ikuiCache.isFieldWidgetExist(widget)
             field.editable = self.__toBool(editable, default=True)
             # field.visible = not self.__toBool(visible, default=False) # YL.ikyo, 2023-04-20 old from excel
             field.visible = self.__toBool(visible, default=True)  # YL.ikyo, 2023-04-20 from data database(visible)
@@ -1486,6 +1403,11 @@ class __ScreenManager:
             recordSetDataMap[recordSetName] = (data, dataUrl)
             return data, ikHttpUtils.setQueryParameter(dataUrl, globalRequestUrlParameters)
 
+        def getTreeDataUrlFn(screenFieldGroup):
+            functionName = self.__getTreeCallBackMethod(screenFieldGroup.name)
+            data, dataUrl = self.__initData(screenFieldGroup, None, None, functionName, initDataCallBack)
+            return data, ikHttpUtils.setQueryParameter(self.__getTreeDataUrl(url2, screenFieldGroup.name), globalRequestUrlParameters)
+
         def getHtmlDataUrlFn(fieldGroupName):
             return ikHttpUtils.setQueryParameter(self.__getHtmlDataUrl(url2, fieldGroupName), globalRequestUrlParameters)
 
@@ -1498,7 +1420,7 @@ class __ScreenManager:
         def getScreenHelpFn(screenID):
             return ikHttpUtils.setQueryParameter(self.__getHelpUrl(viewID=screenID), globalRequestUrlParameters)
 
-        return screen._initData(getFieldGroupDataFn, getHtmlDataUrlFn, getPDFDataUrlFn, getFieldWidgetDataFn, getScreenHelpFn)
+        return screen._initData(getFieldGroupDataFn, getTreeDataUrlFn, getHtmlDataUrlFn, getPDFDataUrlFn, getFieldWidgetDataFn, getScreenHelpFn)
 
     def screen2Json(self, screen) -> dict:
         return screen.toJson()
@@ -1509,7 +1431,7 @@ class __ScreenManager:
         field.name = getResultTableEditFieldName(fieldGroup.name)
         field.caption = ''
         field.tooltip = ''
-        field.widget = getScreenFieldWidget(SCREEN_FIELD_WIDGET_PLUGIN)
+        field.widget = ikuiCache.isFieldWidgetExist(SCREEN_FIELD_WIDGET_PLUGIN)
         field.editable = True
         field.visible = True
         field.required = False
@@ -1545,6 +1467,13 @@ class __ScreenManager:
         url = self.__addGetDataFlag(url)
         return url
 
+    def __getTreeDataUrl(self, name, dataName) -> str:
+        if dataName is None or len(dataName) == 0:
+            return None
+        screenId = name.replace('.', '/')
+        fn = 'getTree' + dataName[0:1].upper() + dataName[1:]
+        return self.__getBaseUrl() + screenId + '/' + fn
+
     def __getHtmlDataUrl(self, name, dataName) -> str:
         if dataName is None or len(dataName) == 0:
             return None
@@ -1563,6 +1492,12 @@ class __ScreenManager:
         newUrl += '?' if '?' not in url else '&'
         newUrl += GET_DATA_URL_FLAG_PARAMETER_NAME + '=' + datetime.strftime(datetime.now(), '%Y%m%d%Y%m%d%H%M%S%f')
         return newUrl
+
+    def __getTreeCallBackMethod(self, dataName) -> str:
+        if dataName is None or len(dataName) == 0:
+            return None
+        fn = 'getTree' + dataName[0:1].upper() + dataName[1:]
+        return fn
 
     def __getDataCallBackMethod(self, dataName) -> str:
         return 'get' + dataName[0:1].upper() + dataName[1:]  # change abc to getAbc
@@ -1585,26 +1520,32 @@ class __ScreenManager:
                             2) (*) means submit the whole screen
                             3) save() or save means no ned to submit anything to server
         '''
-        handlerUrl, submitFieldgroupList = None, []
+        handlerUrl, submitFieldGroupList, refreshFieldGroupList = None, [], []
         if eventHandler is not None and len(eventHandler) > 0:
             eventHandler = eventHandler.strip()
             if eventHandler != '':
-                if '(' in eventHandler:
-                    if ')' not in eventHandler and eventHandler[-1] != ')':
-                        raise Exception('Event Handler define is incorect. Please check: %' % eventHandler)
-                    i = eventHandler.index('(')
-                    handlerUrl = eventHandler[0:i]
-                    fieldGroups = eventHandler[i + 1: -1].strip()
-                    if fieldGroups != '':
+                pattern = re.compile(r'(\w+)(?:\(([^)]*)\))?(?:,([^)]*))?')
+                match = pattern.match(eventHandler)
+                if match:
+                    handlerUrl = match.group(1)
+                    fieldGroups = match.group(2)
+                    refreshPrams = match.group(3)
+                    if isNotNullBlank(fieldGroups):
                         for fg in fieldGroups.split(','):
                             fg = fg.strip()
-                            if fg != '' and fg not in submitFieldgroupList:
-                                submitFieldgroupList.append(fg)
-                else:
-                    handlerUrl = eventHandler
+                            if fg != '' and fg not in submitFieldGroupList:
+                                submitFieldGroupList.append(fg)
+                    if isNotNullBlank(refreshPrams):
+                        refreshPrams = refreshPrams.strip()
+                        if refreshPrams.startswith("'") or refreshPrams.startswith('"'):
+                            refreshPrams = refreshPrams[1:-1]
+                        for pram in refreshPrams.split(','):
+                            pram = pram.strip()
+                            if pram != '' and pram not in refreshFieldGroupList:
+                                refreshFieldGroupList.append(pram)
 
         handlerUrl = self.__getEventHandlerUrl(name, handlerUrl)
-        return handlerUrl, {'fieldGroups': None if handlerUrl is None else submitFieldgroupList}
+        return handlerUrl, {'fieldGroups': submitFieldGroupList, "refreshPrams": refreshFieldGroupList}
 
     def __getEventHandlerUrl(self, name, eventHandler) -> str:
         if eventHandler is None or len(eventHandler) == 0:

@@ -1,9 +1,3 @@
-/*
- * @Description:
- * @version:
- * @Author: Sunny
- * @Date: 2022-04-19 09:32:27
- */
 import classnames from "classnames"
 import { useEffect, useState } from "react"
 import cookie from "react-cookies"
@@ -43,7 +37,7 @@ const MenuBar = () => {
           throw response
         })
         .then((result) => {
-          if (sysUtil.validateResponse(result, true)) {
+          if (sysUtil.validateResponse(result, false)) {
             let menu0s: any[] = []
             let menu1s: any[] = []
             let menu2s: {} = {}

@@ -54,7 +54,6 @@ def getFieldValues(records, fields) -> list:
     return rs
 
 
-# YL.ikyo, 2023-11-23 Update add support sqlite3 - start
 def getNextSequence(sequenceName, engine=None) -> int:
     if engine and engine == 'sqlite3':
         with connection.cursor() as cursor:
@@ -65,4 +64,3 @@ def getNextSequence(sequenceName, engine=None) -> int:
             cursor.execute("SELECT nextval(" + toSqlField(sequenceName) + ") as seq")
             rs = dictfetchall(cursor)
     return None if isEmpty(rs) else rs[0]['seq']
-# YL.ikyo, 2023-11-23 - end

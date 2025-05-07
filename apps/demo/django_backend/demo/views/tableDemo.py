@@ -39,9 +39,9 @@ class TableDemo(ScreenAPIView):
         end = pageNum * pageSize
         results = IKTableDemoList
         if pageNum == 0:
-            return IkSccJsonResponse(data={"IKTableDemoServerFg": results, "__dataLen__": len(results)})
+            return IkSccJsonResponse(data={"data": results, "paginatorDataAmount": len(results)})
         else:
-            return IkSccJsonResponse(data={"IKTableDemoServerFg": results[start:end], "__dataLen__": len(results)})
+            return IkSccJsonResponse(data={"data": results[start:end], "paginatorDataAmount": len(results)})
 
     def getComboBox(self):
         dataList = [{'comboBox': 'test1'}, {'comboBox': 'test2'}, {'comboBox': 'test3'}]

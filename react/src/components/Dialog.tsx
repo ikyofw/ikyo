@@ -1,12 +1,12 @@
-import { Box, Button, Dialog, DialogContent, DialogTitle } from "@material-ui/core"
+import { Box, Button, Dialog, DialogContent, DialogTitle } from "@mui/material"
 import React from "react"
 import "../../public/static/css/Dialog-v2.css"
 import { useHttp } from "../utils/http"
 import pyiLogger from "../utils/log"
 import pyiLocalStorage from "../utils/pyiLocalStorage"
-import { showInfoMessage, showErrorMessage, getScreenDfn } from "../utils/sysUtil"
-import ImageButton from "./ImageButton"
+import { getResponseData, showInfoMessage } from "../utils/sysUtil"
 import FileUpload from "./FileUpload"
+import ImageButton from "./ImageButton"
 import Screen from "./Screen"
 
 const pyiGlobal = pyiLocalStorage.globalParams
@@ -74,7 +74,7 @@ export default function CustomDialog(props: CustomDialogProps) {
           formData.append("uploadField_FILES_" + i, currentFile)
         }
       }
-      setUploadMsg('')
+      setUploadMsg("")
       data = formData
     } else if (screenRef.current) {
       data = screenRef.current.getData(dialogPrams.dialogType)
@@ -108,7 +108,7 @@ export default function CustomDialog(props: CustomDialogProps) {
           throw response
         })
         .then((result) => {
-          let screenDfn = getScreenDfn(result, false)
+          let screenDfn = getResponseData(result)
           if (!screenDfn) {
             pyiLogger.error("get initScreen error, please check.", true)
             return
@@ -186,16 +186,16 @@ export default function CustomDialog(props: CustomDialogProps) {
         <div className="dialog_button">
           <ImageButton
             key={0}
-            caption={dialogPrams.cancelName + "  "}
-            name={dialogPrams.cancelName}
+            caption={(dialogPrams.cancelName ? dialogPrams.cancelName : "Cancel") + "  "}
+            name={dialogPrams.cancelName ? dialogPrams.cancelName : "Cancel"}
             widgetParameter={{ icon: "images/cancel_button.gif" }}
             clickEvent={handleCancel}
             editable={true}
           />
           <ImageButton
             key={1}
-            caption={dialogPrams.continueName}
-            name={dialogPrams.continueName}
+            caption={dialogPrams.continueName ? dialogPrams.continueName : "Continue"}
+            name={dialogPrams.continueName ? dialogPrams.continueName : "Continue"}
             widgetParameter={{ icon: "images/action_button.gif" }}
             clickEvent={handleContinue}
             editable={true}
@@ -233,8 +233,8 @@ export const getDialogParams = (dialog: string) => {
   let params = {}
   dialog &&
     dialog.split(";").forEach((param: string) => {
-      const paramName = param.slice(0, param.indexOf(':')).trim()
-      const content = param.slice(param.indexOf(':') + 1).trim()
+      const paramName = param.slice(0, param.indexOf(":")).trim()
+      const content = param.slice(param.indexOf(":") + 1).trim()
       params[paramName] = content
     })
   return params

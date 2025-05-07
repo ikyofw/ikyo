@@ -1,12 +1,15 @@
-'''
-    2022-08-29
-'''
-import copy, logging, random, time
+import copy
+import logging
+import random
+import time
+import json
 from collections import OrderedDict
 from datetime import datetime
 from enum import Enum
 from django.core.exceptions import ValidationError
+from django.core.serializers.json import DjangoJSONEncoder
 from django.db import models, transaction
+from django.forms.models import model_to_dict
 from django.db.models.signals import pre_save, post_save, post_delete
 from django.dispatch import receiver
 from django_backend.settings import DATABASES
@@ -16,6 +19,7 @@ from django.core.serializers import serialize
 import core.utils.db as dbUtils
 from core.core.exception import IkException, IkValidateException
 from core.utils.langUtils import isNotNullBlank
+import core.utils.djangoUtils as ikDjangoUtils
 from iktools import IkConfig
 
 
@@ -105,7 +109,8 @@ class Model(models.Model):
         super(Model, self).__init__(*args, **kwargs)
         # if the args' length is 0, means this is a new record created by user. E.g. newModel = ModelName()
         # else this model is from django filter from database
-        self.__ik_status = ModelRecordStatus.NEW if len(args) == 0 else ModelRecordStatus.RETRIEVE
+        self.__ik_status = ModelRecordStatus.NEW if len(
+            args) == 0 else ModelRecordStatus.RETRIEVE
 
     def ik_get_status(self) -> ModelRecordStatus:
         return self.__ik_status
@@ -206,13 +211,15 @@ class Model(models.Model):
         for field in self._meta.fields:
             if field.column in uniqueFields2:
                 if field.many_to_one and len(field.to_fields) > 0:
-                    raise IkException("Unique check doesn't support foreign key: Table=[%s], column=[%s]" % (self._meta.label, field.name))
+                    raise IkException("Unique check doesn't support foreign key: Table=[%s], column=[%s]" % (
+                        self._meta.label, field.name))
                 fieldType = type(field)
                 randomValue = None
                 if fieldType == models.TextField:
                     randomValue = self.__generateRandomUniqueString()
                 elif fieldType == models.CharField:
-                    randomValue = self.__generateRandomUniqueString(stringLength=field.max_length)
+                    randomValue = self.__generateRandomUniqueString(
+                        stringLength=field.max_length)
                 elif fieldType == models.IntegerField:
                     randomValue = self.__generateRadomUniqueInteger()
                 elif fieldType == models.BigIntegerField:
@@ -220,7 +227,8 @@ class Model(models.Model):
                 elif fieldType == models.SmallIntegerField:
                     randomValue = self.__generateRadomUniqueSmallInteger()
                 elif fieldType == models.DecimalField:
-                    randomValue = self.__generateRadomUniqueDecimal(field.max_digits, field.decimal_places)
+                    randomValue = self.__generateRadomUniqueDecimal(
+                        field.max_digits, field.decimal_places)
                 elif fieldType == models.FloatField:
                     randomValue = self.__generateRadomUniqueFloat()
                 elif fieldType == models.DateField:
@@ -297,13 +305,19 @@ class Model(models.Model):
         else:  # 0
             month += self.__generateRadomNumberStr(1, baseStr='12345679')
         dateStr += '-' + month
-        dateStr += '-' + self.__generateRadomNumberStr(1, baseStr='012') + self.__generateRadomNumberStr(1, baseStr='12345678')
+        dateStr += '-' + self.__generateRadomNumberStr(
+            1, baseStr='012') + self.__generateRadomNumberStr(1, baseStr='12345678')
         return dateStr
 
     def __generateRadomUniqueTimeStr(self) -> str:
-        timeStr = self.__generateRadomNumberStr(1, baseStr='01') + self.__generateRadomNumberStr(1, baseStr='1234567890')
-        timeStr += ':' + self.__generateRadomNumberStr(1, baseStr='012345') + self.__generateRadomNumberStr(1)
-        timeStr += ':' + self.__generateRadomNumberStr(1, baseStr='012345') + self.__generateRadomNumberStr(1)
+        timeStr = self.__generateRadomNumberStr(
+            1, baseStr='01') + self.__generateRadomNumberStr(1, baseStr='1234567890')
+        timeStr += ':' + \
+            self.__generateRadomNumberStr(
+                1, baseStr='012345') + self.__generateRadomNumberStr(1)
+        timeStr += ':' + \
+            self.__generateRadomNumberStr(
+                1, baseStr='012345') + self.__generateRadomNumberStr(1)
         return timeStr
 
     def __generateRadomUniqueDate(self) -> datetime:
@@ -340,13 +354,13 @@ class Model(models.Model):
         Exception:
             Raise core.core.exception.IkException if save failed.
         """
-        from core.db.transaction import IkTransaction # fix circular import problem
+        from core.db.transaction import IkTransaction  # fix circular import problem
         trn = IkTransaction()
         trn.add(self)
         b = trn.save()
         if not b.value:
             raise IkException(b.value)
-        
+
     def delete2(self) -> None:
         """Use IkTransaction to delete the current model.
 
@@ -355,13 +369,12 @@ class Model(models.Model):
         """
         if self.ik_is_status_new():
             return
-        from core.db.transaction import IkTransaction # fix circular import problem
+        from core.db.transaction import IkTransaction  # fix circular import problem
         trn = IkTransaction()
         trn.delete(self)
         b = trn.save()
         if not b.value:
             raise IkException(b.value)
-
 
     class Meta:
         abstract = True
@@ -393,8 +406,10 @@ class IDModel(Model):
     '''
         The models has id field
     '''
+    DB_COLUMN_VERSION_NO = 'version_no'
     id = models.AutoField(primary_key=True)
-    version_no = models.IntegerField(default=0, verbose_name='Version No.')
+    version_no = models.IntegerField(
+        default=0, db_column=DB_COLUMN_VERSION_NO, verbose_name='Version No.')
     __original_version_no = None
 
     def assignPrimaryID(self) -> int:
@@ -431,7 +446,7 @@ class IDModel(Model):
         if not self.ik_is_status_modified():
             super().ik_set_status_modified()
             if forceUpgradeVersionNo:
-                self.version_no += 1   
+                self.version_no += 1
             else:
                 if self.__original_version_no is None:  # prevention version_no multiple times +1
                     self.__original_version_no = self.version_no
@@ -451,7 +466,8 @@ class IDModel(Model):
             recordName = rc.getModelDisplayName()
             if recordName is None:
                 recordName = str(rc.id)
-            sql = 'SELECT version_no FROM ' + rc.__class__._meta.db_table + ' WHERE id=' + dbUtils.toSqlField(rc.id)
+            sql = 'SELECT version_no FROM ' + rc.__class__._meta.db_table + \
+                ' WHERE id=' + dbUtils.toSqlField(rc.id)
             conn = transaction.get_connection()
             rs = None
             with conn.cursor() as cursor:
@@ -540,14 +556,17 @@ class DummyModel(OrderedDict):
 
 
 class ModelHistory(Model):
+    INSERT_FLAG = 1
+    UPDATE_FLAG = 2
+    DELETE_FLAG = 3
     ACTION_CHOICES = (
-        ('insert', 'Insert'),
-        ('update', 'Update'),
-        ('delete', 'Delete'),
+        (INSERT_FLAG, 'Insert'),
+        (UPDATE_FLAG, 'Update'),
+        (DELETE_FLAG, 'Delete'),
     )
-    
+
     id = models.AutoField(primary_key=True)
-    action = models.CharField(max_length=10, choices=ACTION_CHOICES)
+    action = models.SmallIntegerField(choices=ACTION_CHOICES)
     timestamp = models.DateTimeField(auto_now_add=True)
     operator_id = models.BigIntegerField(blank=True, null=True)
     operator_name = models.CharField(max_length=50, blank=True, null=True)
@@ -557,10 +576,15 @@ class ModelHistory(Model):
     model_name = models.CharField(max_length=255)
     db_table = models.CharField(max_length=255)
     old_data = models.TextField(null=True, blank=True)
-    new_data = models.TextField(null=True, blank=True)    
-    
+    new_data = models.TextField(null=True, blank=True)
+    diff = models.TextField(null=True, blank=True, verbose_name="Different")
 
-ENABLE_MODEL_HISTORY = str(IkConfig.get('System', 'modelHistoryEnable', 'false')).lower().strip() == 'true'
+    class Meta:
+        db_table = 'ik_data_hist'
+
+
+ENABLE_MODEL_HISTORY = str(IkConfig.get(
+    'System', 'modelHistoryEnable', 'false')).lower().strip() == 'true'
 """Enable model history.
 """
 
@@ -578,7 +602,8 @@ if isNotNullBlank(modelHistoryNameExclude):
 MODEL_HISTORY_MODEL_NAMES_EXCLUDE = []
 """ Model history name exclude filter.
 """
-modelHistoryNameExclude = IkConfig.get('System', 'modelHistoryNamesExclude', None)
+modelHistoryNameExclude = IkConfig.get(
+    'System', 'modelHistoryNamesExclude', None)
 if isNotNullBlank(modelHistoryNameExclude):
     for modelName in str(modelHistoryNameExclude).split(','):
         modelName = modelName.strip()
@@ -601,12 +626,13 @@ __MODEL_HISTORY_FILTERS = []
     Reference to django pre_save, post_save and post_delete in django.db.models.signals module.
 """
 
+
 def addModelHistoryFilter(fn):
     """ Add model history filter.
 
     Parameters:
         fn(function): fn(sender, instance, **kwargs) -> bool.
-            
+
                         return False will ignore the signal.
 
     Usage:
@@ -621,6 +647,7 @@ def addModelHistoryFilter(fn):
     if fn is not None and fn not in __MODEL_HISTORY_FILTERS:
         __MODEL_HISTORY_FILTERS.append(fn)
 
+
 def removeModelHistoryFilter(fn) -> bool:
     """
         Return True if fn exists in the filter list, otherwise False.
@@ -633,38 +660,44 @@ def removeModelHistoryFilter(fn) -> bool:
 
 
 def ignoreModelHistoryFilter(sender, instance, **kwargs):
-    return not instance.__module__.startswith('django.contrib.') # Ignore django models.
+    # Ignore django models.
+    return not instance.__module__.startswith('django.contrib.')
+
 
 def ignoreDjangoModelsFilter(sender, instance, **kwargs):
     return not isinstance(instance, ModelHistory)
+
 
 addModelHistoryFilter(ignoreModelHistoryFilter)
 addModelHistoryFilter(ignoreDjangoModelsFilter)
 
 # Save the old data before saving models
+
+
 @receiver(pre_save)
 def preSaveModelSignalHandler(sender, instance, **kwargs):
     """Signal handler when saving models.
     """
-    if ENABLE_MODEL_HISTORY is not True:
+    if ENABLE_MODEL_HISTORY is not True or not ikDjangoUtils.isRunDjangoServer():
         return
     modelFullName = f"{sender.__module__}.{sender.__name__}"
-    if MODEL_HISTORY_MODEL_NAMES_EXCLUDE is not None and modelFullName in MODEL_HISTORY_MODEL_NAMES_EXCLUDE:
+    if MODEL_HISTORY_MODEL_NAMES_EXCLUDE is not None and len(MODEL_HISTORY_MODEL_NAMES_EXCLUDE) > 0 and modelFullName in MODEL_HISTORY_MODEL_NAMES_EXCLUDE:
         return
-    elif MODEL_HISTORY_MODEL_NAMES is not None and modelFullName not in MODEL_HISTORY_MODEL_NAMES:
+    elif MODEL_HISTORY_MODEL_NAMES is not None and len(MODEL_HISTORY_MODEL_NAMES) > 0 and modelFullName not in MODEL_HISTORY_MODEL_NAMES:
         return
-    elif __MODEL_HISTORY_FILTERS is not None and type(__MODEL_HISTORY_FILTERS) == list:
+    elif __MODEL_HISTORY_FILTERS is not None and type(__MODEL_HISTORY_FILTERS) == list and len(__MODEL_HISTORY_FILTERS) > 0:
         for filter in __MODEL_HISTORY_FILTERS:
             try:
                 if filter is not None:
                     if not filter(sender, instance, **kwargs):
                         return
             except Exception as e:
-                logger.error("Process filter [%s] failed: %s" % (str(filter), str(e)), e, exc_info=True)
+                logger.error("Process filter [%s] failed: %s" % (
+                    str(filter), str(e)), e, exc_info=True)
     try:
         instance._old_data = instance.__class__.objects.get(pk=instance.pk)
     except Exception as e:
-        #logger.debug("Add history old data failed: %s" % (str(e)), e, exc_info=True)
+        # logger.debug("Add history old data failed: %s" % (str(e)), e, exc_info=True)
         pass
 
 
@@ -673,22 +706,23 @@ def preSaveModelSignalHandler(sender, instance, **kwargs):
 def postSaveModelSignalHandler(sender, instance, created, **kwargs):
     """Signal handler when saving models.
     """
-    if ENABLE_MODEL_HISTORY is not True:
+    if ENABLE_MODEL_HISTORY is not True or not ikDjangoUtils.isRunDjangoServer():
         return
     modelFullName = f"{sender.__module__}.{sender.__name__}"
-    if MODEL_HISTORY_MODEL_NAMES_EXCLUDE is not None and modelFullName in MODEL_HISTORY_MODEL_NAMES_EXCLUDE:
+    if MODEL_HISTORY_MODEL_NAMES_EXCLUDE is not None and len(MODEL_HISTORY_MODEL_NAMES_EXCLUDE) > 0 and modelFullName in MODEL_HISTORY_MODEL_NAMES_EXCLUDE:
         return
-    elif MODEL_HISTORY_MODEL_NAMES is not None and modelFullName not in MODEL_HISTORY_MODEL_NAMES:
+    elif MODEL_HISTORY_MODEL_NAMES is not None and len(MODEL_HISTORY_MODEL_NAMES) > 0 and modelFullName not in MODEL_HISTORY_MODEL_NAMES:
         return
-    elif __MODEL_HISTORY_FILTERS is not None and type(__MODEL_HISTORY_FILTERS) == list:
+    elif __MODEL_HISTORY_FILTERS is not None and type(__MODEL_HISTORY_FILTERS) == list and len(__MODEL_HISTORY_FILTERS) > 0:
         for filter in __MODEL_HISTORY_FILTERS:
             try:
                 if filter is not None:
                     if not filter(sender, instance, **kwargs):
                         return
             except Exception as e:
-                logger.error("Process filter [%s] failed: %s" % (str(filter), str(e)), e, exc_info=True)
-    
+                logger.error("Process filter [%s] failed: %s" % (
+                    str(filter), str(e)), e, exc_info=True)
+
     from core.core.requestMiddleware import getCurrentUser
     from core.models import User
     userRc = getCurrentUser()
@@ -697,31 +731,54 @@ def postSaveModelSignalHandler(sender, instance, created, **kwargs):
     if isinstance(userRc, User):
         userID = userRc.id
         userName = userRc.usr_nm
-        
-    if created: # insert
+
+    if created:  # insert
         try:
-            contentType=ContentType.objects.get_for_model(instance)
+            contentType = ContentType.objects.get_for_model(instance)
             newDataJson = serialize('json', [instance])
             dbTable = instance._meta.db_table
-            ModelHistory.objects.create(action='INSERT', operator_id=userID, operator_name=userName, content_type=contentType, 
+            ModelHistory.objects.create(action=ModelHistory.INSERT_FLAG, operator_id=userID, operator_name=userName, content_type=contentType,
                                         model_name=modelFullName, db_table=dbTable, object_id=instance.pk, old_data=None, new_data=newDataJson)
         except Exception as e:
-            logger.error("Add insert history failed: %s" % (str(e)), e, exc_info=True)
-    else: # update
-        try:        
+            logger.error("Add insert history failed: %s" %
+                         (str(e)), e, exc_info=True)
+    else:  # update
+        try:
             oldData = instance._old_data
             newData = instance
 
-            oldDataJson = serialize('json', [oldData]) if oldData is not None else None
+            oldDataJson = serialize('json', [oldData])
             newDataJson = serialize('json', [newData])
 
-            contentType=ContentType.objects.get_for_model(instance)
+            dict1 = model_to_dict(oldData)
+            dict2 = model_to_dict(newData)
+
+            from core.models import TimestampMixin
+
+            def compare_dicts(dict1, dict2):
+                differences = {}
+                for key in dict1.keys():
+                    if key == TimestampMixin.DB_COLUMN_MODIFY_USER_ID or key == TimestampMixin.DB_COLUMN_CREATE_USER_ID \
+                            or key == TimestampMixin.DB_COLUMN_MODIFY_DATE or key == TimestampMixin.DB_COLUMN_MODIFY_USER_ID\
+                            or key == IDModel.DB_COLUMN_VERSION_NO:
+                        continue
+                    if dict1[key] != dict2[key]:
+                        differences[key] = {
+                            'old': dict1[key], 'new': dict2[key]}
+                return differences
+
+            dff = compare_dicts(dict1, dict2)
+            diff_json_str = json.dumps(
+                dff, cls=DjangoJSONEncoder, ensure_ascii=False) if len(dff) > 0 else None
+
+            contentType = ContentType.objects.get_for_model(instance)
             dbTable = instance._meta.db_table
 
-            ModelHistory.objects.create(action='UPDATE', content_type=contentType, operator_id=userID, operator_name=userName, 
-                                        model_name=modelFullName, db_table=dbTable, object_id=instance.pk, old_data=oldDataJson, new_data=newDataJson)
+            ModelHistory.objects.create(action=ModelHistory.UPDATE_FLAG, content_type=contentType, operator_id=userID, operator_name=userName,
+                                        model_name=modelFullName, db_table=dbTable, object_id=instance.pk, old_data=oldDataJson, new_data=newDataJson, diff=diff_json_str)
         except Exception as e:
-            logger.error("Add update history failed: %s" % (str(e)), e, exc_info=True)
+            logger.error("Add update history failed: %s" %
+                         (str(e)), e, exc_info=True)
 
 
 # Process model delete events.
@@ -729,21 +786,22 @@ def postSaveModelSignalHandler(sender, instance, created, **kwargs):
 def postDeleteModelSignalHandler(sender, instance, **kwargs):
     """Signal handler when deleting models.
     """
-    if ENABLE_MODEL_HISTORY is not True:
+    if ENABLE_MODEL_HISTORY is not True or not ikDjangoUtils.isRunDjangoServer():
         return
     modelFullName = f"{sender.__module__}.{sender.__name__}"
-    if MODEL_HISTORY_MODEL_NAMES_EXCLUDE is not None and modelFullName in MODEL_HISTORY_MODEL_NAMES_EXCLUDE:
+    if MODEL_HISTORY_MODEL_NAMES_EXCLUDE is not None and len(MODEL_HISTORY_MODEL_NAMES_EXCLUDE) > 0 and modelFullName in MODEL_HISTORY_MODEL_NAMES_EXCLUDE:
         return
-    elif MODEL_HISTORY_MODEL_NAMES is not None and modelFullName not in MODEL_HISTORY_MODEL_NAMES:
+    elif MODEL_HISTORY_MODEL_NAMES is not None and len(MODEL_HISTORY_MODEL_NAMES) > 0 and modelFullName not in MODEL_HISTORY_MODEL_NAMES:
         return
-    elif __MODEL_HISTORY_FILTERS is not None and type(__MODEL_HISTORY_FILTERS) == list:
+    elif __MODEL_HISTORY_FILTERS is not None and type(__MODEL_HISTORY_FILTERS) == list and len(__MODEL_HISTORY_FILTERS) > 0:
         for filter in __MODEL_HISTORY_FILTERS:
             try:
                 if filter is not None:
-                    if not filter(sender, instance, kwargs):
+                    if not filter(sender, instance, **kwargs):
                         return
             except Exception as e:
-                logger.error("Process filter [%s] failed: %s" % (str(filter), str(e)), e, exc_info=True)
+                logger.error("Process filter [%s] failed: %s" % (
+                    str(filter), str(e)), e, exc_info=True)
 
     from core.core.requestMiddleware import getCurrentUser
     from core.models import User
@@ -758,10 +816,11 @@ def postDeleteModelSignalHandler(sender, instance, **kwargs):
         oldData = instance
         oldDataJson = serialize('json', [oldData])
 
-        content_type=ContentType.objects.get_for_model(instance)
+        content_type = ContentType.objects.get_for_model(instance)
         dbTable = instance._meta.db_table
-        
-        ModelHistory.objects.create(action='DELETE', content_type=content_type, operator_id=userID, operator_name=userName, 
+
+        ModelHistory.objects.create(action=ModelHistory.DELETE_FLAG, content_type=content_type, operator_id=userID, operator_name=userName,
                                     model_name=modelFullName, db_table=dbTable, object_id=instance.pk, old_data=oldDataJson, new_data=None)
     except Exception as e:
-            logger.error("Add delete history failed: %s" % (str(e)), e, exc_info=True)
+        logger.error("Add delete history failed: %s" %
+                     (str(e)), e, exc_info=True)

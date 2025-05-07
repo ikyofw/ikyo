@@ -1,5 +1,8 @@
 import React, { Ref, forwardRef, useState } from "react"
+import transform, { StyleTuple } from "css-to-react-native"
 import "../../public/static/css/CheckBox.css"
+import classnames from "classnames"
+import * as simpleFg from "./SimpleFg"
 import pyiLocalStorage from "../utils/pyiLocalStorage"
 
 const pyiGlobal = pyiLocalStorage.globalParams
@@ -19,6 +22,7 @@ interface ICheckBox {
   value?: string | boolean
   name?: string
   editable?: boolean
+  style?: any
   tip?: string
   widgetParameter?: any
 }
@@ -47,7 +51,7 @@ const CheckBox: React.FC<ICheckBox> = forwardRef((props, ref: Ref<any>) => {
     } else {
       setChecked(false)
       setCheckBoxValue("false")
-      if (widgetParameter.stateNumber === '3') {
+      if (widgetParameter.stateNumber === "3") {
         setCheckBoxValue("null")
         let checkbox = document.getElementById(name) as any
         checkbox.indeterminate = true
@@ -77,12 +81,20 @@ const CheckBox: React.FC<ICheckBox> = forwardRef((props, ref: Ref<any>) => {
     setCheckBoxValue(getNextState(checkBoxValue.toLocaleLowerCase()))
     setChecked(checked === true ? false : true)
   }
+
+  let { cellStyle, cellClass } = simpleFg.formatCss(props.style)
+  const additionalStyles: StyleTuple[] = [
+    ["width", "auto"],
+    ["height", "auto"],
+  ]
+  cellStyle = [...additionalStyles, ...cellStyle]
+
   return (
     <>
       {checkBoxValue ? (
         <>
-          {widgetParameter.captionPosition !== 'right' ? <th className="property_key">{checkBoxLabel ?? null}</th> : null}
-          <td className="property_value tip_center">
+          {widgetParameter.captionPosition !== "right" ? <th className="property_key">{checkBoxLabel ?? null}</th> : null}
+          <td className={classnames(cellClass, "property_value", "tip_center")}>
             <input
               ref={ref}
               id={name}
@@ -91,12 +103,9 @@ const CheckBox: React.FC<ICheckBox> = forwardRef((props, ref: Ref<any>) => {
               disabled={!editable}
               checked={checked}
               onChange={changeValue}
-              style={{
-                width: "auto",
-                height: "auto",
-              }}
+              style={cellStyle.length > 0 ? transform(cellStyle) : null}
             />
-            {widgetParameter.captionPosition === 'right' ? <th className="property_key_right">{checkBoxLabel ?? null}</th> : null}
+            {widgetParameter.captionPosition === "right" ? <th className="property_key_right">{checkBoxLabel ?? null}</th> : null}
             {tooltip ? <span className="tip">{tooltip}</span> : null}
           </td>
         </>
@@ -118,16 +127,16 @@ export function getIcon(state: string) {
 
 export function getNextState(currentState: string) {
   var nextState
-  if (currentState === 'true') {
-    nextState = 'false'
-  } else if (currentState === 'false') {
-    nextState = 'true'
-  } else if (currentState === 'y') {
-    nextState = 'N'
-  } else if (currentState === 'n') {
-    nextState = 'Y'
+  if (currentState === "true") {
+    nextState = "false"
+  } else if (currentState === "false") {
+    nextState = "true"
+  } else if (currentState === "y") {
+    nextState = "N"
+  } else if (currentState === "n") {
+    nextState = "Y"
   } else {
-    nextState = 'true'
+    nextState = "true"
   }
   return nextState
 }
