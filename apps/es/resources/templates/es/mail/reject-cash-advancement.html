@@ -1,0 +1,49 @@
+{% load static %}
+
+<style>
+    #table * {
+        font-family: Arial, Tahoma, Verdana, sans-serif, "宋体", SimSun, "仿宋体", NSimSun;
+        font-size: 8pt;
+        line-height: 140%;
+    }
+
+    #table {
+        border-collapse: collapse;
+    }
+
+    #table th {
+        background-color: #5887B7;
+        font-weight: normal;
+        color: #FFF;
+        vertical-align: middle;
+    }
+
+    #table th, 
+    #table td {
+        text-align: left;
+        border: #9BB7B7 1px solid;
+        padding: 2px 4px 2px 4px;
+    }
+
+    .notes {
+        color: red;
+        font-size: 10pt;
+    }
+</style>
+
+<h4>{{ subject }}</h4>
+<table id="table">
+    <tbody>
+        <tr><th>SN:</th><td>{{ ca.sn }}</td></tr>
+        <tr><th>Claimer:</th><td>{{ ca.claimer.usr_nm }}</td></tr>
+        <tr><th>Claim Date:</th><td>{{ ca.claim_dt|date:"Y-m-d H:i:s" }}</td></tr>
+        <tr><th>CCY:</th><td>{{ ca.office.ccy.code }}</td></tr>
+        <tr><th>Advance Amount:</th><td>{{ ca.claim_amt }}</td></tr>
+        <tr><th>Approver:</th><td>{{ ca.approver.usr_nm }}</td></tr>
+        <tr><th>Status:</th><td>{{ ca.sts }}</td></tr>	
+        <tr><th>Reject User:</th><td>{{ ca.last_activity.operator.usr_nm }}</td></tr>
+        <tr><th>Reject Reason:</th><td>{{ ca.last_activity.dsc }}</td></tr>
+        <tr><th>Reject Time:</th><td>{{ ca.last_activity.operate_dt|date:"Y-m-d H:i:s" }}</td></tr>
+    </tbody>
+</table>
+<h3 class="notes">This email is from WCI, please don't reply this email!</h3>

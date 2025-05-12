@@ -1,0 +1,25 @@
+<html>
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+  </head>
+  <body>
+    <div>
+      <div>
+        <h3 style="font-family: 'Microsoft YaHei', Arial; line-height: 1.6; font-size: 14px; font-weight: bold">
+          Dear {% if action == "submitted" %} {{ approver }} {% else %} {{submitter}} {% endif %}:
+        </h3>
+      </div>
+      <div>
+        <p style="font-family: 'Microsoft YaHei', Arial; line-height: 1.6; font-size: 12px; padding: 5px 3px 5px 15px">
+          {% if action == "submitted" %} {{ submitter }} {% else %} {{ operator }} {% endif %} {{action}} a PO - {{sn}}.
+        </p>
+        <p style="font-family: 'Microsoft YaHei', Arial; line-height: 1.6; font-size: 12px; padding: 5px 3px 5px 15px">Thanks.</p>
+      </div>
+      <div>
+        <p style="font-family: 'Microsoft YaHei', Arial; line-height: 1.6; font-size: 12px; padding: 5px 3px 5px 15px">
+          This is an automatically generated email from WCI2, please do not reply to this message.
+        </p>
+      </div>
+    </div>
+  </body>
+</html>

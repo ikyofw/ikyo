@@ -1,0 +1,49 @@
+{% load static %}
+
+<style>
+    #table * {
+        font-family: Arial, Tahoma, Verdana, sans-serif, "宋体", SimSun, "仿宋体", NSimSun;
+        font-size: 8pt;
+        line-height: 140%;
+    }
+
+    #table {
+        border-collapse: collapse;
+    }
+
+    #table th {
+        background-color: #5887B7;
+        font-weight: normal;
+        color: #FFF;
+        vertical-align: middle;
+    }
+
+    #table th, 
+    #table td {
+        text-align: left;
+        border: #9BB7B7 1px solid;
+        padding: 2px 4px 2px 4px;
+    }
+
+    .notes {
+        color: red;
+        font-size: 10pt;
+    }
+</style>
+
+<h4>{{ subject }}</h4>
+<table id="table">
+    <tbody>
+        <tr><th>SN:</th><td>{{ expense.sn }}</td></tr>
+        <tr><th>Claimer:</th><td>{{ expense.claimer.usr_nm }}</td></tr>
+        <tr><th>Payee:</th><td>{{ expense.payee.payee }}</td></tr>
+        <tr><th>CCY:</th><td>{{ expense.office.ccy.code}}</td></tr>
+        <tr><th>Total for this claim:</th><td>{{ expense.claim_amt }}</td></tr>
+        <tr><th>Prior Balance for Payee:</th><td>{{ priorBalancePayeeAmt|default:"" }}</td></tr>
+        <tr><th>Settle by Prior Balance:</th><td>{{ settleByPriorBalance }}</td></tr>
+        <tr><th>This Payment:</th><td>{{ expense.pay_amt|default:"" }}</td></tr>
+        <tr><th>Status:</th><td>{{ expense.sts }}</td></tr>
+        {% comment %} <tr><th>Payment Time:</th><td>{{ expense.payment_activity.operate_dt|default:"" }}</td></tr>         {% endcomment %}
+    </tbody>
+</table>
+<h3 class="notes">This email is from WCI, please don't reply this email!</h3>
