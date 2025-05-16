@@ -2,7 +2,6 @@ import logging
 import os
 
 from django.db.models import Case, Exists, F, OuterRef, Sum, When
-from django.templatetags.static import static
 
 import core.ui.ui as ikui
 import es.core.acl as acl
@@ -10,9 +9,9 @@ from core.core.exception import IkValidateException
 from core.core.http import IkErrJsonResponse, IkSccJsonResponse, responseFile
 from core.utils.langUtils import isNotNullBlank, isNullBlank
 
-from ..core import CA, ES, const
+from ..core import CA, ES
 from ..core import ESFile as ESFileManager
-from ..core import ESTools
+from ..core import ESTools, const
 from ..core.approver import get_office_first_approvers
 from ..core.finance import round_currency
 from ..core.office import get_office_by_id
@@ -36,7 +35,7 @@ class ES004(ESAPIView):
 
     def __init__(self) -> None:
         super().__init__()
-        self._addStaticResource(static('es/css/es004-v1.css'))
+        self._addStaticResource('es/css/es004-v1.css')
 
         def beforeDisplayAdapter(screen: ikui.Screen):
             hdrRc = self.__getExpenseHdrRc()

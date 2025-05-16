@@ -1,7 +1,5 @@
 import logging
 
-from django.templatetags.static import static
-
 from core.core.lang import Boolean2
 from core.log.logger import logger
 from core.models import UserOffice
@@ -17,7 +15,7 @@ class ESAPIView(ScreenAPIView):
 
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
-        self._addStaticResource(static('es/css/es-v1.css'))
+        self._addStaticResource('es/css/es-v1.css')
 
     def getYesNo(self):
         """Combox data"""

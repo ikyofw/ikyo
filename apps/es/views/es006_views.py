@@ -375,43 +375,44 @@ class ES006(ESAPIView):
 
     def settle(self):
         """Click the [Settle] button to pay the current cash advancement."""
-        uploadPageFile = None
-        isSuccess = False
+        upload_page_file = None
+        is_success = False
         try:
             cash_adv_id = self.__getCurrentCashAdvancementID()
             if isNullBlank(cash_adv_id):
                 return Boolean2.FALSE("Please select an approved cash advancement first.")
-            caRc = acl.add_query_filter(CashAdvancement.objects, self.getCurrentUser()).filter(id=cash_adv_id).first()
-            if caRc is None:
+            cash_rc = acl.add_query_filter(CashAdvancement.objects, self.getCurrentUser()).filter(id=cash_adv_id).first()
+            if cash_rc is None:
                 logger.error("Cash Advancement doesn't exist.")
                 return Boolean2.FALSE("Cash advancement doesn't exist.")
 
-            requestData = self.getRequestData()
-            caRc = requestData.get('dtlFg')
-            caRc: CashAdvancement
+            cash_rc = self.getRequestData().get('dtlFg')
+            cash_rc: CashAdvancement
 
-            paymentType = caRc.payment_tp
-            if paymentType is None:
+            payment_type = cash_rc.payment_tp
+            if payment_type is None:
                 return Boolean2.FALSE("Please select a Transaction Type.")
-            paymentNo = caRc.payment_number
-            if isNullBlank(paymentNo):
+            payment_no = cash_rc.payment_number
+            if isNullBlank(payment_no):
                 return Boolean2.FALSE("Please fill in the Transfer No. first.")
-            paymentNo = str(paymentNo).strip()
-            paymentRemarks = caRc.action_rmk  # TODO: add payment remarks to screen
+            payment_no = str(payment_no).strip() if isNotNullBlank(payment_no) else None
+            payment_rmk = cash_rc.action_rmk  # add payment remarks to screen
 
             uploadFiles = self.getRequestData().getFiles('uploadFile')
             if uploadFiles is None or len(uploadFiles) == 0 or uploadFiles[0] is None:
-                return IkErrJsonResponse(message="Please select a file to upload.")
-            uploadPageFile = ESFileManager.save_uploaded_really_file(uploadFiles[0], self.__class__.__name__, self.getCurrentUserName())
-            result = CA.settle_cash_advancement(self.getCurrentUserId(), caRc.id, paymentType, paymentNo, uploadPageFile, paymentRemarks)
-            isSuccess = result.value
-            if isSuccess:
-                if caRc.payment_record_file is not None:
-                    self.setSessionParameter(self.SESSION_KEY_FILE_ID, caRc.payment_record_file.id)
+                if payment_type.tp != PaymentMethod.BANK_TRANSFER:
+                    return IkErrJsonResponse(message="Please select a file to upload.")
+            else:
+                upload_page_file = ESFileManager.save_uploaded_really_file(uploadFiles[0], self.__class__.__name__, self.getCurrentUserName())
+            result = CA.settle_cash_advancement(self.getCurrentUserId(), cash_rc.id, payment_type, payment_no, upload_page_file, payment_rmk)
+            is_success = result.value
+            if is_success:
+                if cash_rc.payment_record_file is not None:
+                    self.setSessionParameter(self.SESSION_KEY_FILE_ID, cash_rc.payment_record_file.id)
             return result
         finally:
-            if not isSuccess and uploadPageFile is not None:
-                ESFileManager.delete_really_file(uploadPageFile)
+            if not is_success and upload_page_file is not None:
+                ESFileManager.delete_really_file(upload_page_file)
 
     def revertSettledPayment(self):
         """Click the [Revert Settled Payment] button to revert the current settled cash advancement."""

@@ -240,12 +240,9 @@ class PoQuotation(IdDateModel):
     class Meta:
         verbose_name = 'PO Quotation'
 
-# TODO: rename to Activity
-
-
 class Activity(IdDateModel):
     tp = models.CharField(max_length=3, verbose_name='Type')  # 1. expense, 2. cash advancement
-    transaction_id = models.BigIntegerField(verbose_name='Transactions record ID')
+    transaction_id = models.BigIntegerField(blank=True, null=True, verbose_name='Transactions record ID')
     operate_dt = models.DateTimeField(blank=True, null=True, verbose_name='Operation date')
     operator = models.ForeignKey(User, models.DO_NOTHING, blank=True, null=True, related_name='+', verbose_name='Operator')
     sts = models.CharField(max_length=20, verbose_name='Transactions status')
@@ -265,7 +262,6 @@ class Expense(IdDateModel):
     claimer = models.ForeignKey(User, models.DO_NOTHING, related_name='+', verbose_name='Claimer')
     claim_amt = models.FloatField(blank=True, null=True, verbose_name='Claim amount')
     pay_amt = models.FloatField(blank=True, null=True, verbose_name='Pay amount')
-    # TODO: for old data
     fx_ccy = models.ForeignKey(Currency, models.DO_NOTHING, blank=True, null=True, verbose_name='FX CCY')
     fx_amt = models.FloatField(blank=True, null=True, verbose_name='FX amount')
 

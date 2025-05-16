@@ -364,7 +364,7 @@ def approve_cash_advancement(operator_id: int, cash_advancement_id: int) -> Bool
             ESNotification.send_approve_cash_advancement_notify(operator_id, ca_rc)
 
 
-def settle_cash_advancement(operator_id: int, cash_advancement_id: int, payment_method_rc: PaymentMethod, payment_record_no: str, payment_record_file: Path, payment_remarks: str) -> Boolean2:
+def settle_cash_advancement(operator_id: int, cash_advancement_id: int, payment_method_rc: PaymentMethod, payment_record_no: str, payment_record_file: Path, payment_rmk: str) -> Boolean2:
     operator_rc = UserManager.getUser(operator_id)
     if isNullBlank(operator_rc):
         logger.error("Claimer doesn't exist. ID=%s" % operator_id)
@@ -372,27 +372,19 @@ def settle_cash_advancement(operator_id: int, cash_advancement_id: int, payment_
     if isNullBlank(cash_advancement_id):
         logger.error("Parameter [cash_advancement_id] is mandatory.")
         return Boolean2.FALSE("System error.")
-    # validate payment method
-    if isNullBlank(payment_method_rc):
-        return Boolean2.FALSE("Transaction Type doesn't exist.")
-    # validate payment No.
-    if isNullBlank(payment_record_no):
-        return Boolean2.FALSE("Transfer No. is mandatory.")
-    payment_record_no = str(payment_record_no).strip()
+    # payment remark
+    payment_rmk = None if isNullBlank(payment_rmk) else str(payment_rmk).strip()
+
     # validate payment record file
-    if isNullBlank(payment_record_file):
-        return Boolean2.FALSE("Payment record file is mandatory.")
-    elif not payment_record_file.is_file():
-        logger.error("Payment record file doesn't exist. Path=%s" %
-                     str(payment_record_file))
-        return Boolean2.FALSE("Payment record file doesn't exist.")
-    elif not ESFileManager.validateUploadFileType(payment_record_file):
-        return Boolean2.FALSE('Unsupport file [%s]. Only %s allowed.' % (payment_record_file.name, ESFileManager.ALLOW_FILE_TYPES))
-    # payment remarks
-    payment_remarks = None if isNullBlank(payment_remarks) else str(payment_remarks).strip()
+    if isNotNullBlank(payment_record_file):
+        if not payment_record_file.is_file():
+            logger.error("Payment record file doesn't exist. Path=%s" % str(payment_record_file))
+            return Boolean2.FALSE("Payment record file doesn't exist.")
+        elif not ESFileManager.validateUploadFileType(payment_record_file):
+            return Boolean2.FALSE('UnSupport file [%s]. Only %s allowed.' % (payment_record_file.name, ESFileManager.ALLOW_FILE_TYPES))
 
     is_success = False
-    payment_record_fileID, payment_record_fileSeq = None, None
+    payment_record_file_rc, payment_record_fileID, payment_record_fileSeq = None, None, None
     ca_rc = None
     __CA_OPERATION_LOCK.acquire()
     ES.getFileUploadLock().acquire()
@@ -417,9 +409,10 @@ def settle_cash_advancement(operator_id: int, cash_advancement_id: int, payment_
         is_submitted_to_settle = ca_rc.sts == Status.SUBMITTED.value
         is_first_approved_to_settle = ca_rc.sts == Status.FIRST_APPROVED.value
 
-        payment_record_file_rc = ES.prepare_upload_file(
-            ca_rc.office, ESFileManager.FileCategory.PAYMENT_RECORD, payment_record_file)
-        payment_record_fileID, payment_record_fileSeq = payment_record_file_rc.id, payment_record_file_rc.seq
+        if isNotNullBlank(payment_record_file):
+            payment_record_file_rc = ES.prepare_upload_file(
+                ca_rc.office, ESFileManager.FileCategory.PAYMENT_RECORD, payment_record_file)
+            payment_record_fileID, payment_record_fileSeq = payment_record_file_rc.id, payment_record_file_rc.seq
 
         pay_date = datetime.now()
         ca_rc.sts = Status.SETTLED.value
@@ -432,12 +425,12 @@ def settle_cash_advancement(operator_id: int, cash_advancement_id: int, payment_
         if is_submitted_to_settle or is_first_approved_to_settle:
             # TODO: check approveable. E.g. 2nd approve
             approve_activity = Activity(tp=ActivityType.CASH_ADVANCEMENT.value, transaction_id=ca_rc.id, operate_dt=pay_date,
-                                        operator=operator_rc, sts=Status.APPROVED.value, dsc='[Automatic approved.]')
+                                        operator=operator_rc, sts=Status.APPROVED.value, dsc='Automatic approved.')
             ca_rc.approve_activity = approve_activity
             ca_rc.last_activity = approve_activity
 
         pay_activity = Activity(tp=ActivityType.CASH_ADVANCEMENT.value, transaction_id=ca_rc.id, operate_dt=pay_date,
-                                operator=operator_rc, sts=Status.SETTLED.value, dsc=payment_remarks)
+                                operator=operator_rc, sts=Status.SETTLED.value, dsc=payment_rmk)
         ca_rc.payment_activity = pay_activity
         ca_rc.last_activity = pay_activity
 
@@ -445,7 +438,8 @@ def settle_cash_advancement(operator_id: int, cash_advancement_id: int, payment_
         if isNotNullBlank(approve_activity):
             trn.add(approve_activity)
         trn.add(pay_activity)
-        trn.add(payment_record_file_rc)
+        if payment_record_file_rc is not None:
+            trn.add(payment_record_file_rc)
         trn.modify(ca_rc)
         result = trn.save(updateDate=pay_date)
         if not result.value:

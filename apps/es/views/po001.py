@@ -36,7 +36,7 @@ class PO001(ESAPIView):
 
     def __init__(self) -> None:
         super().__init__()
-        self._addStaticResource(static('es/css/po-v1.css'))
+        self._addStaticResource('es/css/po-v1.css')
 
         def beforeDisplayAdapter(screen: ikui.Screen):
             if screen.subScreenName == 'pdfScreen':

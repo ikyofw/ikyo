@@ -32,8 +32,8 @@ from .approver import get_office_first_approvers, is_need_second_approval
 from .const import *
 from .finance import round_currency
 from .office import get_office_by_id, validate_user_office
-from .status import Status, validate_status_transition
 from .setting import is_enable_automatic_settlement_upon_approval
+from .status import Status, validate_status_transition
 from .supporting_document import get_upload_supporting_document_setting
 
 AllowMultipleClaims = True
@@ -911,7 +911,7 @@ def approve_expense(operator_id: int, expense_hdr_id: int) -> Boolean2:
     __EXPENSE_LOCK.acquire()
     try:
         hdr_rc = acl.add_query_filter(Expense.objects, approver_rc).filter(id=expense_hdr_id).first()
-        hdr_rc : Expense
+        hdr_rc: Expense
         if hdr_rc is None:
             logger.error("Expense doesn't exist. ID=%s" % expense_hdr_id)
             return Boolean2.FALSE("Expense doesn't exist.")
@@ -949,7 +949,7 @@ def approve_expense(operator_id: int, expense_hdr_id: int) -> Boolean2:
         if is_enable_automatic_settlement_upon_approval() and is_final_approval and hdr_rc.use_prior_balance and hdr_rc.pay_amt == 0:
             hdr_rc.pay_amt = 0
             settle_activity = Activity(tp=ActivityType.EXPENSE.value, transaction_id=hdr_rc.id, operate_dt=approve_date,
-                                    operator=approver_rc, sts=Status.SETTLED.value, dsc='[Automatic settled.]')
+                                       operator=approver_rc, sts=Status.SETTLED.value, dsc='[Automatic settled.]')
             hdr_rc.payment_activity = settle_activity
 
             hdr_rc.sts = Status.SETTLED.value
@@ -1114,7 +1114,7 @@ def confirm_petty_cash_expense(operator_id: int, expense_id: int, priorBalanceRc
     __EXPENSE_LOCK.acquire()
     try:
         hdr_rc = acl.add_query_filter(Expense.objects, operator_rc).filter(id=expense_id).first()
-        hdr_rc : Expense
+        hdr_rc: Expense
         if not hdr_rc:
             return Boolean2.FALSE("The expense does not exist, please check.")
         if not hdr_rc.is_petty_expense:
@@ -1143,12 +1143,12 @@ def confirm_petty_cash_expense(operator_id: int, expense_id: int, priorBalanceRc
         petty_expense_activity = Activity(tp=ActivityType.EXPENSE.value, transaction_id=hdr_rc.id, operate_dt=hdr_rc.petty_expense_submit_dt,
                                           operator=hdr_rc.petty_expense_submit_usr, sts=hdr_rc.sts, dsc='Confirm Petty Cash Expense.')
         hdr_rc.last_activity = petty_expense_activity
-        
+
         petty_expense_settle_activity = None
         if is_enable_automatic_settlement_upon_approval():
             hdr_rc.sts = Status.SETTLED.value
             petty_expense_settle_activity = Activity(tp=ActivityType.EXPENSE.value, transaction_id=hdr_rc.id, operate_dt=hdr_rc.petty_expense_submit_dt,
-                                          operator=hdr_rc.petty_expense_submit_usr, sts=hdr_rc.sts, dsc='Automatic settled.')
+                                                     operator=hdr_rc.petty_expense_submit_usr, sts=hdr_rc.sts, dsc='Automatic settled.')
             hdr_rc.last_activity = petty_expense_settle_activity
 
         hdr_rc.petty_expense_activity = petty_expense_activity
@@ -1174,7 +1174,7 @@ def confirm_petty_cash_expense(operator_id: int, expense_id: int, priorBalanceRc
             ESNotification.send_approve_confirm_petty_expense_notify(operator_id, hdr_rc)
 
 
-def settle_expense(operator_id: int, expense_id: int, payment_tp: PaymentMethod, payment_number: str, payment_record_file: Path) -> Boolean2:
+def settle_expense(operator_id: int, expense_id: int, payment_tp: PaymentMethod, payment_number: str, payment_record_file: Path, payment_rmk: str) -> Boolean2:
     operator_rc = UserManager.getUser(operator_id)
     if operator_rc is None:
         logger.error("Claimer doesn't exist. ID=%s" % operator_id)
@@ -1182,9 +1182,8 @@ def settle_expense(operator_id: int, expense_id: int, payment_tp: PaymentMethod,
     if isNullBlank(expense_id):
         logger.error("Parameter [expense_id] is mandatory.")
         return Boolean2.FALSE("System error.")
-    # validate payment method
-    if isNullBlank(payment_tp):
-        return Boolean2.FALSE("Transaction Type is mandatory.")
+    # payment remark
+    payment_rmk = None if isNullBlank(payment_rmk) else str(payment_rmk).strip()
 
     # validate payment record file
     if isNotNullBlank(payment_record_file):
@@ -1239,7 +1238,7 @@ def settle_expense(operator_id: int, expense_id: int, payment_tp: PaymentMethod,
             hdr_rc.last_activity = approve_activity
 
         pay_activity = Activity(tp=ActivityType.EXPENSE.value, transaction_id=hdr_rc.id, operate_dt=pay_date,
-                                operator=operator_rc, sts=Status.SETTLED.value)
+                                operator=operator_rc, sts=Status.SETTLED.value, dsc=payment_rmk)
         hdr_rc.payment_activity = pay_activity
         hdr_rc.last_activity = pay_activity
 
@@ -1679,6 +1678,8 @@ def query_expenses(retriever: User, office_rc: Office, expense_queryset: QuerySe
     query_approved_date_to = get_prm('approve_date_to')
     query_settle_date_from = get_prm('settle_date_from')
     query_settle_date_to = get_prm('settle_date_to')
+    query_cat = get_prm('cat')
+    query_prj_nm = get_prm('prj_nm')
     query_desc = get_prm('description')
 
     def get_page_nos(page_no_str) -> list[int]:
@@ -1746,6 +1747,10 @@ def query_expenses(retriever: User, office_rc: Office, expense_queryset: QuerySe
             query_settle_date_to = datetime.strptime(query_settle_date_to, "%Y-%m-%d")
             nextDay = query_settle_date_to + timedelta(days=1)
             expense_queryset = expense_queryset.filter(payment_activity__operate_dt__lt=make_aware(datetime(nextDay.year, nextDay.month, nextDay.day, 0, 0, 0)))
+        if isNotNullBlank(query_cat):
+            expense_queryset = expense_queryset.filter(expensedetail__cat__cat__icontains=query_cat)
+        if isNotNullBlank(query_prj_nm):
+            expense_queryset = expense_queryset.filter(expensedetail__prj_nm__icontains=query_prj_nm)
         if isNotNullBlank(query_desc):
-            expense_queryset = expense_queryset.filter(dsc__icontains=query_desc)
-    return expense_queryset
+            expense_queryset = expense_queryset.filter(dsc__icontains=query_desc | Q(dsc__icontains=query_desc) | Q(expensedetail__dsc__icontains=query_desc))
+    return expense_queryset.distinct()

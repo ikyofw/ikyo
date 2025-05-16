@@ -2,8 +2,6 @@ import logging
 import os
 import traceback
 
-from django.templatetags.static import static
-
 import core.ui.ui as ikui
 import es.core.acl as acl
 import es.core.ESTools as ESTools
@@ -159,6 +157,8 @@ class ES005(ESAPIView):
             query_params['approve_date_to'] = search_data.get('schApprovedDateToField', None)
             query_params['settle_date_from'] = search_data.get('schSettleDateFromField', None)
             query_params['settle_date_to'] = search_data.get('schSettleDateToField', None)
+            query_params['cat'] = search_data.get('schExpenseCtgField', None)
+            query_params['prj_nm'] = search_data.get('schExpensePrjField', None)
             query_params['description'] = search_data.get('schExpenseDscField', None)
 
         query_result = Expense.objects
@@ -511,14 +511,15 @@ class ES005(ESAPIView):
             if isNullBlank(payment_no) and payment_type.tp != PaymentMethod.PETTY_CASH and not (payment_type.tp == PaymentMethod.PRIOR_BALANCE and (isNullBlank(hdr_rc.pay_amt) or hdr_rc.pay_amt == 0)):
                 return IkErrJsonResponse(message="Please fill in the Transfer No. first.")
             payment_no = str(payment_no).strip() if isNotNullBlank(payment_no) else None
+            payment_rmk = hdr_rc.action_rmk  # add payment remarks to screen
 
             uploadFiles = self.getRequestData().getFiles('uploadFile')
             if uploadFiles is None or len(uploadFiles) == 0 or uploadFiles[0] is None:
-                if payment_type.tp != PaymentMethod.PETTY_CASH and not (payment_type.tp == PaymentMethod.PRIOR_BALANCE and (isNullBlank(hdr_rc.pay_amt) or hdr_rc.pay_amt == 0)):
+                if payment_type.tp != PaymentMethod.BANK_TRANSFER and payment_type.tp != PaymentMethod.PETTY_CASH and not (payment_type.tp == PaymentMethod.PRIOR_BALANCE and (isNullBlank(hdr_rc.pay_amt) or hdr_rc.pay_amt == 0)):
                     return IkErrJsonResponse(message="Please select a file to upload.")
             else:
                 upload_page_file = ESFileManager.save_uploaded_really_file(uploadFiles[0], self.__class__.__name__, self.getCurrentUserName())
-            result = ES.settle_expense(self.getCurrentUserId(), hdr_rc.id, payment_type, payment_no, upload_page_file)
+            result = ES.settle_expense(self.getCurrentUserId(), hdr_rc.id, payment_type, payment_no, upload_page_file, payment_rmk)
             is_success = result.value
             if is_success:
                 if hdr_rc.payment_record_file is not None:
