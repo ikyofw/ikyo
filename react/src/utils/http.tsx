@@ -16,26 +16,26 @@ export function getUrl(url: string) {
   return url
 }
 
+export function getNewUrl(url, conText) {
+  let newUrl = getUrl(url)
+  if (conText && conText.SUUID && newUrl.indexOf(SCREEN_UUID_NAME) < 0) {
+    newUrl += newUrl.indexOf("?") >= 0 ? "&" : "?"
+    newUrl += SCREEN_UUID_NAME + "=" + conText.SUUID
+  }
+  if (is3000Port()) {
+    newUrl += newUrl.indexOf("?") >= 0 ? "&" : "?"
+    newUrl += TOKEN_NAME + "=" + pyiLocalStorage.getToken()
+  }
+  return newUrl
+}
+
 export function useHttp(type: string) {
   const conText = useContext(suuidContext)
-
-  const getNewUrl = (url) => {
-    let newUrl = getUrl(url)
-    if (conText && conText.SUUID && newUrl.indexOf(SCREEN_UUID_NAME) < 0) {
-      newUrl += newUrl.indexOf("?") >= 0 ? "&" : "?"
-      newUrl += SCREEN_UUID_NAME + "=" + conText.SUUID
-    }
-    if (is3000Port()) {
-      newUrl += newUrl.indexOf("?") >= 0 ? "&" : "?"
-      newUrl += TOKEN_NAME + "=" + pyiLocalStorage.getToken()
-    }
-    return newUrl
-  }
 
   if (type === pyiLocalStorage.globalParams.HTTP_TYPE_GET) {
     return async function (url: string, data?: any) {
       try {
-        var result = await fetch(getNewUrl(url), {
+        var result = await fetch(getNewUrl(url, conText), {
           method: "GET",
         })
         return result
@@ -47,7 +47,7 @@ export function useHttp(type: string) {
   } else if (type === pyiLocalStorage.globalParams.HTTP_TYPE_POST) {
     return async function HttpPost(url: string, data: any) {
       try {
-        var result = await fetch(getNewUrl(url), {
+        var result = await fetch(getNewUrl(url, conText), {
           method: "POST",
           headers: {
             Accept: "application/json,text/plain, */*",
@@ -64,7 +64,7 @@ export function useHttp(type: string) {
   } else if (type === pyiLocalStorage.globalParams.HTTP_TYPE_DELETE) {
     return async function HttpDelete(url: string, data?: any) {
       try {
-        var result = await fetch(getNewUrl(url), {
+        var result = await fetch(getNewUrl(url, conText), {
           method: "DELETE",
         })
         return result
@@ -76,7 +76,7 @@ export function useHttp(type: string) {
   } else if (type === pyiLocalStorage.globalParams.HTTP_TYPE_POST_NO_HEADER) {
     return async function HttpPostNoHeader(url: string, data: any) {
       try {
-        var result = await fetch(getNewUrl(url), {
+        var result = await fetch(getNewUrl(url, conText), {
           method: "POST",
           body: data.body ? data.body : data,
         })
@@ -89,7 +89,7 @@ export function useHttp(type: string) {
   } else if (type === pyiLocalStorage.globalParams.HTTP_TYPE_DOWNLOAD) {
     return async function HttpDownload(url: string, data?: any) {
       try {
-        var result = await axios.post(getNewUrl(url), data ? data : "", {
+        var result = await axios.post(getNewUrl(url, conText), data ? data : "", {
           method: "POST",
           responseType: "blob", // Set the data type of the response to a Blob object containing binary data, MUST BE SET!!!!
         })

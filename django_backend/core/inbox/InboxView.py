@@ -38,7 +38,7 @@ class InboxView(ScreenAPIView):
             if count > 0:
                 self._addInfoMessage("You have %s unread message%s." % (count, "s" if count > 1 else ""))
 
-        self._addStaticResource('static/ikyo/css/core/ib000-v1.css')
+        self._addStaticResource('core/css/ib000-v1.css')
 
     def getInboxStatus(self):
         """ Inbox Status

@@ -47,6 +47,8 @@ const AdvancedSelection: React.FC<IAdvancedSelection> = forwardRef((props, ref: 
       } else {
         setTooltip(props.tip)
       }
+    } else {
+      setTooltip('')
     }
   }, [props, props.labelValue, props.tip])
 

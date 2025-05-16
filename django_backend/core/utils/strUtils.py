@@ -1,4 +1,4 @@
-import string
+import string, re
 from datetime import datetime
 from random import randint
 
@@ -30,15 +30,8 @@ def getRandomStr(length) -> str:
     return "".join(string.ascii_letters[randint(0, 51)] for _ in range(length))
 
 
-'''
-    YL.ikyo, 2022-11-21
-    check email
-'''
-
-
 def isEmail(email) -> bool:
     if email is None or email == '':
         return False
-    if email.endswith('@ywlgroup.com') or email.endswith('@int.ywlgroup.com'):
-        return True
-    return False
+    pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    return re.match(pattern, email) is not None

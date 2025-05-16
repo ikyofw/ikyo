@@ -7,16 +7,20 @@ import os
 from enum import Enum
 from pathlib import Path
 from urllib.parse import quote
+
+import core.db.model as ikDbModels
+import core.utils.modelUtils as modelUtils
 import django.core.files.uploadedfile as djangoUploadedfile
+from core.utils import datetimeUtils
+from core.utils.langUtils import isNotNullBlank, isNullBlank
 from django.core.exceptions import FieldDoesNotExist
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db import models
 from django.db.models.query import QuerySet
 from django.http import HttpRequest, HttpResponse
 from django.http.response import JsonResponse, StreamingHttpResponse
-import core.db.model as ikDbModels
-import core.utils.modelUtils as modelUtils
-from core.utils.langUtils import isNotNullBlank, isNullBlank
+from django.templatetags.static import static
+
 from .code import IkCode, MessageType
 from .exception import IkMessageException, IkValidateException
 
@@ -57,7 +61,7 @@ class RECORD_SET(Enum):
 class IkResponseStaticResource:
 
     def __init__(self, resource, properties=None) -> None:
-        self.__resource = resource
+        self.__resource = static(resource)
         self.__properties = properties
 
     def toJson(self) -> dict:
@@ -89,7 +93,7 @@ class IkResponseForwarder:
         if self.httpMethod is not None:
             j['method'] = self.httpMethod
         return j
-    
+
 
 class IkyoJSONEncoder(DjangoJSONEncoder):
     def default(self, obj):
@@ -99,7 +103,7 @@ class IkyoJSONEncoder(DjangoJSONEncoder):
 
 
 class IkJsonResponse(JsonResponse):
-    def __init__(self, code=IkCode.I0, message=None, messageType=None, data=None, forwarder=None, \
+    def __init__(self, code=IkCode.I0, message=None, messageType=None, data=None, forwarder=None,
                  encoder=IkyoJSONEncoder, safe=False, json_dumps_params=None, **kwargs):
         self.__code = code
         self.__data = data
@@ -416,7 +420,7 @@ class IkRequestData(dict):
             files = []
             for key, value in self.__request.FILES.items():
                 if parameterName is None and '_FILES_' in key \
-                    or parameterName is not None and key.startswith('%s_FILES_' % parameterName):
+                        or parameterName is not None and key.startswith('%s_FILES_' % parameterName):
                     files.append(value)
             return files
 
@@ -593,7 +597,7 @@ def __GetRequestData_oneRecord(screen, parameterModelMap, name, values, initData
     if screenFieldGroup is None:
         return screenFieldGroup
 
-    modelClass = modelUtils.get_model_class_1(screen.appName , modelClassName)
+    modelClass = modelUtils.get_model_class_1(screen.appName, modelClassName)
     # XH 2023-04-21  Data from tables using DummyModel is not processed and directly returns the original data passed from the front end.
     if issubclass(modelClass, ikDbModels.DummyModel):
         return values
@@ -667,19 +671,19 @@ def __GetRequestData_oneRecord(screen, parameterModelMap, name, values, initData
                             raise IkValidateException('%s [%s] should be a bool.'
                                                       % ('Column' if isTable else 'Field', field.caption))
                 elif fieldDataType == 'DateTimeField':
-                    if newValue is not None and type(newValue) != datetime.datetime:
+                    if newValue is not None and not isinstance(newValue, datetime.datetime):
                         if 'T' in newValue:
                             newValue = datetime.datetime.strptime(newValue, "%Y-%m-%dT%H:%M:%S.%f")
                         elif '.' in newValue:
                             newValue = datetime.datetime.strptime(newValue, "%Y-%m-%d %H:%M:%S.%f")
                         else:
-                            newValue = datetime.datetime.strptime(newValue, "%Y-%m-%d %H:%M:%S")
+                            newValue = datetimeUtils.parse_datetime_flex(newValue)
                 elif fieldDataType == 'DateField':
-                    if newValue is not None and type(newValue) != datetime.datetime.date:
-                        newValue = datetime.datetime.strptime(newValue, "%Y-%m-%d").date()
+                    if newValue is not None and not isinstance(newValue, datetime.date):
+                        newValue = datetimeUtils.parse_date_flex(newValue)
                 elif fieldDataType == 'TimeField':
-                    if newValue is not None and type(newValue) != datetime.datetime.time:
-                        newValue = datetime.datetime.strptime(newValue, "%H:%M:%S").time()
+                    if newValue is not None and not isinstance(newValue, datetime.time):
+                        newValue = datetimeUtils.parse_time_flex(newValue)
 
                 # simple validation # TODO: max value checking, min value checking, string length checking
                 if not isDBNullable and isNullBlank(newValue) and field.dataField != 'cre_dt' and field.dataField != 'cre_usr_id':
@@ -727,11 +731,11 @@ def __GetRequestData_oneRecord(screen, parameterModelMap, name, values, initData
                     logger.debug('model [%s] field [%s] does not exist, then try class property...' % (modelClassName, field.dataField))
                     setattr(modelInstance, field.dataField, newValue)
                 else:
-                    # ignore the property 
+                    # ignore the property
                     if not isinstance(getattr(modelInstance.__class__, field.dataField, None), property) \
-                        and ikDbModels.FOREIGN_KEY_VALUE_FLAG not in field.dataField:
+                            and ikDbModels.FOREIGN_KEY_VALUE_FLAG not in field.dataField:
                         logger.warning('%s [%s] does not exist in model [%s].'
-                                              % ('Column' if isTable else 'Field', field.dataField, modelClassName))
+                                       % ('Column' if isTable else 'Field', field.dataField, modelClassName))
     if isNewModelRecord and not hasIDField and primaryKeyName in values.keys():
         id = values.get(primaryKeyName, None)
         setattr(modelInstance, primaryKeyName, int(id) if id is not None else None)
@@ -768,7 +772,7 @@ def responseFile(filePath, filename: str = None, params: dict = None) -> Streami
     '''
     p = Path(filePath)
     if not p.is_file():
-        logger.error('File not found: %s' % p.absolute())
+        logger.error('File not found: %s' % p.resolve())
         raise IkMessageException('File not found.')
     filename = filename if filename is not None else p.name
     fileType = '' if p.suffix is None else p.suffix[1:].lower()

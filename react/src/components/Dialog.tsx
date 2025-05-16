@@ -1,6 +1,5 @@
 import { Box, Button, Dialog, DialogContent, DialogTitle } from "@mui/material"
 import React from "react"
-import "../../public/static/css/Dialog-v2.css"
 import { useHttp } from "../utils/http"
 import pyiLogger from "../utils/log"
 import pyiLocalStorage from "../utils/pyiLocalStorage"

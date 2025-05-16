@@ -1,10 +1,10 @@
 import * as React from "react"
-import AdvancedSelectionCell from "./AdvancedSelectionCell"
-import ButtonCell from "./ButtonCell"
-import { CheckCell } from "./CheckCell"
-import HtmlCell from "./HtmlCell"
 import * as Types from "./types"
 import { getComputedValue } from "./util"
+import ButtonCell from "./ButtonCell"
+import HtmlCell from "./HtmlCell"
+import AdvancedSelectionCell from "./AdvancedSelectionCell"
+import { CheckCell } from "./CheckCell" // LHH 2022-05-06
 
 export const TRUE_TEXT = "TRUE"
 export const FALSE_TEXT = "FALSE"

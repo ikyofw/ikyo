@@ -33,6 +33,8 @@ const TextArea: React.FC<ITextArea> = forwardRef((props, ref: Ref<any>) => {
       } else {
         setTooltip(props.tip)
       }
+    } else {
+      setTooltip('')
     }
   }, [props])
 

@@ -41,6 +41,8 @@ const ComboBox: React.FC<IComboBox> = forwardRef((props, ref: Ref<any>) => {
       } else {
         setTooltip(props.tip)
       }
+    } else {
+      setTooltip('')
     }
   }, [props.value, props.tip])
 

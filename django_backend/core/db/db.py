@@ -55,12 +55,12 @@ def executeSqlFiles(specifiedSqlFile: object = None) -> None:
 
             # 2. read processed files
             sqlFileData = {}
-            processFile = Path(os.path.join(sql_dir.absolute(), 'sql.json'))
+            processFile = Path(os.path.join(sql_dir.resolve(), 'sql.json'))
             if processFile.is_file():
                 with open(processFile, 'r') as json_file:
                     sqlFileData = json.load(json_file)
             else:
-                logger.debug('SQL process file [%s] is not exists.' % processFile.absolute())
+                logger.debug('SQL process file [%s] is not exists.' % processFile.resolve())
 
             # 3. get the new sql files
             newSqlFiles = []

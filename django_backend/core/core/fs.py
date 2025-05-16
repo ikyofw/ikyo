@@ -148,14 +148,14 @@ def deleteFolder(folder) -> None:
 def updateFilename(file, extendPart) -> str:
     p = Path(file)
     fn = p.stem + ('' if extendPart is None else extendPart) + p.suffix
-    return os.path.join(p.parent.absolute(), fn)
+    return os.path.join(p.parent.resolve(), fn)
 
 
 # YL.ikyo, 2022-08-03
 def getFile(file) -> str:
     p = Path(file)
     fn = p.stem + p.suffix
-    return os.path.join(p.parent.absolute(), fn)
+    return os.path.join(p.parent.resolve(), fn)
 
 
 def getFileWithTimestamp(file) -> str:
@@ -196,7 +196,7 @@ def getLastRevisionFile(folder, filename) -> str:
                         pass
     # return last revision file if exists
     if lastFile is not None:
-        return lastFile.absolute()
+        return lastFile.resolve()
     # check revision file
     if Path(os.path.join(folder, filename)).is_file():
         return Path(os.path.join(folder, filename))
@@ -284,7 +284,7 @@ def deleteFileAndFolder(file: Path, folder: str) -> None:
             while True:
                 if p.name == folder:
                     break
-                if not os.listdir(p.absolute()):
+                if not os.listdir(p.resolve()):
                     # empty folder, then delete it
                     try:
                         os.rmdir(p)

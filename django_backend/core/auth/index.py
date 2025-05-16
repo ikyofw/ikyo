@@ -1,7 +1,7 @@
 import hashlib
-import logging
 import time
 import traceback
+import importlib
 
 from django.http import QueryDict
 from django.contrib.auth.hashers import check_password
@@ -11,19 +11,128 @@ from core.core.code import IkCode
 from core.core.exception import IkException
 from core.core.http import IkErrJsonResponse, IkSccJsonResponse, IkSysErrJsonResponse, isSupportSession
 from core.core.lang import Boolean2
+from core.log.logger import logger
 from core.utils.encrypt import decryptData, generateRsaKeys, getPublicKey
 from core.utils.langUtils import isNullBlank
 from rest_framework import exceptions
 from rest_framework.authentication import BaseAuthentication
 from rest_framework.views import APIView
+from rest_framework.request import Request
 from iktools import IkConfig
-
 from core.models import User, UsrToken
 
-logger = logging.getLogger('ikyo')
 
 SESSION_KEY_USER_NAME = 'USER_NAME'
+_AUTH_MIDDLEWARES = []
 
+
+class AuthorizationMiddleware:
+    """
+    Middleware class for handling HTTP request authorization flow.
+    
+    This middleware provides complete authorization lifecycle management,
+    including pre-authentication processing, handling of successful and
+    failed authentication, and authentication removal.
+    """
+    def __init__(self):
+        """
+        Initialize the authorization middleware.
+        """
+    
+    def pre_authenticate(self, request: Request, current_user: User) -> Boolean2:
+        """
+        Execute pre-processing operations before authentication verification.
+        
+        Args:
+            request: The HTTP request object
+            current_user: The currently authenticated user
+            
+        Returns:
+            Boolean2: Pre-processing result, True to continue the authentication flow,
+                     False to terminate
+        """
+        pass
+
+    def handle_authentication_success(self, request: Request, current_user: User) -> Boolean2:
+        """
+        Handle successful authentication cases.
+        
+        Args:
+            request: The successfully authenticated HTTP request object
+            current_user: The currently authenticated user
+            
+        Returns:
+            Boolean2: Processing result, True for successful handling,
+                     False for handling failure
+        """
+        pass
+        
+    def handle_authentication_failure(self, request: Request, current_user: User) -> Boolean2:
+        """
+        Handle failed authentication cases.
+        
+        Args:
+            request: The HTTP request object that failed authentication
+            current_user: The currently authenticated user
+            
+        Returns:
+            Boolean2: Processing result, True for successful handling,
+                     False for handling failure
+        """
+        pass
+
+    def remove_authentication(self, request: Request, current_user: User) -> Boolean2:
+        """
+        Removes authentication information from the request (logout operation).
+        
+        Args:
+            request: The HTTP request object requiring authentication removal
+            current_user: The currently authenticated user
+        
+        Returns:
+            Boolean2: True if authentication was successfully removed, False otherwise
+        """
+        """
+        Remove authentication information from the request (e.g., logout operation).
+        
+        Args:
+            request: The HTTP request object requiring authentication removal
+            
+        Returns:
+            Boolean2: Operation result, True for successful removal,
+                     False for removal failure
+        """
+        pass
+
+
+def add_auth_middleware(middleware):
+    """
+    Add a middleware to the AUTH_MIDDLEWARES list.
+    
+    Args:
+        middleware: An instance of AuthorizationMiddleware or a class name string
+    """
+    if isinstance(middleware, str):
+        _AUTH_MIDDLEWARES.append(middleware)
+    elif isinstance(middleware, AuthorizationMiddleware):
+        _AUTH_MIDDLEWARES.append(middleware)
+    else:
+        raise ValueError("Middleware must be an instance of AuthorizationMiddleware or a class name string.")
+
+def get_auth_middlewares():
+    """
+    Get a copy of the AUTH_MIDDLEWARES list.
+    
+    Returns:
+        list: A copy of AUTH_MIDDLEWARES
+    """
+    return _AUTH_MIDDLEWARES.copy()
+
+def clear_auth_middlewares():
+    """
+    Clear the AUTH_MIDDLEWARES list.
+    """
+    _AUTH_MIDDLEWARES.clear()
 
 def getUser(request) -> User:
     try:
@@ -136,6 +245,7 @@ class AuthView(APIView):
             return IkErrJsonResponse(code=IkCode.E10001, message='Please login first.', data={'RSA_PUBLIC_KEY': public_key})
 
     def post(self, request):
+        is_auth_success = False
         try:
             sessionID = getSessionID(request)
             useSession = isSupportSession(request)
@@ -152,7 +262,7 @@ class AuthView(APIView):
                     return Boolean2(False, 'User is not found.').toIkJsonResponse1()
                 if not usrRc.active:
                     return Boolean2(False, 'This user has been disabled.').toIkJsonResponse1()
-                
+
                 password_matches = False
                 password_encryption_method = IkConfig.getSystem('password_encryption_method').lower()
                 if password_encryption_method == 'md5':
@@ -165,6 +275,20 @@ class AuthView(APIView):
                 if not password_matches:
                     return Boolean2(False, 'Password is incorrect.').toIkJsonResponse1()
                 
+                for amdd in _AUTH_MIDDLEWARES:
+                    try:
+                        middleware_instance = __create_authorization_middleware_instance() if isinstance(amdd, str) else amdd
+                        middleware_instance : AuthorizationMiddleware # for vs code
+                        amdd_result = middleware_instance.pre_authenticate(request, usrRc)
+                        if amdd_result is not None and not amdd_result.value:
+                            logger.error("User [%s], [%s], pre_authenticate failed: %s", username, str(middleware_instance), amdd_result.dataStr)
+                            return amdd_result.toIkJsonResponse1()
+                        else:
+                            logger.debug("User [%s], [%s], pre_authenticate complete: %s", username, str(middleware_instance), (amdd_result.dataStr if amdd_result is not None else ''))
+                    except Exception as e:
+                        logger.error("User [%s], [%s], pre_authenticate exception: %s", username, str(middleware_instance), str(e), exc_info=True)
+                        return Boolean2.FALSE("Auth middleware exception.")
+
                 tokenStr = md5(usrRc) if sessionID is None else sessionID
                 # check the token is in use or not
                 oldRc = UsrToken.objects.filter(token=tokenStr).first()
@@ -175,6 +299,19 @@ class AuthView(APIView):
                 if useSession:
                     request.session[SESSION_KEY_USER_NAME] = username
 
+                for amdd in _AUTH_MIDDLEWARES:
+                    try:
+                        middleware_instance = __create_authorization_middleware_instance() if isinstance(amdd, str) else amdd
+                        middleware_instance : AuthorizationMiddleware # for vs code
+                        amdd_result = middleware_instance.handle_authentication_success(request, usrRc)
+                        if amdd_result is not None and not amdd_result.value:
+                            logger.error("[%s], handle_authentication_success failed: %s", str(middleware_instance), amdd_result.dataStr)
+                        else:
+                            logger.debug("[%s], handle_authentication_success complete: %s", str(middleware_instance), (amdd_result.dataStr if amdd_result is not None else ''))
+                    except Exception as e:
+                        logger.error("[%s], handle_authentication_success exception: %s", str(middleware_instance), str(e), exc_info=True)
+
+                is_auth_success = True
                 return IkSccJsonResponse(message='success', data={'token': tokenStr})
             except User.DoesNotExist:
                 return IkErrJsonResponse(message='User or password is incorrect.')
@@ -184,6 +321,19 @@ class AuthView(APIView):
         except Exception as e:
             traceback.print_exc()
             return IkSysErrJsonResponse(message=str(e))
+        finally:
+            if not is_auth_success:
+                for amdd in _AUTH_MIDDLEWARES:
+                    try:
+                        middleware_instance = __create_authorization_middleware_instance() if isinstance(amdd, str) else amdd
+                        middleware_instance : AuthorizationMiddleware # for vs code
+                        amdd_result = middleware_instance.handle_authentication_failure(request, usrRc)
+                        if amdd_result is not None and not amdd_result.value:
+                            logger.error("[%s], handle_authentication_failure failed: %s", str(middleware_instance), amdd_result.dataStr)
+                        else:
+                            logger.debug("[%s], handle_authentication_failure complete: %s", str(middleware_instance), (amdd_result.dataStr if amdd_result is not None else ''))
+                    except Exception as e:
+                        logger.error("[%s], handle_authentication_failure exception: %s", str(middleware_instance), str(e), exc_info=True)
 
     def delete(self, request):
         try:
@@ -201,6 +351,19 @@ class AuthView(APIView):
                 return IkSccJsonResponse(message='logout')
             else:
                 tokenRc.delete()
+
+                for amdd in _AUTH_MIDDLEWARES:
+                    try:
+                        middleware_instance = __create_authorization_middleware_instance() if isinstance(amdd, str) else amdd
+                        middleware_instance : AuthorizationMiddleware # for vs code
+                        amdd_result = middleware_instance.remove_authentication(request, UsrToken.usr)
+                        if amdd_result is not None and not amdd_result.value:
+                            logger.error("[%s], remove_authentication failed: %s", str(middleware_instance), amdd_result.dataStr)
+                        else:
+                            logger.debug("[%s], remove_authentication complete: %s", str(middleware_instance), (amdd_result.dataStr if amdd_result is not None else ''))
+                    except Exception as e:
+                        logger.error("[%s], remove_authentication exception: %s", str(middleware_instance), str(e), exc_info=True)
+
                 return IkSccJsonResponse(message='logout')
         except IkException as pe:
             traceback.print_exc()
@@ -227,3 +390,15 @@ class UserPermission(object):
     def has_permission(self, request, view):
         # print('UserPermission check: ' + request.user.usr_nm)
         return request.user is not None
+    
+
+def __create_authorization_middleware_instance(class_full_name) -> AuthorizationMiddleware:
+    # Split the module and class name
+    module_name, class_name = class_full_name.rsplit('.', 1)
+    # Import the module
+    module = importlib.import_module(module_name)
+    # Get the class
+    middleware_class = getattr(module, class_name)
+    # Instantiate the class
+    middleware_instance = middleware_class()
+    return middleware_instance

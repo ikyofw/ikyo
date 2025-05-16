@@ -9,7 +9,7 @@ import cookie from "react-cookies"
 import pyiLogger from "../../utils/log"
 
 const pyiGlobal = pyiLocalStorage.globalParams
-const DEFAULT_LAYER_COLOR = '#FFFFFF'
+const DEFAULT_LAYER_COLOR = "#FFFFFF"
 
 interface GetSitePlanProps {
   params: any
@@ -48,13 +48,16 @@ const GetSitePlan: React.FC<GetSitePlanProps> = (props) => {
 
       let GetHoleData: any
       let GetPierData: any
-      let GetLayerNames: string[] = [];
-      let GetLayerColorSets: any[] = [];
+      let GetLayerNames: string[] = []
+      let GetLayerColorSets: any[] = []
+      let httpGetFlag = true
       await HttpGet("/api/" + props.screenID + "/getBoreholeData")
         .then((response) => response.json())
         .then((result) => {
           if (sysUtil.validateResponse(result, true)) {
             GetHoleData = result.data
+          } else {
+            httpGetFlag = false
           }
         })
       await HttpGet("/api/" + props.screenID + "/getPilecapData")
@@ -62,6 +65,8 @@ const GetSitePlan: React.FC<GetSitePlanProps> = (props) => {
         .then((result) => {
           if (sysUtil.validateResponse(result, true)) {
             GetPierData = result.data
+          } else {
+            httpGetFlag = false
           }
         })
       await HttpGet("/api/" + props.screenID + "/getLayerNames")
@@ -72,52 +77,56 @@ const GetSitePlan: React.FC<GetSitePlanProps> = (props) => {
               if (Array.isArray(item)) {
                 GetLayerNames.push(item[0])
                 if (item.length === 2) {
-                  let ls = {nm:item[0], color: item[1]}
+                  let ls = { nm: item[0], color: item[1] }
                   GetLayerColorSets.push(ls)
                 } else {
-                  let ls = {nm:item, color: DEFAULT_LAYER_COLOR}
+                  let ls = { nm: item, color: DEFAULT_LAYER_COLOR }
                   GetLayerColorSets.push(ls)
                 }
               } else {
                 GetLayerNames.push(item)
-                let ls = {nm:item, color: DEFAULT_LAYER_COLOR}
+                let ls = { nm: item, color: DEFAULT_LAYER_COLOR }
                 GetLayerColorSets.push(ls)
               }
             })
+          } else {
+            httpGetFlag = false
           }
         })
 
-      let minY = 0
-      let maxY = 100
-      let minX = 0
-      let maxX = 100
-      let squareSpace = 100
-      let xlist = []
-      let ylist = []
-      for (let index = 0; index < GetHoleData.length; index++) {
-        const data = GetHoleData[index]
-        xlist.push(data.x)
-        ylist.push(data.y)
+      if (httpGetFlag) {
+        let minY = 0
+        let maxY = 100
+        let minX = 0
+        let maxX = 100
+        let squareSpace = 100
+        let xlist = []
+        let ylist = []
+        for (let index = 0; index < GetHoleData.length; index++) {
+          const data = GetHoleData[index]
+          xlist.push(data.x)
+          ylist.push(data.y)
+        }
+
+        for (let index = 0; index < GetPierData.length; index++) {
+          const data = GetPierData[index]
+          xlist.push(data.x)
+          ylist.push(data.y)
+        }
+
+        xlist.sort()
+        ylist.sort()
+        minX = xlist[0] - (xlist[0] % squareSpace) - squareSpace
+        minY = ylist[0] - (ylist[0] % squareSpace) - squareSpace
+        let maxlengthY = ylist[ylist.length - 1] - minY
+        let maxlengthX = xlist[xlist.length - 1] - minX
+        let maxlength = maxlengthX > maxlengthY ? maxlengthX : maxlengthY
+        maxlength = maxlength - (maxlength % squareSpace) + squareSpace * 2
+        maxX = minX + maxlength
+        maxY = minY + maxlength
+
+        setScatterData({ GetHoleData, GetPierData, minX, minY, maxX, maxY, GetLayerNames, GetLayerColorSets })
       }
-
-      for (let index = 0; index < GetPierData.length; index++) {
-        const data = GetPierData[index]
-        xlist.push(data.x)
-        ylist.push(data.y)
-      }
-
-      xlist.sort()
-      ylist.sort()
-      minX = xlist[0] - (xlist[0] % squareSpace) - squareSpace
-      minY = ylist[0] - (ylist[0] % squareSpace) - squareSpace
-      let maxlengthY = ylist[ylist.length - 1] - minY
-      let maxlengthX = xlist[xlist.length - 1] - minX
-      let maxlength = maxlengthX > maxlengthY ? maxlengthX : maxlengthY
-      maxlength = maxlength - (maxlength % squareSpace) + squareSpace * 2
-      maxX = minX + maxlength
-      maxY = minY + maxlength
-
-      setScatterData({ GetHoleData, GetPierData, minX, minY, maxX, maxY, GetLayerNames, GetLayerColorSets })
     } catch (error) {
       pyiLogger.error("Load page error: " + error, true)
       sysUtil.showErrorMessage("Load data error: " + error)
@@ -134,7 +143,9 @@ const GetSitePlan: React.FC<GetSitePlanProps> = (props) => {
 
   return (
     <>
-      <div style={{ width: "100%", height: "80%" }}>{scatterData ? <SitePlan scatterData={scatterData} editable={props.params.editable} screenID={props.screenID} /> : null}</div>
+      <div style={{ width: "100%", height: "80%" }}>
+        {scatterData ? <SitePlan scatterData={scatterData} editable={props.params.editable} screenID={props.screenID} /> : null}
+      </div>
     </>
   )
 }

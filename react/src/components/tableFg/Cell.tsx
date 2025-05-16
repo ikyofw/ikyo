@@ -9,7 +9,7 @@ import { isActive, getOffsetRect } from "./util"
 import useDispatch from "./use-dispatch"
 import useSelector from "./use-selector"
 import * as Selection from "./selection" // XH 2022-04-28
-import transform, {StyleTuple} from 'css-to-react-native';
+import transform, { StyleTuple } from "css-to-react-native"
 
 export const Cell: React.FC<Types.CellComponentProps> = ({
   row,

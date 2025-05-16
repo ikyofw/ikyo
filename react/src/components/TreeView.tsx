@@ -4,8 +4,6 @@ import { Button, Input, Space } from "antd"
 import React, { useRef, useState, forwardRef, Ref, useImperativeHandle } from "react"
 import pyiLocalStorage from "../utils/pyiLocalStorage"
 
-import "../../public/static/css/Tree.css"
-
 const globalParam = pyiLocalStorage.globalParams
 const folderIcon = globalParam.PUBLIC_URL + "images/icon_park_right.png"
 const folderOpenIcon = globalParam.PUBLIC_URL + "images/icon_park_down.png"
@@ -141,7 +139,7 @@ const RecursiveTreeItem: React.FC<{
       <TreeItem
         nodeId={node.id.toString()}
         label={
-          <div id={node.id.toString()} style={{ display: "flex", alignItems: "center" }}>
+          <div style={{ display: "flex", alignItems: "center" }}>
             {handleToggle && (
               <Checkbox
                 checked={selectedNodes.includes(node.id)}
@@ -295,7 +293,7 @@ const Tree: React.FC<ITree> = forwardRef(({ selectable, data, initNodeIDs, onFil
         <div className="fixed-header">
           <Space ref={spaceRef} direction="vertical" size={5} className="search-buttons">
             <div>
-              <Input placeholder="Search..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value.toUpperCase())} allowClear />
+              <Input placeholder="Search..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value.toUpperCase())} />
             </div>
             <div>
               <Button onClick={handleExpandAll} title="Expand All">

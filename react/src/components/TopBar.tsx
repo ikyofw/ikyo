@@ -12,16 +12,19 @@ const TopBar = () => {
   }, [])
 
   const checkLogin = async () => {
-    await HttpGet("/api/auth")
-      .then((response) => response.json())
-      .then((result) => {
-        if (Number(result.code) === 1) {
-          pyiLocalStorage.setCurrentUser(result.data.user)
-          pyiLocalStorage.setToken(result.data.token)
-        } else if (!window.location.href.endsWith("login")) {
-          sysUtil.validateResponse(result, false)
-        }
-      })
+    const response = (await HttpGet("/api/auth")) as Response
+    if (!response || typeof response.json !== "function") {
+      console.error("No valid response from server.")
+      return
+    }
+
+    const result = await response.json()
+    if (Number(result.code) === 1) {
+      pyiLocalStorage.setCurrentUser(result.data.user)
+      pyiLocalStorage.setToken(result.data.token)
+    } else if (!window.location.href.endsWith("login")) {
+      sysUtil.validateResponse(result, false)
+    }
   }
 
   return (

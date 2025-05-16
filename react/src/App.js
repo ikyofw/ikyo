@@ -1,6 +1,4 @@
 import "./App.css"
-import "../public/static/css/menu-v1.css"
-import "../public/static/css/style-v2.css"
 
 import { useEffect, useState } from "react"
 import { BrowserRouter, Route, Routes, useLocation } from "react-router-dom"

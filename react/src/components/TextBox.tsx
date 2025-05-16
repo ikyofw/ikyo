@@ -34,6 +34,8 @@ const TextBox: React.FC<ITextbox> = forwardRef((props, ref: Ref<any>) => {
       } else {
         setTooltip(props.tip)
       }
+    } else {
+      setTooltip('')
     }
   }, [props, props.textBoxValue])
 

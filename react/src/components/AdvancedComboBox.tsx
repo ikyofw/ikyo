@@ -50,6 +50,8 @@ const AdvancedComboBox: React.FC<IAdvancedComboBox> = forwardRef((props, ref: Re
       } else {
         setTooltip(props.tip)
       }
+    } else {
+      setTooltip('')
     }
   }, [props])
 

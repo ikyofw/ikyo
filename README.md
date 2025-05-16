@@ -4,7 +4,6 @@
     <img alt="Ikyo" src="images/ikyo2.png" height="120px">
   </picture>
 </div>
-
 # Background
 The main objective of this framework is to minimize development effort for typical web-based applications that do not require complex user interfaces. It provides only one standard UI style for efficiency. Originally developed in 2002 using Java and JavaScript, the framework was migrated to React and Django in 2022, resulting in the current version 2.0. As of December 2023, the framework has been open-sourced.
 
@@ -88,11 +87,14 @@ Follow these steps to set up and run your React application:
 4. **Ensure the Django Templates Directory Exists**
    Create the necessary directory structure in your Django project (if it doesn't already exist):  
     ``mkdir -p ../django_backend/templates/react`` 
-5. **Move the Build Folder**  
-   Move the build folder to the Django templates directory:    
-   ``move build ../django_backend/templates/react``  
+5. **Move the contents of the Build Folder**  
+   Move the contents of the build folder to the Django templates directory:    
+   ``move build/* ../django_backend/templates/react``  
    This step integrates the built React app with your Django project.
-6. **View the App in the Browser**  
+6. **Delete the Build Folder**
+   Delete the empty build folder
+   ``rm build``  
+7. **View the App in the Browser**  
    After moving the build folder, you can view the app in the browser at http://localhost:8000.
 
 For more information, please reference to *react/README.md* file.
@@ -140,9 +142,9 @@ npm start
 # License
 MIT
 
+
 # Documentation
 [Documentation](docs/doc.md)
-
 
 # Reference
 1. Django  

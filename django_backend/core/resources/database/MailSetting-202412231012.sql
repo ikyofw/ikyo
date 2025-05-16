@@ -1,1 +1,0 @@
-insert into ik_setting(version_no, cd, key, value, rmk) values(0, 'WCI2', 'EMAIL_ATTACH_TOTAL_SIZE_LIMIT', 5, 'MB');

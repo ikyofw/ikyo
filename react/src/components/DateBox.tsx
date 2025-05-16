@@ -27,6 +27,8 @@ const DateBox: React.FC<IDateBox> = forwardRef((props, ref: Ref<any>) => {
       } else {
         setTooltip(props.tip)
       }
+    } else {
+      setTooltip('')
     }
   }, [props.tip])
 

@@ -12,7 +12,7 @@
   opacity: 0.2;
 }
 
-/* .dialog {
+.dialog {
   z-index: 1000;
   display: block;
   width: auto;
@@ -24,7 +24,7 @@
   border: 1px solid black;
   padding: 1px 1px 1px 1px;
   background-color: white;
-} */
+}
 
 .dialog_header {
   height: 27px;

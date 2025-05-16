@@ -1,6 +1,5 @@
 import React, { Ref, forwardRef, useState } from "react"
 import transform, { StyleTuple } from "css-to-react-native"
-import "../../public/static/css/CheckBox.css"
 import classnames from "classnames"
 import * as simpleFg from "./SimpleFg"
 import pyiLocalStorage from "../utils/pyiLocalStorage"
@@ -69,6 +68,8 @@ const CheckBox: React.FC<ICheckBox> = forwardRef((props, ref: Ref<any>) => {
       } else {
         setTooltip(tip)
       }
+    } else {
+      setTooltip('')
     }
   }, [props, value])
 

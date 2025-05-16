@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react"
-import "../../public/static/css/Dialog-v2.css"
 import CustomDialog from "../components/Dialog"
 import { useHttp } from "../utils/http"
 import pyiLocalStorage from "../utils/pyiLocalStorage"
@@ -16,18 +15,21 @@ const Home = () => {
   }, [])
 
   const checkLogin = async () => {
-    await HttpGet("/api/auth")
-      .then((response) => response.json())
-      .then((result) => {
-        if (Number(result.code) === 100001) {
-          pyiLocalStorage.clearStore()
-          window.location.href = "/login"
-        } else if (Number(result.code) !== 1) {
-          sysUtil.showMessage(result.messages)
-        } else if (result.code === 1) {
-          checkHasNewSysMsg()
-        }
-      })
+    const response = (await HttpGet("/api/auth")) as Response
+    if (!response || typeof response.json !== "function") {
+      console.error("No valid response from server.")
+      return
+    }
+
+    const result = await response.json()
+    if (Number(result.code) === 100001) {
+      pyiLocalStorage.clearStore()
+      window.location.href = "/login"
+    } else if (Number(result.code) !== 1) {
+      sysUtil.showMessage(result.messages)
+    } else if (result.code === 1) {
+      checkHasNewSysMsg()
+    }
   }
 
   const checkHasNewSysMsg = async () => {

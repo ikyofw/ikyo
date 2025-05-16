@@ -12,7 +12,6 @@ import * as PointMap from "./tableFg/point-map"
 import * as Selection from "./tableFg/selection"
 import * as Types from "./tableFg/types"
 
-import "../../public/static/css/TableFg.css"
 import { useHttp } from "../utils/http"
 import pyiLogger from "../utils/log"
 import pyiLocalStorage from "../utils/pyiLocalStorage"

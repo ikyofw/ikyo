@@ -137,6 +137,11 @@ const SimpleFg: React.FC<ISimpleFg> = forwardRef((props, ref: Ref<any>) => {
                 formData.append(field.name + "_FILES_" + i, currentFile)
               }
             }
+          } else if (field.widget.trim().toLowerCase() === global.FIELD_TYPE_ADVANCED_COMBOBOX) {
+            formData.append(
+              field.dataField ? field.dataField : field.name, // get sql column, if not, get field name
+              refs[field.name].current.getSelected()
+            )
           } else {
             formData.append(
               field.dataField ? field.dataField : field.name, // get sql column, if not, get field name

@@ -1,5 +1,5 @@
 '''
-.. list-table:: ycsv - YWL Function Toolbox for input.csv 
+.. list-table:: ycsv - Function Toolbox for input.csv 
    :widths: 10, 15, 15, 75
    :header-rows: 1
 

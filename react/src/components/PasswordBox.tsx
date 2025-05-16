@@ -18,7 +18,7 @@ const PasswordBox: React.FC<IPasswordBox> = forwardRef((props, ref: Ref<any>) =>
 
   React.useEffect(() => {
     const inputElement: HTMLInputElement | null = document.getElementById(props.name + "_psw") as HTMLInputElement
-    if (props.value && inputElement) {
+    if ((props.value || props.value === "") && inputElement) {
       inputElement.value = props.value
     }
 

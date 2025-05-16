@@ -1,5 +1,5 @@
 import React, { forwardRef, Ref } from "react"
-import transform  from "css-to-react-native"
+import transform from "css-to-react-native"
 import classnames from "classnames"
 import * as simpleFg from "./SimpleFg"
 
@@ -14,9 +14,12 @@ interface IFileUpload {
 }
 const FileUpload: React.FC<IFileUpload> = forwardRef((props, ref: Ref<any>) => {
   const [tooltip, setTooltip] = React.useState(String)
+  const [fileKey, setFileKey] = React.useState<number>(0)
   const multiple = props.widgetParameter.multiple
 
   React.useEffect(() => {
+    setFileKey((prevKey) => prevKey + 1)
+
     // set tooltip
     if (props.tip) {
       if (props.tip.includes("\\r\\n")) {
@@ -28,6 +31,8 @@ const FileUpload: React.FC<IFileUpload> = forwardRef((props, ref: Ref<any>) => {
       } else {
         setTooltip(props.tip)
       }
+    } else {
+      setTooltip('')
     }
   }, [props])
 
@@ -36,8 +41,9 @@ const FileUpload: React.FC<IFileUpload> = forwardRef((props, ref: Ref<any>) => {
   return (
     <>
       <th className="property_key">{props.fileBoxLabel}</th>
-      <td className={classnames(cellClass, 'property_value', 'tip_center')}>
+      <td className={classnames(cellClass, "property_value", "tip_center")}>
         <input
+          key={fileKey}
           multiple={multiple && String(multiple) === "true" ? true : false}
           ref={ref}
           type="file"

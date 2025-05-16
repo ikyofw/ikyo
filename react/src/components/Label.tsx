@@ -81,6 +81,8 @@ const Label: React.FC<ILabel> = forwardRef((props, ref: Ref<any>) => {
       } else {
         setTooltip(props.tip)
       }
+    } else {
+      setTooltip('')
     }
   }, [props])
 

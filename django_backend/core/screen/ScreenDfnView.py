@@ -148,7 +148,7 @@ class ScreenDfnView(ScreenAPIView):
         exampleFileFolder = ikui.IkUI.getScreenFileExampleFolder()
         exampleFile = ikfs.getLastRevisionFile(exampleFileFolder, 'example.xlsx')
         if isNullBlank(exampleFile):
-            logger.error("Example file does not exist in folder [%s]." % exampleFileFolder.absolute())
+            logger.error("Example file does not exist in folder [%s]." % exampleFileFolder.resolve())
             return Boolean2(False, 'Screen example file not found. Please check.')
         return self.downloadFile(exampleFile)
 

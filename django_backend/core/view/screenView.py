@@ -628,7 +628,7 @@ class ScreenAPIView(AuthAPIView):
             logger.error(msg)
             return ikhttp.IkErrJsonResponse(message=msg)
         elif not Path(file).is_file():
-            logger.error("File doesn't exist. File=[%s]" % Path(file).absolute())
+            logger.error("File doesn't exist. File=[%s]" % Path(file).resolve())
             return ikhttp.IkErrJsonResponse(message="File doesn't exist.")
         else:
             try:

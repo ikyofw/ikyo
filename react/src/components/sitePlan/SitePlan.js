@@ -7,12 +7,15 @@ import * as sysUtil from "../../utils/sysUtil"
 import { useHttp } from "../../utils/http"
 import ImageButton from "../ImageButton"
 import pyiLogger from "../../utils/log"
+import CustomDialog from "../../components/Dialog"
 import pyiLocalStorage from "../../utils/pyiLocalStorage"
 
 import { Chart as ChartJS, LineController, LineElement, PointElement, LinearScale, Title, CategoryScale, Tooltip } from "chart.js"
 
 import zoomPlugin from "chartjs-plugin-zoom"
 ChartJS.register(LineController, LineElement, PointElement, LinearScale, Title, CategoryScale, zoomPlugin, Tooltip)
+
+const pyiGlobal = pyiLocalStorage.globalParams
 
 const colorList = [
   { backgroundColor: "rgb(255, 0, 0)", borderColor: "rgb(75, 192, 192)" },
@@ -31,9 +34,10 @@ const colorList = [
 ]
 
 export function SitePlan(props) {
-  const HttpGet = useHttp(pyiLocalStorage.globalParams.HTTP_TYPE_GET)
-  const HttpPost = useHttp(pyiLocalStorage.globalParams.HTTP_TYPE_POST)
-  const HttpDownload = useHttp(pyiLocalStorage.globalParams.HTTP_TYPE_DOWNLOAD)
+  const HttpGet = useHttp(pyiGlobal.HTTP_TYPE_GET)
+  const HttpPost = useHttp(pyiGlobal.HTTP_TYPE_POST)
+  const HttpDownload = useHttp(pyiGlobal.HTTP_TYPE_DOWNLOAD)
+  const HttpPostNoHeader = useHttp(pyiGlobal.HTTP_TYPE_POST_NO_HEADER)
 
   const [showSoilDataComponent, setShowSoilDataComponent] = useState(false)
   const [showSoilData, setShowSoilData] = useState(false)
@@ -199,7 +203,7 @@ export function SitePlan(props) {
             if (i + 1 < stringLineArray.length) {
               LineArray.push([stringLineArray[i], stringLineArray[i + 1]])
             } else {
-              sysUtil.showErrorMessage("Input points format is in correct")
+              sysUtil.showErrorMessage("Input points format is in correct.")
             }
           }
           setLineArray(LineArray)
@@ -252,6 +256,82 @@ export function SitePlan(props) {
         })
     } catch (error) {
       pyiLogger.error("get layer data failed: " + error, true)
+      Loading.remove()
+    }
+  }
+
+  const [dialogOpen, setDialogOpen] = useState(false)
+  const [dialogPrams, setDialogPrams] = useState({ onCancel: () => closeDialog() })
+  const closeDialog = () => {
+    setDialogOpen(false)
+  }
+  const openImportDialog = () => {
+    const dialogContent = "Default import type is overwrite."
+    const params = {
+      dialogContent: dialogContent,
+      dialogType: pyiGlobal.DIALOG_TYPE_UPLOAD,
+      onCancel: () => closeDialog(),
+      onContinue: (dialogData) => {
+        importCutline(dialogData)
+      },
+      continueName: "Continue",
+      cancelName: "Cancel",
+    }
+    setDialogPrams(params)
+    setDialogOpen(true)
+  }
+
+  const importCutline = (dialogData) => {
+    try {
+      HttpPostNoHeader("/api/" + props.screenID + "/importCutline", dialogData).then((response) => {
+        response.blob().then((blob) => {
+          try {
+            console.log(blob.type.trim().toLocaleLowerCase())
+            if (blob.type.trim().toLocaleLowerCase() === "application/json") {
+              var reader = new FileReader()
+              reader.onload = (e) => {
+                let data = JSON.parse(e.target.result)
+                sysUtil.showMessage(data.messages)
+                getCutlineItems()
+                changeCutline(0)
+              }
+              reader.readAsText(blob)
+            }
+          } finally {
+            Loading.remove()
+          }
+        })
+      })
+    } catch (error) {
+      pyiLogger.error("get layer data failed: " + error, true)
+      Loading.remove()
+    }
+  }
+  const exportCutline = () => {
+    try {
+      let eventHandler = "/api/" + props.screenID + "/exportCutline"
+      HttpDownload(eventHandler).then((response) => {
+        try {
+          let respType = response.headers?.["content-type"]
+          if (respType.trim().toLocaleLowerCase() === "application/json") {
+            var reader = new FileReader()
+            reader.onload = (e) => {
+              let data = JSON.parse(e.target.result)
+              sysUtil.showMessage(data.messages)
+            }
+            reader.readAsText(response.data)
+          } else {
+            const blob = new Blob([response.data])
+            let fileName = response?.headers?.["content-disposition"]?.split("filename=")[1]
+            // let fileName = lynm+'.dxf'
+            domDownload(fileName, blob, eventHandler)
+          }
+        } finally {
+          Loading.remove()
+        }
+      })
+    } catch (error) {
+      pyiLogger.error("get dxf file failed: " + error, true)
       Loading.remove()
     }
   }
@@ -664,7 +744,7 @@ export function SitePlan(props) {
       linkNode.click() //模拟在按钮上的一次鼠标单击
       URL.revokeObjectURL(linkNode.href) // 释放URL 对象
       document.body.removeChild(linkNode)
-      sysUtil.showInfoMessage("download success.")
+      sysUtil.showInfoMessage("Downloaded.")
     } else {
       pyiLogger.warn("Download - " + eventHandler + " no filename, please ask administrator to check.")
     }
@@ -839,7 +919,7 @@ export function SitePlan(props) {
     <div style={{ display: "grid", gridTemplateColumns: "1fr minmax(120px, auto) 1fr", gap: "5px" }}>
       <div style={{ gridArea: "1 / 1 / 2 / 2" }}>
         {currentLynm ? (
-          <div style={{ paddingLeft: '10px', paddingTop: "3px" }}>
+          <div style={{ paddingLeft: "10px", paddingTop: "3px" }}>
             <ImageButton
               caption="Generate Dxf"
               name="Generate Dxf"
@@ -850,80 +930,96 @@ export function SitePlan(props) {
             <div style={{ paddingTop: "3px" }}>{"Show Contour Line Layer: " + (currentLynm.nm ? currentLynm.nm : "N/A")}</div>
           </div>
         ) : null}
-        <div style={{ paddingLeft: '10px',paddingTop: "3px" }}>
-          Contour Gap&nbsp;
-          <input style={{ width: "40px", textAlign: "center" }} defaultValue={contourGap} onChange={changeContourGap} />
-          &nbsp;m
-          <label id="spCutlines" style={{ marginLeft: "10px", color: "blue" }}>
-            Cutline
-          </label>
-          <select
-            id="spCutlines"
-            style={{ marginLeft: "3px", height: "20px", color: "blue", width: "50px" }}
-            value={selectCutline}
-            onChange={(e) => changeCutline(e.target.value)}
-          >
-            <option key="" value="0"></option>
-            {cutlineItems &&
-              cutlineItems.length > 0 &&
-              cutlineItems.map((item, index) => (
-                <option key={index} value={item["id"]} title={item["nm"]}>
-                  {item["nm"]}
-                </option>
-              ))}
-          </select>
-          <label id="spCutlineBandwidth" style={{ marginLeft: "10px", color: "blue" }}>
-            Bandwidth
-          </label>
-          <input
-            id="spCutlineBandwidthInput"
-            style={{ width: "40px", textAlign: "center" }}
-            value={bwValue}
-            onChange={(e) => setBwValue(e.target.value)}
-          />
-          &nbsp;m
-          <label id="spSamplingDistance" style={{ marginLeft: "10px", color: "blue" }}>
-            Sampling Distance
-          </label>
-          <input
-            id="spSamplingDistanceInput"
-            style={{ width: "40px", textAlign: "center" }}
-            value={sdValue}
-            onChange={(e) => setSdValue(e.target.value)}
-          />
-          &nbsp;m
-          <label id="spCutlineName" style={{ marginLeft: "10px", color: "blue" }}>
-            Cutline Name
-          </label>
-          <input
-            id="spCutlineNameInput"
-            style={{ width: "40px", textAlign: "center" }}
-            value={nmValue}
-            onChange={(e) => setNmValue(e.target.value)}
-          />
-          <button
-            style={{ marginLeft: "5px", height: "22px", padding: "2px", textAlign: "center", color: "blue" }}
-            title="save cutline"
-            onClick={saveCutline}
-          >
-            save
-          </button>
-          <button
-            style={{ marginLeft: "5px", height: "22px", padding: "2px", textAlign: "center", color: "blue" }}
-            title="delete cutline"
-            onClick={deleteCutline}
-          >
-            delete
-          </button>
-          <button
-            style={{ marginLeft: "5px", height: "22px", padding: "2px", textAlign: "center", color: "blue" }}
-            title="export inferred section dxf file"
-            onClick={exportInferredSection}
-          >
-            Export inferred section
-          </button>
-        </div>
-        <div style={{ width: '90%', textAlign:'center', paddingLeft: '10px' }}>
+        {props.editable ? (
+          <div style={{ paddingLeft: "10px", paddingTop: "3px" }}>
+            Contour Gap&nbsp;
+            <input style={{ width: "40px", textAlign: "center" }} defaultValue={contourGap} onChange={changeContourGap} />
+            &nbsp;m
+            <label id="spCutlines" style={{ marginLeft: "10px", color: "blue" }}>
+              Cutline
+            </label>
+            <select
+              id="spCutlines"
+              style={{ marginLeft: "3px", height: "20px", color: "blue", width: "50px" }}
+              value={selectCutline}
+              onChange={(e) => changeCutline(e.target.value)}
+            >
+              <option key="" value="0"></option>
+              {cutlineItems &&
+                cutlineItems.length > 0 &&
+                cutlineItems.map((item, index) => (
+                  <option key={index} value={item["id"]} title={item["nm"]}>
+                    {item["nm"]}
+                  </option>
+                ))}
+            </select>
+            <label id="spCutlineBandwidth" style={{ marginLeft: "10px", color: "blue" }}>
+              Bandwidth
+            </label>
+            <input
+              id="spCutlineBandwidthInput"
+              style={{ width: "40px", textAlign: "center" }}
+              value={bwValue}
+              onChange={(e) => setBwValue(e.target.value)}
+            />
+            &nbsp;m
+            <label id="spSamplingDistance" style={{ marginLeft: "10px", color: "blue" }}>
+              Sampling Distance
+            </label>
+            <input
+              id="spSamplingDistanceInput"
+              style={{ width: "40px", textAlign: "center" }}
+              value={sdValue}
+              onChange={(e) => setSdValue(e.target.value)}
+            />
+            &nbsp;m
+            <label id="spCutlineName" style={{ marginLeft: "10px", color: "blue" }}>
+              Cutline Name
+            </label>
+            <input
+              id="spCutlineNameInput"
+              style={{ width: "40px", textAlign: "center" }}
+              value={nmValue}
+              onChange={(e) => setNmValue(e.target.value)}
+            />
+            <button
+              style={{ marginLeft: "5px", height: "22px", padding: "2px", textAlign: "center", color: "blue" }}
+              title="save cutline"
+              onClick={saveCutline}
+            >
+              Save
+            </button>
+            <button
+              style={{ marginLeft: "5px", height: "22px", padding: "2px", textAlign: "center", color: "blue" }}
+              title="delete cutline"
+              onClick={deleteCutline}
+            >
+              Delete
+            </button>
+            <button
+              style={{ marginLeft: "5px", height: "22px", padding: "2px", textAlign: "center", color: "blue" }}
+              title="import cutline"
+              onClick={openImportDialog}
+            >
+              Import
+            </button>
+            <button
+              style={{ marginLeft: "5px", height: "22px", padding: "2px", textAlign: "center", color: "blue" }}
+              title="export cutline"
+              onClick={exportCutline}
+            >
+              Export
+            </button>
+            <button
+              style={{ marginLeft: "5px", height: "22px", padding: "2px", textAlign: "center", color: "blue" }}
+              title="export inferred section dxf file"
+              onClick={exportInferredSection}
+            >
+              Export inferred section
+            </button>
+          </div>
+        ) : null}
+        <div style={{ width: "90%", textAlign: "center", paddingLeft: "10px" }}>
           <Scatter
             tabIndex="0"
             data={myDataSets}
@@ -944,24 +1040,26 @@ export function SitePlan(props) {
       </div>
 
       <div style={{ gridArea: "1 / 2 / 2 / 3" }}>
-        <div style={{ paddingTop: "40px" }}>
-          <table style={{ borderSpacing: "0px", paddingTop: "40px" }}>
-            <tbody>
-              {props.scatterData.GetLayerColorSets.map((lynm) => (
-                <tr style={{ height: "25px", paddingTop: "0px" }} key={lynm.nm}>
-                  <td
-                    style={{ width: "60px", border: "1px solid black", background: lynm.color, cursor: "pointer" }}
-                    title="click to show this layer contour line"
-                    onClick={() => getContourPathPoints(lynm)}
-                    onMouseEnter={focusLayer}
-                    onMouseLeave={leaveLayer}
-                  ></td>
-                  <td style={{ paddingLeft: "5px" }}>{lynm.nm}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        {props.editable ? (
+          <div style={{ paddingTop: "40px" }}>
+            <table style={{ borderSpacing: "0px", paddingTop: "40px" }}>
+              <tbody>
+                {props.scatterData.GetLayerColorSets.map((lynm) => (
+                  <tr style={{ height: "25px", paddingTop: "0px" }} key={lynm.nm}>
+                    <td
+                      style={{ width: "60px", border: "1px solid black", background: lynm.color, cursor: "pointer" }}
+                      title="click to show this layer contour line"
+                      onClick={() => getContourPathPoints(lynm)}
+                      onMouseEnter={focusLayer}
+                      onMouseLeave={leaveLayer}
+                    ></td>
+                    <td style={{ paddingLeft: "5px" }}>{lynm.nm}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : null}
 
         <div style={{ paddingTop: "20px" }}>
           <button style={{ width: "80px", textAlign: "center" }} onClick={zoomReset}>
@@ -976,7 +1074,7 @@ export function SitePlan(props) {
       </div>
 
       <div style={{ gridArea: "1 / 3 / 2 / 4" }}>
-        <div hidden={!showSoilDataComponent || !props.editable} style={{ width: '90%' }}>
+        <div hidden={!showSoilDataComponent || !props.editable} style={{ width: "90%" }}>
           <GetSoilData
             screenID={props.screenID}
             ptArray={lineArray}
@@ -988,6 +1086,8 @@ export function SitePlan(props) {
       {/* <div hidden={!showContourDiv}>
         <ContourViewer fileUrl={contourFileUrl}/>
       </div> */}
+
+      <CustomDialog open={dialogOpen} dialogPrams={dialogPrams} />
     </div>
   )
 }

@@ -22,8 +22,8 @@ def getDjangoAppStaticFolder() -> Path:
     return Path(os.path.join(os.path.dirname(__file__), TEMPLATE_FOLDER, 'apps'))
 
 def getStaticFolders() -> list:
-    return [Path(os.path.join(getDjangoReactFolder().absolute(), 'static')).absolute(),
-            getDjangoAppStaticFolder().absolute()
+    return [Path(os.path.join(getDjangoReactFolder().resolve(), 'static')).resolve(),
+            getDjangoAppStaticFolder().resolve()
     ]
 
 
@@ -108,11 +108,11 @@ def getAppUrlFiles() -> list:
 
 class __IkConfig():
     def __init__(self) -> None:
-        p = Path(os.path.join(Path(os.path.abspath(__file__)).parent.absolute(), 'config.ini'))
+        p = Path(os.path.join(Path(os.path.abspath(__file__)).parent.resolve(), 'config.ini'))
         if not p.is_file():
             raise Exception('File [%s] is not found.' % p.name)
         self.conf = configparser.ConfigParser()
-        self.conf.read(p.absolute())
+        self.conf.read(p.resolve())
 
     def get(self, section: str, name:str, defaultValue:str = None) -> str:
         try:

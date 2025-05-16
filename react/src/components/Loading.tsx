@@ -1,5 +1,4 @@
 import ReactDOM from "react-dom";
-import "../../public/static/css/Loading.css"
 import pyiLocalStorage from "../utils/pyiLocalStorage"
 
 const pyiGlobal = pyiLocalStorage.globalParams

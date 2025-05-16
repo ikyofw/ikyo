@@ -1,5 +1,3 @@
-import "../../public/static/css/menu-v1.css"
-
 import { useEffect, useState } from "react"
 import cookie from "react-cookies"
 import * as Loading from "../components/Loading"

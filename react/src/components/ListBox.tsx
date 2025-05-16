@@ -43,6 +43,8 @@ const ListBox: React.FC<IListBox> = forwardRef((props, ref: Ref<any>) => {
       } else {
         setTooltip(props.tip)
       }
+    } else {
+      setTooltip('')
     }
   }, [props.value, props.tip])
 

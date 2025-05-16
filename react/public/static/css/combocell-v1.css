@@ -19,7 +19,10 @@
 .rw-btn:focus {
   outline: none;
 }
-.rw-btn:disabled, fieldset[disabled] .rw-btn, .rw-state-disabled .rw-btn, .rw-state-readonly .rw-btn {
+.rw-btn:disabled,
+fieldset[disabled] .rw-btn,
+.rw-state-disabled .rw-btn,
+.rw-state-readonly .rw-btn {
   cursor: inherit;
 }
 fieldset[disabled] .rw-btn {
@@ -37,14 +40,17 @@ fieldset[disabled] .rw-btn {
 .rw-picker-btn:active {
   background-color: #dee2e6;
 }
-.rw-picker-btn:disabled, fieldset[disabled] .rw-picker-btn {
+.rw-picker-btn:disabled,
+fieldset[disabled] .rw-picker-btn {
   background-color: #e9ecef;
 }
 
-.rw-input-addon, .rw-input-addon.rw-picker-btn {
+.rw-input-addon,
+.rw-input-addon.rw-picker-btn {
   border-left: none;
 }
-[dir=rtl] .rw-input-addon, [dir=rtl] .rw-input-addon.rw-picker-btn {
+[dir="rtl"] .rw-input-addon,
+[dir="rtl"] .rw-input-addon.rw-picker-btn {
   border-right: none;
   border-left: none;
 }
@@ -68,7 +74,12 @@ fieldset[disabled] .rw-btn {
   outline: none;
   position: relative;
 }
-.rw-widget, .rw-widget *, .rw-widget:after, .rw-widget:before, .rw-widget *:after, .rw-widget *:before {
+.rw-widget,
+.rw-widget *,
+.rw-widget:after,
+.rw-widget:before,
+.rw-widget *:after,
+.rw-widget *:before {
   box-sizing: border-box;
 }
 
@@ -83,7 +94,7 @@ fieldset[disabled] .rw-widget {
   background-color: #fff;
   border: none;
   outline: none;
-  grid-template: 1fr/auto 1em;
+  grid-template: 1fr / auto 1em;
   width: 100%;
   height: 100%;
 }
@@ -116,10 +127,11 @@ fieldset[disabled] .rw-widget {
 .rw-input:disabled {
   opacity: 1;
 }
-.rw-input[type=text]::-ms-clear {
+.rw-input[type="text"]::-ms-clear {
   display: none;
 }
-.rw-input:disabled, .rw-input:read-only {
+.rw-input:disabled,
+.rw-input:read-only {
   cursor: inherit;
 }
 
@@ -130,7 +142,9 @@ fieldset[disabled] .rw-widget {
   background-clip: padding-box;
   width: inherit;
 }
-.rw-widget-input.rw-state-disabled, .rw-state-disabled .rw-widget-input, fieldset[disabled] .rw-widget-input {
+.rw-widget-input.rw-state-disabled,
+.rw-state-disabled .rw-widget-input,
+fieldset[disabled] .rw-widget-input {
   background-color: #e9ecef;
 }
 
@@ -191,23 +205,29 @@ fieldset[disabled] .rw-widget {
   outline: none;
 }
 
-.rw-list-option, .rw-list-option-create {
+.rw-list-option,
+.rw-list-option-create {
   user-select: none;
   color: #212529;
   cursor: pointer;
   border: none;
   background-clip: padding-box;
 }
-.rw-list-option:hover, .rw-list-option-create:hover, [data-intent=keyboard] .rw-list-option.rw-state-focus:not(.rw-state-selected), [data-intent=keyboard] .rw-state-focus.rw-list-option-create:not(.rw-state-selected) {
+.rw-list-option:hover,
+.rw-list-option-create:hover,
+[data-intent="keyboard"] .rw-list-option.rw-state-focus:not(.rw-state-selected),
+[data-intent="keyboard"] .rw-state-focus.rw-list-option-create:not(.rw-state-selected) {
   background-color: #e9ecef;
   border-color: #e9ecef;
 }
-.rw-list-option.rw-state-selected, .rw-state-selected.rw-list-option-create {
+.rw-list-option.rw-state-selected,
+.rw-state-selected.rw-list-option-create {
   background-color: #007bff;
   border-color: #007bff;
   color: #fff;
 }
-.rw-list-option.rw-state-disabled, .rw-state-disabled.rw-list-option-create {
+.rw-list-option.rw-state-disabled,
+.rw-state-disabled.rw-list-option-create {
   cursor: not-allowed;
   background-color: transparent;
   border-color: transparent;
@@ -247,7 +267,8 @@ fieldset[disabled] .rw-widget {
   box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25), inset 0 1px 1px rgba(0, 0, 0, 0.075);
   transition: box-shadow 0.15s ease-in-out;
 }
-.rw-listbox.rw-state-disabled > *, fieldset[disabled] .rw-listbox > * {
+.rw-listbox.rw-state-disabled > *,
+fieldset[disabled] .rw-listbox > * {
   pointer-events: none;
 }
 .rw-listbox.rw-state-readonly > * {
@@ -299,7 +320,7 @@ fieldset[disabled] .rw-widget {
 .rw-slide-transition {
   padding-left: 4px;
   padding-right: 4px;
-  width: auto;
+  min-width: 100%;
   display: inline-block;
   transition: transform 130ms, opacity 100ms;
 }
@@ -377,7 +398,7 @@ fieldset[disabled] .rw-widget {
   white-space: nowrap;
   overflow: hidden;
 }
-[dir=rtl] .rw-dropdown-list-input {
+[dir="rtl"] .rw-dropdown-list-input {
   padding-right: 0.857em;
   padding-left: 0;
 }
