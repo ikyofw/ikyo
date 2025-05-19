@@ -135,7 +135,7 @@ Please reference to *.vscode/launch.json* file.
 
 Start the react server:  
 ```shell
-cd pyi-react
+cd react
 npm start
 ``` 
 
