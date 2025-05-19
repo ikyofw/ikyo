@@ -86,14 +86,24 @@ Follow these steps to set up and run your React application:
    ``npm run build`` 
 4. **Ensure the Django Templates Directory Exists**
    Create the necessary directory structure in your Django project (if it doesn't already exist):  
-    ``mkdir -p ../django_backend/templates/react`` 
+   Linux:  
+    ``mkdir -p ../django_backend/templates/react``  
+    Windows:  
+   ``mkdir ..\django_backend\templates\react``  
+   **Please clean this folder if it's not empty.**
 5. **Move the contents of the Build Folder**  
-   Move the contents of the build folder to the Django templates directory:    
-   ``move build/* ../django_backend/templates/react``  
+   Move the contents of the build folder to the Django templates directory:  
+   Linux:  
+   ``move build/* ../django_backend/templates/react/``  
+   Windows:  
+   ``robocopy .\build\ ..\django_backend\templates\react\ /E /MOVE``  
    This step integrates the built React app with your Django project.
 6. **Delete the Build Folder**
-   Delete the empty build folder
+   Delete the empty build folder.  
+   Linux:  
    ``rm build``  
+   Windows:  
+   ``rmdir build /S /Q``
 7. **View the App in the Browser**  
    After moving the build folder, you can view the app in the browser at http://localhost:8000.
 
