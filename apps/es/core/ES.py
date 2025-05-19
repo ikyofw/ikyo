@@ -1752,5 +1752,5 @@ def query_expenses(retriever: User, office_rc: Office, expense_queryset: QuerySe
         if isNotNullBlank(query_prj_nm):
             expense_queryset = expense_queryset.filter(expensedetail__prj_nm__icontains=query_prj_nm)
         if isNotNullBlank(query_desc):
-            expense_queryset = expense_queryset.filter(dsc__icontains=query_desc | Q(dsc__icontains=query_desc) | Q(expensedetail__dsc__icontains=query_desc))
+            expense_queryset = expense_queryset.filter(Q(dsc__icontains=query_desc) | Q(expensedetail__dsc__icontains=query_desc))
     return expense_queryset.distinct()
