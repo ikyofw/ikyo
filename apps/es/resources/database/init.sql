@@ -84,17 +84,6 @@ INSERT INTO es_expensecategory(cre_usr_id,cre_dt,mod_usr_id,mod_dt,version_no,ca
 INSERT INTO es_expensecategory(cre_usr_id,cre_dt,mod_usr_id,mod_dt,version_no,cat,dsc) values(1,now(),1,now(),0,'rent','office rent');
 INSERT INTO es_expensecategory(cre_usr_id,cre_dt,mod_usr_id,mod_dt,version_no,cat,dsc) values(1,now(),1,now(),0,'salary',null);
 
--- system settings
-INSERT INTO ik_setting(version_no,cd,key,value,rmk)
-    VALUES(0,'ES',
-	'Allow accounting to reject expenses and cash advances',
-	'true', 'Options: true, false. Default is true.');
-
-INSERT INTO ik_setting(version_no,cd,key,value,rmk)
-    VALUES(0,'ES',
-	'Enable IKYO2 inbox notification',
-	'true', 'Options: true, false. Default is true.');
-	
 -- VIEWS
 -- create view es_v_user_expense
 CREATE OR REPLACE VIEW es_v_user_expense AS

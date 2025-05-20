@@ -40,6 +40,10 @@ class ES006(ESAPIView):
         super().__init__()
 
         def beforeDisplayAdapter(screen: ikui.Screen):
+            if len(self.getPayeeRcs()) == 0:
+                self._addWarnMessage("Please ask administrator to add payee.")
+            if len(self.getApproverRcs()) == 0:
+                self._addWarnMessage("Please ask administrator to add approver.")
             userRc = self.getCurrentUser()
             isNew = self.__isNewCashAdvancement()
             curCashAdvId = self.__getCurrentCashAdvancementID()
@@ -47,7 +51,8 @@ class ES006(ESAPIView):
             isDetailScreen = not isMainScreen
 
             screen.setFieldGroupsVisible(('schFg', 'lineFg', 'toolbar1', 'listFg'), isMainScreen)
-            screen.setFieldGroupsVisible(('pdfViewer', 'dtlFg', 'uploadFg', 'priorBalanceExpenseFg', 'toolbar2', "activityFg"), isDetailScreen)
+            screen.setFieldGroupsVisible(('pdfViewer', 'dtlFg', 'uploadFg', 'priorBalanceExpenseFg', 'toolbar2'), isDetailScreen)
+            screen.setFieldGroupsVisible('activityFg', isDetailScreen and not isNew)
             if isNew or not screen.getFieldGroup('pdfViewer').visible:
                 screen.layoutParams = ""
 

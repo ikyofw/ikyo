@@ -330,7 +330,7 @@ class ES005(ESAPIView):
                 if os.path.isfile(ef.file):
                     return responseFile(filePath=ef.file, filename=ef.filename)
             expense_sn = self.__getCurrentExpenseHdr().sn
-            logger.error("ES File is not found. SN=%s, FileID=%s, Path=%s" % (expense_sn, displayFileID, ef.file.absolute()))
+            logger.error("ES File is not found. SN=%s, FileID=%s, Path=%s" % (expense_sn, displayFileID, ef.file.resolve()))
             filePath = ESFileManager.get_not_exist_file_template()
         filePath = ESFileManager.get_blank_page_file_template()
         return responseFile(filePath)

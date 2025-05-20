@@ -147,13 +147,19 @@ class ES004(ESAPIView):
         return fileRcs
 
     def getPayeeRcs(self):
-        return Payee.objects.filter(office=self._getCurrentOffice()).order_by('payee').values('id', 'payee')
+        payee_rcs = Payee.objects.filter(office=self._getCurrentOffice()).order_by('payee')
+        if len(payee_rcs) == 0:
+            self._addWarnMessage("Please ask administrator to add payee.")
+        return payee_rcs
 
     def getApproverRcs(self):
         expense_rc = self.__getExpenseHdrRc()
         office_rc = expense_rc.office if expense_rc is not None else self._getCurrentOffice()
         claimer_rc = expense_rc.claimer if expense_rc is not None else self.getCurrentUser()
-        return [{'id': r.id, 'approver': r.usr_nm} for r in get_office_first_approvers(office_rc, claimer_rc)]
+        approver_rcs = get_office_first_approvers(office_rc, claimer_rc)
+        if len(approver_rcs) == 0:
+            self._addWarnMessage("Please ask administrator to add approver.")
+        return [{'id': r.id, 'approver': r.usr_nm} for r in approver_rcs]
 
     def getHtmlCurrentExpenseNotes(self):
         officeID = self._getCurrentOfficeID()
@@ -397,7 +403,8 @@ class ES004(ESAPIView):
         if paymentData is not None:
             payeeID = paymentData.get('payeeID', None)
             payeeRc = Payee.objects.filter(office=self._getCurrentOffice(), id=int(payeeID)).first() if isNotNullBlank(payeeID) else None
-            ccyRcs = CA.getAvailablePriorBalanceCCYRcs(payeeRc, True)
+            if isNotNullBlank(payeeRc):
+                ccyRcs = CA.getAvailablePriorBalanceCCYRcs(payeeRc, True)
         else:
             hdrRc = self.__getExpenseHdrRc()
             if isNotNullBlank(hdrRc):

@@ -70,14 +70,14 @@ def getRootFolder() -> Path:
 
 
 # def getNoInvoiceTemplateFile() -> Path:
-#     return Path(os.path.join(getRootFolder().absolute(), NO_INVOICE_FILE_TEMPLATE))
+#     return Path(os.path.join(getRootFolder().resolve(), NO_INVOICE_FILE_TEMPLATE))
 
 
 def getUploadFileFolder() -> Path:
     '''
         es/resources/file
     '''
-    return Path(os.path.join(getRootFolder().absolute(), FOLDER_FILE))
+    return Path(os.path.join(getRootFolder().resolve(), FOLDER_FILE))
 
 
 def getUploadFileAbsolutePath(relativePath: str, filename: str) -> Path:
@@ -85,12 +85,12 @@ def getUploadFileAbsolutePath(relativePath: str, filename: str) -> Path:
         relativePath = relativePath[1:]
     if filename.startswith("/"):
         filename = filename[1:]
-    return Path(os.path.join(getUploadFileFolder().absolute(), relativePath, filename))
+    return Path(os.path.join(getUploadFileFolder().resolve(), relativePath, filename))
 
 
 def getTempFolder(subFolder: str = None) -> Path:
     return ikfs.getVarTempFolder(FOLDER_ES) if subFolder is None else \
-        Path(os.path.join(ikfs.getVarTempFolder(FOLDER_ES).absolute(), subFolder))
+        Path(os.path.join(ikfs.getVarTempFolder(FOLDER_ES).resolve(), subFolder))
 
 
 def getReallyFile(fileRc: esModels.File) -> Path:
