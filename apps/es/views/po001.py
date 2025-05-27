@@ -7,7 +7,6 @@ Date: 2025-04-11 15:23:32
 import logging
 
 from django.db.models import Q
-from django.templatetags.static import static
 
 import core.ui.ui as ikui
 from core.core.http import *
@@ -15,12 +14,11 @@ from core.user import userManager
 from core.utils import templateManager
 from core.utils.langUtils import isNotNullBlank, isNullBlank
 from core.view.screenView import _OPEN_SCREEN_PARAM_KEY_NAME
-from es.core import ESFile
-from es.core import approver as ApproverManager
-from es.core import const
-from es.core import po as po_manager
-from es.models import CashAdvancement, Expense, File, Po, PoQuotation
-from es.views.es_base_views import ESAPIView
+
+from ..core import ESFile, approver, const
+from ..core import po as po_manager
+from ..models import CashAdvancement, Expense, Po, PoQuotation
+from ..views.es_base_views import ESAPIView
 
 logger = logging.getLogger('ikyo')
 
@@ -108,7 +106,7 @@ class PO001(ESAPIView):
         return IkSccJsonResponse(data=data)
 
     def getApprover(self):
-        data = ApproverManager.get_office_first_approvers(self._getCurrentOffice(), self.getCurrentUser())
+        data = approver.get_office_first_approvers(self._getCurrentOffice(), self.getCurrentUser())
         return IkSccJsonResponse(data=data)
 
     def getSchRc(self):
@@ -132,7 +130,6 @@ class PO001(ESAPIView):
         if not self.isAdministrator():
             data = data.filter(Q(cre_usr_id=user_rc.id) | Q(submitter_id=user_rc.id) | Q(assigned_approver_id=user_rc.id))
 
-        # TODO, check wci ling 493, approver group.
         # search
         sch_item = self.getSessionParameter('sch_item')
         if isNotNullBlank(sch_item):

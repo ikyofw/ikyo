@@ -6,8 +6,7 @@ from django.db.models import Case, F, FloatField, Sum, Value, When
 from django.db.models.functions import Coalesce, Round
 
 from core.db.model import IDModel
-from core.models import (Currency, Group, IdDateModel, Office, User, UserGroup,
-                         UserOffice)
+from core.models import Currency, Group, IdDateModel, Office, User
 
 from .core import ESTools
 
@@ -188,7 +187,6 @@ class File(IdDateModel):
         default=False, verbose_name='Is Empty File')
     sha256 = models.CharField(
         max_length=64, blank=True, null=True, verbose_name='SHA 256')
-    old_file_id = models.IntegerField(blank=True, null=True, verbose_name='wci_file id')
     amount = None  # page amount
 
     class Meta:
@@ -222,7 +220,6 @@ class Po(IdDateModel):
     status = models.CharField(max_length=50, choices=STATUS_CHOICES, null=True, blank=True, verbose_name="Status")
     file = models.ForeignKey(File, models.DO_NOTHING, blank=True, null=True, verbose_name='Sign PO File')
     file_rmk = models.CharField(max_length=255, blank=True, null=True, verbose_name='Sign PO File Remark')
-    old_data_id = models.IntegerField(blank=True, null=True, verbose_name='wci_form_data id')
     operator = None
     operate_dt = None
 
@@ -240,10 +237,11 @@ class PoQuotation(IdDateModel):
     class Meta:
         verbose_name = 'PO Quotation'
 
+
 class Activity(IdDateModel):
     tp = models.CharField(max_length=3, verbose_name='Type')  # 1. expense, 2. cash advancement
-    transaction_id = models.BigIntegerField(blank=True, null=True, verbose_name='Transactions record ID')
-    operate_dt = models.DateTimeField(blank=True, null=True, verbose_name='Operation date')
+    transaction_id = models.BigIntegerField(verbose_name='Transactions record ID')
+    operate_dt = models.DateTimeField(verbose_name='Operation date')
     operator = models.ForeignKey(User, models.DO_NOTHING, blank=True, null=True, related_name='+', verbose_name='Operator')
     sts = models.CharField(max_length=20, verbose_name='Transactions status')
     dsc = models.TextField(max_length=255, blank=True, null=True, verbose_name='Description')
@@ -299,7 +297,7 @@ class Expense(IdDateModel):
 class ExpenseDetail(IdDateModel):
     hdr = models.ForeignKey(Expense, models.CASCADE, blank=True, null=True, verbose_name='Expense')
     seq = models.SmallIntegerField(verbose_name='Sequence')  # original is sn
-    incur_dt = models.DateField(verbose_name='Incurrence date')
+    incur_dt = models.DateTimeField(verbose_name='Incurrence date')
     dsc = models.CharField(max_length=255, blank=True, null=True, verbose_name='Description')
     cat = models.ForeignKey(ExpenseCategory, models.DO_NOTHING, verbose_name='Category')
     ccy = models.ForeignKey(Currency, models.DO_NOTHING, blank=True, null=True, verbose_name='')
@@ -366,7 +364,7 @@ class CashAdvancementManager(models.Manager):
         )
 
 
-class CashAdvancement(IdDateModel):  # WciEsCash
+class CashAdvancement(IdDateModel):
     office = models.ForeignKey(Office, models.DO_NOTHING, verbose_name='Office')
     sn = models.CharField(unique=True, max_length=11, verbose_name='Expense SN')
     po = models.ForeignKey(Po, models.DO_NOTHING, blank=True, null=True, verbose_name='PO NO.')
@@ -399,7 +397,7 @@ class CashAdvancement(IdDateModel):  # WciEsCash
         verbose_name = 'Cash advancement'
 
 
-class ForeignExchange(IdDateModel):  # WciEsCashFx
+class ForeignExchange(IdDateModel):
     ca = models.ForeignKey(CashAdvancement, models.CASCADE)
     submit_dt = models.DateTimeField(verbose_name='Submit time')
     amt = models.FloatField()

@@ -1,11 +1,13 @@
 import logging
 
 from django.db.models import Q
-from core.core.http import IkErrJsonResponse
+
 from core.core.exception import IkValidateException
+from core.core.http import IkErrJsonResponse
 from core.utils.langUtils import isNotNullBlank
+
+from ..models import Accounting, User
 from .es_base_views import ESAPIView
-from ..models import User,  Accounting
 
 logger = logging.getLogger('ikyo')
 
@@ -53,7 +55,7 @@ class ES001C(ESAPIView):
 
             if rc.ik_is_status_delete():
                 continue
-            
+
             if isNotNullBlank(rc.usr_id):
                 userRc = User.objects.filter(
                     usr_nm=str(rc.usr_id).strip()).first()

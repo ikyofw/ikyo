@@ -1,7 +1,7 @@
 """Currency
 """
 from decimal import Decimal
-from core.log.logger import logger
+
 from .ESTools import round, round2
 
 
@@ -20,4 +20,3 @@ def round_currency(number: any) -> Decimal:
 
 def round_rate(rate: any) -> Decimal:
     return round(rate, "0.0000001")
-

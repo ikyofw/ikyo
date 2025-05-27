@@ -1,19 +1,20 @@
-from datetime import datetime, date
 import logging
 import os
+from datetime import date, datetime
 from pathlib import Path
-from django.db.models import Case, When, Value, CharField, F, FloatField
 
-from core.utils.langUtils import isNullBlank, isNotNullBlank
-from core.utils.spreadsheet import SpreadsheetWriter
-from core.core.exception import IkValidateException
-from core.utils.modelUtils import redcordsets2List
+from django.db.models import Case, CharField, F, FloatField, Value, When
+
 import core.core.fs as ikfs
 import core.user.userManager as UserManager
-import es.core.ESFile as ESFile
-from .status import Status
+from core.core.exception import IkValidateException
+from core.utils.langUtils import isNotNullBlank, isNullBlank
+from core.utils.modelUtils import redcordsets2List
+from core.utils.spreadsheet import SpreadsheetWriter
 
-from ..models import Office, ExpenseDetail, Expense, CashAdvancement, PriorBalance
+from ..models import CashAdvancement, ExpenseDetail, Office, PriorBalance
+from . import ESFile
+from .status import Status
 
 logger = logging.getLogger('ikyo')
 
@@ -23,7 +24,7 @@ def generate_rpt(operator_id: int, template_file: Path, sch_items: dict) -> Path
 
     Args:
         operator_id (int): Report generator's ID.
-        template_file (:obj:'pathlib.Path'): Report template file. E.g. var\templates\wci\ES\ES101\ES101-v4.xlsx
+        template_file (:obj:'pathlib.Path'): Report template file. E.g. resource\templates\ES101\ES101-v1.xlsx
         sch_items (dict): Office code and date range.
 
     Returns:
@@ -83,6 +84,8 @@ def generate_rpt(operator_id: int, template_file: Path, sch_items: dict) -> Path
 
     queryset = queryset.order_by('incur_dt', 'dsc', 'cat')
     expense_table = list(queryset)
+    for i in expense_table:
+        i['incur_dt'] = __to_datetime(i['incur_dt'])
 
     # Part 1: e-Cheque for Expense
     expense_queryset = ExpenseDetail.objects.filter(
@@ -182,9 +185,9 @@ def __to_datetime(value):
     if value is None:
         return None
     if isinstance(value, datetime):
-        return value
+        return value.replace(tzinfo=None)
     if isinstance(value, date):
-        return datetime.combine(value, datetime.min.time())
+        return datetime.combine(value, datetime.min.time()).replace(tzinfo=None)
     if isinstance(value, str):
         try:
             return datetime.strptime(value, "%Y-%m-%d %H:%M:%S")

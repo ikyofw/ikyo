@@ -1,21 +1,23 @@
 """ES file class model.
 
 """
-import os
 import hashlib
+import os
 from datetime import datetime
 from enum import Enum, unique
 from pathlib import Path
+
 from django.core.files.storage import default_storage
 from django.core.files.uploadedfile import InMemoryUploadedFile
-import core.core.fs as ikfs
+
 import core.core.doc_reader as doc_reader
+import core.core.fs as ikfs
 from core.core.exception import IkValidateException
 from core.db.transaction import IkTransaction
 from core.log.logger import logger
-import es.models as esModels
-from . import const
 
+from .. import models as esModels
+from . import const
 
 ALLOW_FILE_TYPES = ("PDF", "PNG", "JPG", "JPEG")
 
@@ -42,7 +44,6 @@ class FileCategory(Enum):
 
     INVOICE = "invoice"
     PAYMENT_RECORD = "payment record"
-    # FILE_TYPE_EXCHANGE_RATE_RECEIPT # no need, it's used for wci1
     EXCHANGE_RATE_RECEIPT = "exchange receipt"  # TODO: no need
     SUPPORTING_DOCUMENT = "supporting document"
     PO = "po"
@@ -141,29 +142,31 @@ def deleteFileRecord(fileID) -> bool:
     return rollbackFileRecord(fileID)
 
 
-def rollbackFileRecord(operatorID, fileID) -> bool:
-    if fileID is None:
-        raise IkValidateException('Parameter [fileID] is mandatory.')
-    fileRc = esModels.File.objects.filter(id=fileID).first()
-    if fileRc is None:
-        logger.info('File [%s] does not exist.' % fileID)
+def rollbackFileRecord(operator_id: int, file_id: int = None, file_rc: esModels.File = None) -> bool:
+    if file_id is None and file_rc is None:
+        raise IkValidateException('Parameter [file_id] or [file_rc] is mandatory.')
+    file_rc = esModels.File.objects.filter(id=file_id).first() if file_rc is None else file_rc
+    if file_rc is None:
+        logger.info('File [%s] does not exist.' % file_id)
         return True
-    file = getFile(fileID)
     try:
         # 1. delete file record from database
-        fileRc.ik_set_status_delete()
-        ptrn = IkTransaction(userID=operatorID)
-        ptrn.add(fileRc)
-        b = ptrn.save()
-        if not b.value:
-            logger.error('Delete file [%s] failed: %s' % (fileID, b.dataStr))
-            return False
+        if not file_rc.ik_is_status_new() and not file_rc.ik_is_status_delete():
+            file_rc.ik_set_status_delete()
+            ptrn = IkTransaction(userID=operator_id)
+            ptrn.add(file_rc)
+            b = ptrn.save()
+            if not b.value:
+                logger.error('Delete file [%s] failed: %s' % (file_id, b.dataStr))
+                return False
+
         # 2. delete file and its parent folder
-        deleteESFileAndFolder(file)
+        file_path = getESFile(file_rc).file
+        deleteESFileAndFolder(file_path)
         return True
     except Exception as e:
         logger.error(
-            'Delete file [%s] failed. Exception=%s' % (fileID, str(e)))
+            'Delete file [%s] failed. Exception=%s' % (file_id, str(e)))
         logger.error(e, exc_info=True)
 
 

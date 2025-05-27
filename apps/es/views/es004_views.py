@@ -4,14 +4,13 @@ import os
 from django.db.models import Case, Exists, F, OuterRef, Sum, When
 
 import core.ui.ui as ikui
-import es.core.acl as acl
 from core.core.exception import IkValidateException
 from core.core.http import IkErrJsonResponse, IkSccJsonResponse, responseFile
 from core.utils.langUtils import isNotNullBlank, isNullBlank
 
 from ..core import CA, ES
 from ..core import ESFile as ESFileManager
-from ..core import ESTools, const
+from ..core import ESTools, acl, const
 from ..core.approver import get_office_first_approvers
 from ..core.finance import round_currency
 from ..core.office import get_office_by_id
@@ -338,6 +337,7 @@ class ES004(ESAPIView):
             settleByPettyCash = paymentData.get('settleByPettyCash', None) == 'true'
             settleByPriorBalanceCCY = paymentData.get('settleByPriorBalanceCCY', None)
             expenseDsc = paymentData.get('expenseDsc', None)
+            supportingDoc = paymentData.get('supportingDoc', None)
         else:
             hdrRc = self.__getExpenseHdrRc()
             if hdrRc is not None:
@@ -522,16 +522,6 @@ class ES004(ESAPIView):
         self.deleteSessionParameters(self.SESSION_KEY_EXPENSE_HDR_ID)
         return self._openScreen(menuName=const.MENU_ES005, parameters={'id': submittedExpenseHdrID})  # TODO:
 
-    def _getUploadFileTableStyle(self, dataRcs, fileID) -> list:
-        style = []
-        if dataRcs and len(dataRcs) > 0:
-            if isinstance(dataRcs, models.QuerySet):
-                dataRcs = [obj.__dict__ for obj in dataRcs]
-            for data in dataRcs:
-                if str(data['id']) == str(fileID):
-                    style.append({"row": data['id'], "class": 'row_select'})
-        return style
-
     def _getFileStyle(self, dataRcs: list[File], selectedFileID: int) -> list:
         if dataRcs is None or len(dataRcs) == 0:
             return None
@@ -572,10 +562,15 @@ class ES004(ESAPIView):
         uploadPageFile = None
         try:
             uploadPageFile = ESFileManager.save_uploaded_really_file(uploadFiles[0], self.__class__.__name__, self.getCurrentUserName())
-            fileID, fileSeq = ES.uploadExpenseSupportingDocument(self.getCurrentUserId(), hdrRc, uploadPageFile)
-            self.setSessionParameter(self.SESSION_KEY_FILE_ID, fileID)
+            new_file_rc = ES.uploadExpenseSupportingDocument(self.getCurrentUserId(), hdrRc, uploadPageFile)
+            self.deleteSessionParameters(self.SESSION_KEY_EXPENSE_ID)
+            self.setSessionParameter(self.SESSION_KEY_FILE_ID, new_file_rc.id)
+            paymentData = self.getSessionParameter(self.SESSION_KEY_PAYMENT_DATA)
+            if isNotNullBlank(paymentData):
+                paymentData['supportingDoc'] = ES.getExpenseSupportingDocumentFilename(new_file_rc)
+                self.setSessionParameter(self.SESSION_KEY_PAYMENT_DATA, paymentData)
             uploadMessage = "If the supporting document has a hard copy, please write the sequence number %s "\
-                "on the top right corner of the page and give it to the accounts department!" % fileSeq
+                "on the top right corner of the page and give it to the accounts department!" % new_file_rc.seq
             return IkSccJsonResponse(message=uploadMessage)
         finally:
             ESFileManager.delete_really_file(uploadPageFile)
@@ -609,6 +604,10 @@ class ES004(ESAPIView):
                 return IkErrJsonResponse(message="File doesn't exist.")
             if fileID == self.getSessionParameterInt(self.SESSION_KEY_FILE_ID):
                 self.deleteSessionParameters(self.SESSION_KEY_FILE_ID)
+            paymentData = self.getSessionParameter(self.SESSION_KEY_PAYMENT_DATA)
+            if isNotNullBlank(paymentData):
+                paymentData['supportingDoc'] = ''
+                self.setSessionParameter(self.SESSION_KEY_PAYMENT_DATA, paymentData)
             return IkSccJsonResponse(message="Deleted supporting document.")
         return IkErrJsonResponse(message="Supporting document doesn't exist.")
 

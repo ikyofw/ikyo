@@ -3,14 +3,12 @@
 from django.db.models import Exists, OuterRef, Q, QuerySet, Subquery
 from django.db.models.manager import Manager
 
-from core.core.exception import IkValidateException
 from core.log.logger import logger
+from core.models import Office, User, UserGroup
 
-from ..models import (Accounting, CashAdvancement, Expense, Office, Payee,
-                      PettyCashExpenseAdmin, User,
-                      UserCashAdvancementPermission, UserExpensePermission,
-                      UserGroup, UserRole)
-from . import accounting
+from ..models import (Accounting, CashAdvancement, Expense, Payee,
+                      PettyCashExpenseAdmin, UserCashAdvancementPermission,
+                      UserExpensePermission, UserRole)
 from . import approver as ApproverManager
 from .setting import is_accounting_rejectable
 from .status import Status, get_approved_status, validate_status_transition
@@ -56,8 +54,6 @@ def is_approverable(operator_rc: User, current_status: str, payee_rc: Payee, amo
     Returns:
         True if approveable, False otherwise.
 
-    Raise:
-        * IkValidateException: Payee's office is not defined.
     """
     log_header = 'is_approverable'
     # basic validate
@@ -94,8 +90,7 @@ def is_approverable(operator_rc: User, current_status: str, payee_rc: Payee, amo
 
 def is_rejectable(operator_rc: User, current_status: str, payee_rc: Payee, amount: float, request_approver_rc: User,
                   is_petty_expense: bool = False, has_petty_expense_confirm: bool = False) -> bool:
-    approveable = is_approverable(operator_rc, current_status, payee_rc, amount, request_approver_rc)
-    if approveable:
+    if is_approverable(operator_rc, current_status, payee_rc, amount, request_approver_rc):
         return True
     if is_accounting_rejectable():
         return is_settlable(operator_rc, current_status, payee_rc, amount, request_approver_rc, is_petty_expense, has_petty_expense_confirm)
@@ -176,8 +171,6 @@ def is_approved_petty_expense_confirmable(operator_rc: User, current_status: str
     Returns:
         True if submittable, False otherwise.
 
-    Raise:
-        * IkValidateException: Payee's office is not defined.
     """
     current_status = Status(current_status) if isinstance(current_status, str) else current_status
     current_status: Status

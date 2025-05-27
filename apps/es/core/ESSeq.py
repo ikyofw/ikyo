@@ -6,10 +6,12 @@ from enum import Enum, unique
 from threading import Lock
 
 from django.db.models import Q
+
 import core.user.userManager as UserManager
 from core.core.exception import IkException, IkValidateException
 from core.db.transaction import IkTransaction
-import es.models as esModels
+
+from .. import models as esModels
 
 logger = logging.getLogger('ikyo')
 
@@ -30,7 +32,6 @@ class SequenceType(Enum):
     SEQ_TYPE_PO_FILE = "po file"
 
 
-
 # MAX to 8
 __MAX_SEQ = 100000000
 __MAX_DRAFT_SEQ = __MAX_SEQ / 10000
@@ -47,7 +48,7 @@ def getNextSeq(sequenceType: SequenceType, officeID: int, maxReset: bool = False
 
     Returns:
         Next sequence ID if found, None otherwise.
-    
+
     Raises:
         IkException: If update the sequence failed.
 
@@ -97,7 +98,7 @@ def getNextSN(sequenceType: SequenceType, officeID: int) -> str:
 
     Returns:
         Next SN.
-    
+
     Raises:
         IkException: If data error or system error.
 
@@ -118,7 +119,7 @@ def getNextSN(sequenceType: SequenceType, officeID: int) -> str:
 
 def SN2Number(sn: str) -> int:
     """Convert sn to a number. 
-    
+
     Example:
         HK00002026 -> 2026
 
@@ -156,7 +157,7 @@ def rollbackSeq(sequenceType: SequenceType, officeObject: any, rollbackSeq: int,
     Returns:
         The sequence after rollback. If no sequence record found, then return 0.
         If 
-    
+
     Raises:
         IkException: If data error or system error.
 
@@ -214,7 +215,7 @@ def getDraftSN(office: int | esModels.Office) -> str:
         office (int or esModels.Office)
     Returns:
         Next SN.
-    
+
     Raises:
         IkException: If data error or system error.
 
@@ -227,11 +228,12 @@ def getDraftSN(office: int | esModels.Office) -> str:
         raise IkException('Office [%s] does not exist.' % office)
     seq = getNextSeq(SequenceType.SEQ_TYPE_EXPENSE_DRAFT_SN, officeRc.id, True, __MAX_DRAFT_SEQ)
     if seq >= __MAX_DRAFT_SEQ:
-        logging.error('Sequence is too large, system cannot support. The last sequence is %s for [%s] for office [%s].' % (seq, SequenceType.SEQ_TYPE_EXPENSE_DRAFT_SN, officeRc.code))
+        logging.error('Sequence is too large, system cannot support. The last sequence is %s for [%s] for office [%s].' % (
+            seq, SequenceType.SEQ_TYPE_EXPENSE_DRAFT_SN, officeRc.code))
         raise IkException("Sequence is too large, system cannot support!")
     officeCode = officeRc.code
     seqStr = str(seq).zfill(len(str(__MAX_DRAFT_SEQ - 1)))
-    sn = '%s%s%s' % ('-', officeCode, seqStr) # office code's length is 2.
+    sn = '%s%s%s' % ('-', officeCode, seqStr)  # office code's length is 2.
     return sn
 
 

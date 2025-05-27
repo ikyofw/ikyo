@@ -1,9 +1,11 @@
 """Approver management
 """
-from django.db.models import Q, Exists, OuterRef
-from core.log.logger import logger
+from django.db.models import Exists, OuterRef, Q
+
 from core.core.lang import Boolean2
-from ..models import Office, User, Approver, Office, User, UserGroup
+from core.models import Office, User, UserGroup
+
+from ..models import Approver
 
 
 class SecondApprover:
@@ -14,6 +16,7 @@ class SecondApprover:
         second_approver (User): The user who acts as the second approver.
         min_approve_amount (float): The minimum amount that requires a second approval.
     """
+
     def __init__(self, second_approver: User, min_approve_amount: float):
         """
         Initializes a SecondApprover instance.
@@ -22,8 +25,9 @@ class SecondApprover:
             second_approver (User): The user who acts as the second approver.
             min_approve_amount (float): The minimum amount that requires a second approval.
         """
-        self.second_approver : User = second_approver
-        self.min_approve_amount : float = min_approve_amount
+        self.second_approver: User = second_approver
+        self.min_approve_amount: float = min_approve_amount
+
 
 def validate_approver(office: Office, claimer: User, request_approver: User, approver: User, approve_amount: float, is_first_approve: bool) -> Boolean2:
     """
@@ -80,7 +84,7 @@ def validate_approver(office: Office, claimer: User, request_approver: User, app
         second_approvers = get_second_approvers(office, request_approver)
         for rc in second_approvers:
             if rc.second_approver.id == approver.id:
-                if (rc.min_approve_amount is not None and approve_amount < rc.min_approve_amount ):
+                if (rc.min_approve_amount is not None and approve_amount < rc.min_approve_amount):
                     return Boolean2.FALSE("The second approval amount must be equal to or greater than %f!" % (rc.min_approve_amount))
                 else:
                     return Boolean2.TRUE()
@@ -91,8 +95,8 @@ def get_office_first_approvers(office_rc: Office, claimer: User, activate_user_o
     """
         return list[User], sorts by User.usr_nm
     """
-    approvers : list[User] = [] 
-    approver_ids : list [int] = []
+    approvers: list[User] = []
+    approver_ids: list[int] = []
     # found_specified_claimer = False
     if claimer is not None:
         # 1) check the specified claimer first
@@ -103,7 +107,7 @@ def get_office_first_approvers(office_rc: Office, claimer: User, activate_user_o
                     approvers.append(rc.approver)
                     approver_ids.append(rc.id)
             elif rc.approver_grp is not None:
-                for ug_rc in UserGroup.objects.filter(grp = rc.approver_grp):
+                for ug_rc in UserGroup.objects.filter(grp=rc.approver_grp):
                     if (not activate_user_only or ug_rc.usr.active is True) and ug_rc.usr.id not in approver_ids:
                         approvers.append(ug_rc.usr)
                         approver_ids.append(ug_rc.usr.id)
@@ -111,7 +115,7 @@ def get_office_first_approvers(office_rc: Office, claimer: User, activate_user_o
         for rc in Approver.objects.filter(office=office_rc, enable=True, claimer_grp__isnull=False):
             # check the claimer exists in the claimer_grp or not
             claimer_exists_in_claimer_grp = False
-            for ug_rc in UserGroup.objects.filter(grp = rc.claimer_grp):
+            for ug_rc in UserGroup.objects.filter(grp=rc.claimer_grp):
                 if (not activate_user_only or ug_rc.usr.active is True) and ug_rc.usr.id == claimer.id:
                     claimer_exists_in_claimer_grp = True
                     break
@@ -122,7 +126,7 @@ def get_office_first_approvers(office_rc: Office, claimer: User, activate_user_o
                         approvers.append(rc.approver)
                         approver_ids.append(rc.id)
                 elif rc.approver_grp is not None:
-                    for ug_rc in UserGroup.objects.filter(grp = rc.approver_grp):
+                    for ug_rc in UserGroup.objects.filter(grp=rc.approver_grp):
                         if (not activate_user_only or ug_rc.usr.active is True) and ug_rc.usr.id not in approver_ids:
                             approvers.append(ug_rc.usr)
                             approver_ids.append(ug_rc.usr.id)
@@ -134,7 +138,7 @@ def get_office_first_approvers(office_rc: Office, claimer: User, activate_user_o
                 approvers.append(rc.approver)
                 approver_ids.append(rc.id)
         elif rc.approver_grp is not None:
-            for ug_rc in UserGroup.objects.filter(grp = rc.approver_grp):
+            for ug_rc in UserGroup.objects.filter(grp=rc.approver_grp):
                 if (not activate_user_only or ug_rc.usr.active is True) and ug_rc.usr.id not in approver_ids:
                     approvers.append(ug_rc.usr)
                     approver_ids.append(ug_rc.usr.id)
@@ -144,17 +148,17 @@ def get_office_first_approvers(office_rc: Office, claimer: User, activate_user_o
 
 
 def get_approver_assistants(office_rc: Office, approver_rc: User, activate_user_only: bool = True) -> list[User]:
-    assistant_approvers : list[User] = [] 
-    assistant_approver_ids : list [int] = []
+    assistant_approvers: list[User] = []
+    assistant_approver_ids: list[int] = []
     # 1 validate the approver
     for approver_define_rc in Approver.objects.filter(office=office_rc, enable=True, approver=approver_rc):
         if approver_define_rc.approver_assistant is not None:
             if (not activate_user_only or approver_define_rc.approver_assistant.active is True) \
-                and approver_define_rc.approver_assistant.id not in assistant_approver_ids:
+                    and approver_define_rc.approver_assistant.id not in assistant_approver_ids:
                 assistant_approvers.append(approver_define_rc.approver_assistant)
                 assistant_approver_ids.append(approver_define_rc.approver_assistant.id)
         if approver_define_rc.approver_assistant_grp is not None:
-            for ug_rc in UserGroup.objects.filter(grp = approver_define_rc.approver_assistant_grp):
+            for ug_rc in UserGroup.objects.filter(grp=approver_define_rc.approver_assistant_grp):
                 if (not activate_user_only or ug_rc.usr.active is True) and ug_rc.usr.id not in assistant_approver_ids:
                     assistant_approvers.append(ug_rc.usr)
                     assistant_approver_ids.append(ug_rc.usr.id)
@@ -162,7 +166,7 @@ def get_approver_assistants(office_rc: Office, approver_rc: User, activate_user_
     for approver_define_rc in Approver.objects.filter(office=office_rc, enable=True, approver_grp__isnull=False):
         # check the user_rc exists in approver_grp or not
         is_user_exists_in_approver_grp = False
-        for ug_rc in UserGroup.objects.filter(grp = approver_define_rc.approver_grp):
+        for ug_rc in UserGroup.objects.filter(grp=approver_define_rc.approver_grp):
             if (not activate_user_only or ug_rc.usr.active is True) and ug_rc.usr.id == approver_rc.id:
                 is_user_exists_in_approver_grp = True
                 break
@@ -170,11 +174,11 @@ def get_approver_assistants(office_rc: Office, approver_rc: User, activate_user_
             # add assistants
             if approver_define_rc.approver_assistant is not None:
                 if (not activate_user_only or approver_define_rc.approver_assistant.active is True) \
-                    and approver_define_rc.approver_assistant.id not in assistant_approver_ids:
+                        and approver_define_rc.approver_assistant.id not in assistant_approver_ids:
                     assistant_approvers.append(approver_define_rc.approver_assistant)
                     assistant_approver_ids.append(approver_define_rc.approver_assistant.id)
             if approver_define_rc.approver_assistant_grp is not None:
-                for ug_rc in UserGroup.objects.filter(grp = approver_define_rc.approver_assistant_grp):
+                for ug_rc in UserGroup.objects.filter(grp=approver_define_rc.approver_assistant_grp):
                     if (not activate_user_only or ug_rc.usr.active is True) and ug_rc.usr.id not in assistant_approver_ids:
                         assistant_approvers.append(ug_rc.usr)
                         assistant_approver_ids.append(ug_rc.usr.id)
@@ -184,17 +188,17 @@ def get_approver_assistants(office_rc: Office, approver_rc: User, activate_user_
 
 
 def get_second_approvers(office_rc: Office, approver_rc: User, activate_user_only: bool = True) -> list[SecondApprover]:
-    second_approvers : list[SecondApprover] = [] 
-    second_approver_ids : list [int] = []
+    second_approvers: list[SecondApprover] = []
+    second_approver_ids: list[int] = []
     # 1 validate the approver
     for approver_define_rc in Approver.objects.filter(office=office_rc, enable=True, approver=approver_rc):
         if approver_define_rc.approver2 is not None:
             if (not activate_user_only or approver_define_rc.approver2.active is True) \
-                and approver_define_rc.approver2.id not in second_approver_ids:
+                    and approver_define_rc.approver2.id not in second_approver_ids:
                 second_approvers.append(SecondApprover(approver_define_rc.approver2, approver_define_rc.approver2_min_amount))
                 second_approver_ids.append(approver_define_rc.approver2.id)
         if approver_define_rc.approver2_grp is not None:
-            for ug_rc in UserGroup.objects.filter(grp = approver_define_rc.approver2_grp):
+            for ug_rc in UserGroup.objects.filter(grp=approver_define_rc.approver2_grp):
                 if (not activate_user_only or ug_rc.usr.active is True) and ug_rc.usr.id not in second_approver_ids:
                     second_approvers.append(SecondApprover(ug_rc.usr, approver_define_rc.approver2_min_amount))
                     second_approver_ids.append(ug_rc.usr.id)
@@ -202,7 +206,7 @@ def get_second_approvers(office_rc: Office, approver_rc: User, activate_user_onl
     for approver_define_rc in Approver.objects.filter(office=office_rc, enable=True, approver_grp__isnull=False):
         # check the user_rc exists in approver_grp or not
         is_user_exists_in_approver_grp = False
-        for ug_rc in UserGroup.objects.filter(grp = approver_define_rc.approver_grp):
+        for ug_rc in UserGroup.objects.filter(grp=approver_define_rc.approver_grp):
             if (not activate_user_only or ug_rc.usr.active is True) and ug_rc.usr.id == approver_rc.id:
                 is_user_exists_in_approver_grp = True
                 break
@@ -210,11 +214,11 @@ def get_second_approvers(office_rc: Office, approver_rc: User, activate_user_onl
             # add 2nd approver
             if approver_define_rc.approver2 is not None:
                 if (not activate_user_only or approver_define_rc.approver2.active is True) \
-                    and approver_define_rc.approver2.id not in second_approver_ids:
+                        and approver_define_rc.approver2.id not in second_approver_ids:
                     second_approvers.append(SecondApprover(approver_define_rc.approver2, approver_define_rc.approver2_min_amount))
                     second_approver_ids.append(approver_define_rc.approver2.id)
             if approver_define_rc.approver2_grp is not None:
-                for ug_rc in UserGroup.objects.filter(grp = approver_define_rc.approver2_grp):
+                for ug_rc in UserGroup.objects.filter(grp=approver_define_rc.approver2_grp):
                     if (not activate_user_only or ug_rc.usr.active is True) and ug_rc.usr.id not in second_approver_ids:
                         second_approvers.append(SecondApprover(ug_rc.usr, approver_define_rc.approver2_min_amount))
                         second_approver_ids.append(ug_rc.usr.id)
@@ -224,7 +228,7 @@ def get_second_approvers(office_rc: Office, approver_rc: User, activate_user_onl
 
 
 def get_accessible_approvers(office_rc: Office, user_rc: User, activate_user_only: bool = True) -> list[User]:
-    approvers : list[User] = [] 
+    approvers: list[User] = []
     approver_ids = [int]
     # approver assistant and 2nd approver
     assistant_ug_subquery = UserGroup.objects.filter(grp=OuterRef('approver_assistant_grp'), usr=user_rc)

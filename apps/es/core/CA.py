@@ -5,28 +5,22 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from threading import Lock
 
-from django.db.models import Exists, OuterRef, Q, QuerySet, Sum
+from django.db.models import Q, QuerySet, Sum
 from django.utils.timezone import make_aware
 
 import core.user.userManager as UserManager
-import es.core.acl as acl
-import es.core.ESFile as ESFileManager
-import es.core.ESSeq as SnManager
-import es.core.ESTools as ESTools
 from core.core.exception import IkValidateException
 from core.core.lang import Boolean2
 from core.db.transaction import IkTransaction
 from core.log.logger import logger
+from core.models import Office, User, UserOffice
 from core.utils.langUtils import isNotNullBlank, isNullBlank
-from es.core import ES, ESSeq
 
-from ..models import (Activity, Approver, AvailablePriorBalance,
-                      CashAdvancement, Currency, Expense, ForeignExchange,
-                      Office, Payee, PaymentMethod, Po, PriorBalance, User,
-                      UserOffice)
-from . import ESNotification, acl
-from . import approver as ApproverManager
-from . import po as po_manager
+from ..core import ES
+from ..models import (Activity, AvailablePriorBalance, CashAdvancement,
+                      Currency, Expense, ForeignExchange, Payee, PaymentMethod,
+                      Po, PriorBalance)
+from . import ES, ESFile, ESNotification, ESSeq, ESTools, acl, approver, po
 from .activity import ActivityType
 from .finance import round_currency, round_rate
 from .status import Status, validate_status_transition
@@ -73,9 +67,9 @@ def submit_cash_advancement(claimer_id: int, cash_advancement_id: int, office_rc
     if isNullBlank(description):
         return Boolean2.FALSE("Description is mandatory.")
     # validate approver
-    ApproverManager.validate_approver_result = ApproverManager.validate_approver(office_rc, claimer_rc, approver_rc, approver_rc, advance_amount, True)
-    if not ApproverManager.validate_approver_result.value:
-        return ApproverManager.validate_approver_result
+    validate_result = approver.validate_approver(office_rc, claimer_rc, approver_rc, approver_rc, advance_amount, True)
+    if not validate_result.value:
+        return validate_result
 
     is_new = isNullBlank(cash_advancement_id)
     is_success = False
@@ -110,7 +104,7 @@ def submit_cash_advancement(claimer_id: int, cash_advancement_id: int, office_rc
         po_rc = None
         if isNotNullBlank(po_sn):
             po_sn = str(po_sn).strip()
-            b = po_manager.validate_po_permission(claimer_rc, po_sn)
+            b = po.validate_po_permission(claimer_rc, po_sn)
             if not b.value:
                 raise IkValidateException(b.data)
             po_rc = Po.objects.filter(sn=po_sn).first()
@@ -326,7 +320,7 @@ def approve_cash_advancement(operator_id: int, cash_advancement_id: int) -> Bool
         is_final_approval = True
         # check need to second approve or not
         if ca_rc.sts == Status.SUBMITTED.value:
-            if ApproverManager.is_need_second_approval(ca_rc.office, approver_rc, ca_rc.claim_amt):
+            if approver.is_need_second_approval(ca_rc.office, approver_rc, ca_rc.claim_amt):
                 is_final_approval = False
 
         # validate approver
@@ -380,11 +374,11 @@ def settle_cash_advancement(operator_id: int, cash_advancement_id: int, payment_
         if not payment_record_file.is_file():
             logger.error("Payment record file doesn't exist. Path=%s" % str(payment_record_file))
             return Boolean2.FALSE("Payment record file doesn't exist.")
-        elif not ESFileManager.validateUploadFileType(payment_record_file):
-            return Boolean2.FALSE('UnSupport file [%s]. Only %s allowed.' % (payment_record_file.name, ESFileManager.ALLOW_FILE_TYPES))
+        elif not ESFile.validateUploadFileType(payment_record_file):
+            return Boolean2.FALSE('UnSupport file [%s]. Only %s allowed.' % (payment_record_file.name, ESFile.ALLOW_FILE_TYPES))
 
     is_success = False
-    payment_record_file_rc, payment_record_fileID, payment_record_fileSeq = None, None, None
+    payment_record_file_rc, payment_record_file_id, payment_record_file_seq = None, None, None
     ca_rc = None
     __CA_OPERATION_LOCK.acquire()
     ES.getFileUploadLock().acquire()
@@ -411,8 +405,8 @@ def settle_cash_advancement(operator_id: int, cash_advancement_id: int, payment_
 
         if isNotNullBlank(payment_record_file):
             payment_record_file_rc = ES.prepare_upload_file(
-                ca_rc.office, ESFileManager.FileCategory.PAYMENT_RECORD, payment_record_file)
-            payment_record_fileID, payment_record_fileSeq = payment_record_file_rc.id, payment_record_file_rc.seq
+                ca_rc.office, ESFile.FileCategory.PAYMENT_RECORD, payment_record_file)
+            payment_record_file_id, payment_record_file_seq = payment_record_file_rc.id, payment_record_file_rc.seq
 
         pay_date = datetime.now()
         ca_rc.sts = Status.SETTLED.value
@@ -438,7 +432,7 @@ def settle_cash_advancement(operator_id: int, cash_advancement_id: int, payment_
         if isNotNullBlank(approve_activity):
             trn.add(approve_activity)
         trn.add(pay_activity)
-        if payment_record_file_rc is not None:
+        if isNotNullBlank(payment_record_file_rc):
             trn.add(payment_record_file_rc)
         trn.modify(ca_rc)
         result = trn.save(updateDate=pay_date)
@@ -453,25 +447,24 @@ def settle_cash_advancement(operator_id: int, cash_advancement_id: int, payment_
     finally:
         try:
             if not is_success:
-                payment_record_fileID, payment_record_fileSeq
-                if isNotNullBlank(payment_record_fileSeq):  # rollback file seq
+                if isNotNullBlank(payment_record_file_seq):  # rollback file seq
                     try:
-                        newSeq = SnManager.rollbackSeq(
-                            SnManager.SequenceType.SEQ_TYPE_PAYMENT_RECORD_FILE, ca_rc.office, payment_record_fileSeq, exact=True)
-                        if newSeq != payment_record_fileSeq - 1:
+                        newSeq = ESSeq.rollbackSeq(
+                            ESSeq.SequenceType.SEQ_TYPE_PAYMENT_RECORD_FILE, ca_rc.office, payment_record_file_seq, exact=True)
+                        if newSeq != payment_record_file_seq - 1:
                             logger.warning("Rollback payment record file sequence failed. Current=%s, Rollback Sequence=%s" % (
-                                newSeq, payment_record_fileSeq))
+                                newSeq, payment_record_file_seq))
                     except Exception as e:
                         logger.error('Rollback file [%s] sequence [%s] failed: %s' %
-                                     (SnManager.SequenceType.SEQ_TYPE_PAYMENT_RECORD_FILE.value, payment_record_fileSeq, str(e)), e, exc_info=True)
-                if isNotNullBlank(payment_record_fileID):
+                                     (ESSeq.SequenceType.SEQ_TYPE_PAYMENT_RECORD_FILE.value, payment_record_file_seq, str(e)), e, exc_info=True)
+                if isNotNullBlank(payment_record_file_id):
                     try:
-                        if not ESFileManager.rollbackFileRecord(operator_id, payment_record_fileID):
+                        if not ESFile.rollbackFileRecord(operator_id=operator_id, file_id=payment_record_file_id, file_rc=payment_record_file_rc):
                             logger.error(
-                                'Delete echeque file [%s] failed.' % payment_record_fileID)
+                                'Delete payment file [%s] failed.' % payment_record_file_id)
                     except Exception as e:
-                        logger.error('Delete echeque file [%s] failed: %s' % (
-                            payment_record_fileID, str(e)), e, exc_info=True)
+                        logger.error('Delete payment file [%s] failed: %s' % (
+                            payment_record_file_id, str(e)), e, exc_info=True)
         except Exception as e:
             logger.error('Rollback the uploaded payment record file failed. %s' % str(
                 e), e, exc_info=True)
@@ -494,7 +487,9 @@ def revert_settled_cash_advancement(operator_id: int, cash_advancement_id: int, 
 
     is_success = False
     ca_rc = None
-    payment_record_file_rc = None
+    payment_record_file_rc, payment_record_file_id, payment_record_file_seq = None, None, None
+    payment_record_file_path = None
+
     __CA_OPERATION_LOCK.acquire()
     ES.getFileUploadLock().acquire()
     try:
@@ -515,7 +510,7 @@ def revert_settled_cash_advancement(operator_id: int, cash_advancement_id: int, 
 
         # validate expense data
         if PriorBalance.objects.filter(ca=ca_rc).count() > 0:
-            return Boolean2(False, "This cash advancement is in use, please check the prior balance table.")
+            return Boolean2(False, 'This cash advancement is in use, please check the "Relevant Expenses" table.')
 
         # check this payment is from submitted status or approved status
         last_approve_activity_rc = Activity.objects.filter(tp=ActivityType.CASH_ADVANCEMENT.value, transaction_id=ca_rc.id, sts=Status.APPROVED.value).order_by('-id').first()
@@ -531,6 +526,9 @@ def revert_settled_cash_advancement(operator_id: int, cash_advancement_id: int, 
         ca_rc.payment_activity = None
         ca_rc.payment_tp = None
         ca_rc.payment_number = None
+        if isNotNullBlank(payment_record_file_rc):
+            payment_record_file_id, payment_record_file_seq = payment_record_file_rc.id, payment_record_file_rc.seq
+            payment_record_file_path = ESFile.getReallyFile(payment_record_file_rc)
 
         revert_settled_payment_activity = Activity(tp=ActivityType.CASH_ADVANCEMENT.value, transaction_id=ca_rc.id, operate_dt=revert_date,
                                                    operator=operator_rc, sts=ca_rc.sts, dsc="[Revert settled payment.] Reason: " + reason)
@@ -539,6 +537,8 @@ def revert_settled_cash_advancement(operator_id: int, cash_advancement_id: int, 
         trn = IkTransaction(userID=operator_id)
         trn.add(revert_settled_payment_activity)
         trn.modify(ca_rc)
+        if isNotNullBlank(payment_record_file_rc):
+            trn.delete(payment_record_file_rc)
         result = trn.save(updateDate=revert_date)
         if not result.value:
             return result
@@ -551,25 +551,17 @@ def revert_settled_cash_advancement(operator_id: int, cash_advancement_id: int, 
     finally:
         try:
             if is_success:
-                ESNotification.send_submit_cancel_reject_cash_advancement_notify(operator_id, ca_rc)
+                ESNotification.send_approve_cash_advancement_notify(operator_id, ca_rc)
                 # try to rollback the sequence if the current sequence is the last one
-                payment_record_fileID = payment_record_file_rc.id
-                payment_record_fileSeq = payment_record_file_rc.seq
-                if isNotNullBlank(payment_record_fileSeq):  # rollback file seq
+                if isNotNullBlank(payment_record_file_seq):  # rollback file seq
                     try:
-                        SnManager.rollbackSeq(
-                            SnManager.SequenceType.SEQ_TYPE_PAYMENT_RECORD_FILE, ca_rc.office, payment_record_fileSeq)
+                        ESSeq.rollbackSeq(
+                            ESSeq.SequenceType.SEQ_TYPE_PAYMENT_RECORD_FILE, ca_rc.office, payment_record_file_seq)
                     except Exception as e:
                         logger.error('Rollback file [%s] sequence [%s] failed: %s' %
-                                     (SnManager.SequenceType.SEQ_TYPE_PAYMENT_RECORD_FILE.value, payment_record_fileSeq, str(e)), e, exc_info=True)
-                if isNotNullBlank(payment_record_fileID):
-                    try:
-                        if not ESFileManager.rollbackFileRecord(operator_id, payment_record_fileID):
-                            logger.error(
-                                'Delete echeque file [%s] failed.' % payment_record_fileID)
-                    except Exception as e:
-                        logger.error('Delete echeque file [%s] failed: %s' % (
-                            payment_record_fileID, str(e)), e, exc_info=True)
+                                     (ESSeq.SequenceType.SEQ_TYPE_PAYMENT_RECORD_FILE.value, payment_record_file_seq, str(e)), e, exc_info=True)
+                if isNotNullBlank(payment_record_file_path):
+                    ESFile.deleteESFileAndFolder(payment_record_file_path)
         except Exception as e:
             logger.error('Rollback the uploaded payment record file failed. %s' % str(
                 e), e, exc_info=True)
@@ -622,7 +614,7 @@ def getCashAdvancementUsage(cashAdvRc: CashAdvancement):
     usages = []
     fxUsages = []  # [[fx, total, used, left]]
 
-    if cashAdvRc.sts != Status.DRAFT.value and cashAdvRc.sts != Status.SUBMITTED.value:
+    if cashAdvRc.sts == Status.SETTLED.value:
         # fx records
         usedAmount = 0
         fxCCYRcs = {}
@@ -686,7 +678,6 @@ def getCashAdvancementUsage(cashAdvRc: CashAdvancement):
 
 
 def getPriorBalanceInfo(expenseHdrRc: Expense):
-    # TODO: speed up
     pbRcs = PriorBalance.objects.filter(expense=expenseHdrRc).order_by('id')
     tableData = []
     for pbRc in pbRcs:

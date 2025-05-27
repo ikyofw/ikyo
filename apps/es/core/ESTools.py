@@ -69,9 +69,11 @@ def round2(a) -> Decimal:
     d = __toDecimal(a).quantize(Decimal("0.01"), rounding="ROUND_HALF_UP")
     return Decimal(0) if d == 0 else d
 
+
 def round(a: any, formater: str) -> Decimal:
     d = __toDecimal(a).quantize(Decimal(formater), rounding="ROUND_HALF_UP")
     return Decimal(0) if d == 0 else d
+
 
 def isTheSame(a, b) -> bool:
     if type(a) == float:

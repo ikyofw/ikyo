@@ -1,5 +1,8 @@
 from core.core.exception import IkValidateException
-from ..models import User, Office, SupportingDocumentSetting
+
+from ..models import Office, SupportingDocumentSetting, User
+
+
 def get_upload_supporting_document_setting(claimer_rc: User, office_rc: Office, approver_rc: User) -> str:
     """
     Retrieves the upload supporting document setting based on the provided claimer, office, and approver.
@@ -20,13 +23,13 @@ def get_upload_supporting_document_setting(claimer_rc: User, office_rc: Office, 
         raise IkValidateException('Parameter [approver_rc] is required')
     # Define priority matching list (from strict matching to loose matching)
     conditions = [
-        {"claimer": claimer_rc,     "office": office_rc,     "approver": approver_rc},
-        {"claimer": claimer_rc,     "office": None,          "approver": approver_rc},
-        {"claimer": claimer_rc,     "office": office_rc,     "approver": None},
-        {"claimer": claimer_rc,     "office": None,          "approver": None},
-        {"claimer": None,           "office": None,          "approver": approver_rc},
-        {"claimer": None,           "office": office_rc,     "approver": None},
-        {"claimer": None,           "office": None,          "approver": None},
+        {"claimer": claimer_rc, "office": office_rc, "approver": approver_rc},
+        {"claimer": claimer_rc, "office": None, "approver": approver_rc},
+        {"claimer": claimer_rc, "office": office_rc, "approver": None},
+        {"claimer": claimer_rc, "office": None, "approver": None},
+        {"claimer": None, "office": None, "approver": approver_rc},
+        {"claimer": None, "office": office_rc, "approver": None},
+        {"claimer": None, "office": None, "approver": None},
     ]
     for cond in conditions:
         filters = {"enable": True}

@@ -7,29 +7,22 @@ from decimal import Decimal
 from pathlib import Path
 from threading import Lock
 
-from django.db import connection
 from django.db.models import Exists, OuterRef, Q, QuerySet
 from django.utils.timezone import make_aware
 
 import core.core.fs as ikfs
 import core.user.userManager as UserManager
-import core.utils.db as dbUtils
-import es.core.acl as acl
-import es.core.ESFile as ESFileManager
-import es.core.ESSeq as SnManager
-import es.core.ESTools as ESTools
-import es.core.po as po_manager
 from core.core.exception import IkException, IkValidateException
 from core.core.lang import Boolean2
 from core.db.transaction import IkTransaction
 from core.log.logger import logger
 from core.utils.langUtils import isNotNullBlank, isNullBlank
-from es.models import *
 
-from . import CA, ESNotification, petty_expense
+from ..models import *
+from . import (CA, ESFile, ESNotification, ESSeq, ESTools, acl, petty_expense,
+               po)
 from .activity import ActivityType
 from .approver import get_office_first_approvers, is_need_second_approval
-from .const import *
 from .finance import round_currency
 from .office import get_office_by_id, validate_user_office
 from .setting import is_enable_automatic_settlement_upon_approval
@@ -60,7 +53,7 @@ def __create_draft_expense(claimer_rc: User, office_rc: Office) -> Expense:
     expense_rc = acl.add_query_filter(Expense.objects, claimer_rc).filter(claimer=claimer_rc, office=office_rc, sts=Status.DRAFT.value).order_by('id').first()
     if expense_rc is None:
         expense_rc = Expense()
-        expense_rc.sn = SnManager.getDraftSN(office_rc)
+        expense_rc.sn = ESSeq.getDraftSN(office_rc)
         expense_rc.office = office_rc
         expense_rc.claimer = claimer_rc
         expense_rc.sts = Status.DRAFT.value
@@ -94,18 +87,18 @@ def __read_expense_or_create_draft_expense(claimer_rc: User, office_rc: Office, 
     return expense_rc
 
 
-def prepare_upload_file(office_rc: Office, file_category: ESFileManager.FileCategory, file: Path, specified_file_seq: int = None) -> File:
+def prepare_upload_file(office_rc: Office, file_category: ESFile.FileCategory, file: Path, specified_file_seq: int = None) -> File:
     seq_type = None
-    if file_category == ESFileManager.FileCategory.PAYMENT_RECORD:
-        seq_type = SnManager.SequenceType.SEQ_TYPE_PAYMENT_RECORD_FILE
-    elif file_category == ESFileManager.FileCategory.INVOICE:
-        seq_type = SnManager.SequenceType.SEQ_TYPE_EXPENSE_FILE
-    elif file_category == ESFileManager.FileCategory.EXCHANGE_RATE_RECEIPT:
-        seq_type = SnManager.SequenceType.SEQ_TYPE_EXCHANGE_RECEIPT_FILE
-    elif file_category == ESFileManager.FileCategory.SUPPORTING_DOCUMENT:
-        seq_type = SnManager.SequenceType.SEQ_TYPE_SUPPORTING_DOCUMENT
-    elif file_category == ESFileManager.FileCategory.PO:
-        seq_type = SnManager.SequenceType.SEQ_TYPE_PO_FILE
+    if file_category == ESFile.FileCategory.PAYMENT_RECORD:
+        seq_type = ESSeq.SequenceType.SEQ_TYPE_PAYMENT_RECORD_FILE
+    elif file_category == ESFile.FileCategory.INVOICE:
+        seq_type = ESSeq.SequenceType.SEQ_TYPE_EXPENSE_FILE
+    elif file_category == ESFile.FileCategory.EXCHANGE_RATE_RECEIPT:
+        seq_type = ESSeq.SequenceType.SEQ_TYPE_EXCHANGE_RECEIPT_FILE
+    elif file_category == ESFile.FileCategory.SUPPORTING_DOCUMENT:
+        seq_type = ESSeq.SequenceType.SEQ_TYPE_SUPPORTING_DOCUMENT
+    elif file_category == ESFile.FileCategory.PO:
+        seq_type = ESSeq.SequenceType.SEQ_TYPE_PO_FILE
     else:
         raise IkValidateException('UnSupport file category: %s' % (file_category.value))
 
@@ -113,7 +106,7 @@ def prepare_upload_file(office_rc: Office, file_category: ESFileManager.FileCate
     if isNotNullBlank(specified_file_seq):
         file_seq = specified_file_seq
     else:
-        file_seq = SnManager.getNextSeq(seq_type, office_rc.id)
+        file_seq = ESSeq.getNextSeq(seq_type, office_rc.id)
     file_rc = File()
     file_rc.assignPrimaryID()
     new_file_id = file_rc.id
@@ -123,17 +116,17 @@ def prepare_upload_file(office_rc: Office, file_category: ESFileManager.FileCate
     # save file
     file_type = ikfs.getFileExtension(file)
     save_file_name = '%s.%s' % (file_seq, file_type)
-    file_absolute_path = ESFileManager.getUploadFileAbsolutePath(relative_path_str, save_file_name)
+    file_absolute_path = ESFile.getUploadFileAbsolutePath(relative_path_str, save_file_name)
     if file_absolute_path.is_file():
-        logger.error("File is exists, please ask administrator to check: FileID=%s, Path=%s" % (new_file_id, file_absolute_path.absolute()))
+        logger.error("File is exists, please ask administrator to check: FileID=%s, Path=%s" % (new_file_id, file_absolute_path.resolve()))
         raise IkValidateException("System error: File is exists.")
     # move file to ES file system
     if not file_absolute_path.parent.is_dir():
         file_absolute_path.parent.mkdir(parents=True, exist_ok=True)
     shutil.move(file, file_absolute_path)
-    ESFileManager.delete_really_file(file)  # delete empty folder
+    ESFile.delete_really_file(file)  # delete empty folder
     if not file_absolute_path.is_file():
-        logger.error("Move file [%s] to [%s] failed." % (file.absolute(), file_absolute_path.absolute()))
+        logger.error("Move file [%s] to [%s] failed." % (file.resolve(), file_absolute_path.resolve()))
         raise IkValidateException('System error: save upload failed. Please ask administrator to check.')
     file_rc.tp = file_category.value
     file_rc.office = office_rc
@@ -141,10 +134,10 @@ def prepare_upload_file(office_rc: Office, file_category: ESFileManager.FileCate
     file_rc.file_tp = file_type.upper()
     file_rc.file_original_nm = Path(file).name
     file_rc.file_nm = save_file_name
-    file_rc.file_size = os.path.getsize(file_absolute_path.absolute())
+    file_rc.file_size = os.path.getsize(file_absolute_path.resolve())
     file_rc.file_path = relative_path_str
     file_rc.is_empty_file = False
-    file_rc.sha256 = ESFileManager.calculateFileHash(file_absolute_path)
+    file_rc.sha256 = ESFile.calculateFileHash(file_absolute_path)
     return file_rc
 
 
@@ -168,9 +161,9 @@ def upload_expense_file(claimer_rc: User,
         raise IkValidateException('Parameter [tempUploadFile] is mandatory.')
     elif not Path(uploaded_file_path).is_file():
         raise IkValidateException("File [%s] doesn't exist." % uploaded_file_path)
-    if not ESFileManager.validateUploadFileType(uploaded_file_path):
-        raise IkValidateException('UnSupport file [%s]. Only %s allowed.' % (uploaded_file_path, ESFileManager.ALLOW_FILE_TYPES))
-    uploaded_file_hash = ESFileManager.calculateFileHash(uploaded_file_path)
+    if not ESFile.validateUploadFileType(uploaded_file_path):
+        raise IkValidateException('UnSupport file [%s]. Only %s allowed.' % (uploaded_file_path, ESFile.ALLOW_FILE_TYPES))
+    uploaded_file_hash = ESFile.calculateFileHash(uploaded_file_path)
 
     is_success = False
     new_file_rc = None
@@ -216,7 +209,7 @@ def upload_expense_file(claimer_rc: User,
                 logger.error("System error. The expense [%s]'s hdr id is not the same as expense_id [%]" % (expense_item_id, expense_rc.id))
                 raise IkValidateException("System error.")
 
-        new_file_rc = prepare_upload_file(office_rc, ESFileManager.FileCategory.INVOICE, uploaded_file_path, original_file_seq)
+        new_file_rc = prepare_upload_file(office_rc, ESFile.FileCategory.INVOICE, uploaded_file_path, original_file_seq)
         new_file_rc.is_empty_file = is_no_invoice_file
         if expense_dtl_rc is not None:
             expense_dtl_rc.file = new_file_rc
@@ -268,27 +261,27 @@ def upload_expense_file(claimer_rc: User,
                 try:
                     if delete_original_file_info is not None:
                         # delete the old file
-                        originalFile = ESFileManager.getIdFile(delete_original_file_info[0], delete_original_file_info[1])
+                        originalFile = ESFile.getIdFile(delete_original_file_info[0], delete_original_file_info[1])
                         __delete_file_from_file_system(originalFile)
                 except Exception as e:
                     logger.error('delete_original_file_info[%s] failed: %s' % (delete_original_file_info, str(e)), e, exc_info=True)
             else:  # failed
                 if isNotNullBlank(uploaded_file_path) and uploaded_file_path.is_file():
-                    ESFileManager.delete_really_file(uploaded_file_path)
+                    ESFile.delete_really_file(uploaded_file_path)
                 if new_file_rc is not None:
                     if isNotNullBlank(new_file_rc.seq):  # rollback file seq
                         try:
-                            SnManager.rollbackSeq(SnManager.SequenceType.SEQ_TYPE_EXPENSE_FILE, new_file_rc.office.id, new_file_rc.seq)
+                            ESSeq.rollbackSeq(ESSeq.SequenceType.SEQ_TYPE_EXPENSE_FILE, new_file_rc.office.id, new_file_rc.seq)
                         except Exception as e:
                             logger.error('Rollback file [%s] sequence [%s] failed: %s' %
-                                         (SnManager.SequenceType.SEQ_TYPE_EXPENSE_FILE.value, new_file_rc.seq, str(e)))
+                                         (ESSeq.SequenceType.SEQ_TYPE_EXPENSE_FILE.value, new_file_rc.seq, str(e)))
                             logger.error(e, exc_info=True)
                     if isNotNullBlank(new_file_rc.id):
                         try:
-                            if not ESFileManager.rollbackFileRecord(claimer_rc.id, new_file_rc.id):
-                                logger.error('Delete echeque file [%s] failed.' % new_file_rc.id)
+                            if not ESFile.rollbackFileRecord(claimer_rc.id, new_file_rc.id):
+                                logger.error('Delete expense file [%s] failed.' % new_file_rc.id)
                         except Exception as e:
-                            logger.error('Delete echeque file [%s] failed: %s' % (new_file_rc.id, str(e)))
+                            logger.error('Delete expense file [%s] failed: %s' % (new_file_rc.id, str(e)))
                             logger.error(e, exc_info=True)
         except Exception as e:
             logger.error('Upload expense file failed when do the finally: %s' % str(e), e, exc_info=True)
@@ -321,7 +314,7 @@ def delete_uploaded_expense_file(claimer_rc: User,
         for expenseRc in expense_item_rcs:
             expenseRc.file = None
 
-        is_need_to_rollback_file_seq = (file_rc.seq == SnManager.getCurrentSeq(SnManager.SequenceType.SEQ_TYPE_EXPENSE_FILE, office_rc.id))
+        is_need_to_rollback_file_seq = (file_rc.seq == ESSeq.getCurrentSeq(ESSeq.SequenceType.SEQ_TYPE_EXPENSE_FILE, office_rc.id))
 
         trn = IkTransaction(userID=claimer_rc.id)
         if draft_file_rc is not None:
@@ -329,7 +322,7 @@ def delete_uploaded_expense_file(claimer_rc: User,
         trn.modify(expense_item_rcs)
         trn.delete(file_rc)
         if is_need_to_rollback_file_seq:
-            SnManager.rollbackSeq(SnManager.SequenceType.SEQ_TYPE_EXPENSE_FILE, office_rc.id, file_rc.seq, transaction=trn)
+            ESSeq.rollbackSeq(ESSeq.SequenceType.SEQ_TYPE_EXPENSE_FILE, office_rc.id, file_rc.seq, transaction=trn)
         save_result = trn.save()
         if not save_result.value:
             raise IkValidateException(save_result.dataStr)
@@ -347,7 +340,7 @@ def delete_uploaded_expense_file(claimer_rc: User,
                 try:
                     if delete_file_info is not None:
                         # delete the old file
-                        old_file = ESFileManager.getIdFile(delete_file_info[0], delete_file_info[1])
+                        old_file = ESFile.getIdFile(delete_file_info[0], delete_file_info[1])
                         __delete_file_from_file_system(old_file)
                 except Exception as e:
                     logger.error('delete_original_file_info[%s] failed: %s' % (delete_file_info, str(e)), e, exc_info=True)
@@ -357,12 +350,7 @@ def delete_uploaded_expense_file(claimer_rc: User,
 
 
 def __delete_file_from_file_system(file_path: Path) -> None:
-    # TODO: delete file and folder.
-    # 1. delete converted pdf file from picture for WCI1
-    # pdfFile = Path(os.path.join(file_path.parent.absolute(), "%s.%s" % (file_path.stem, PDF_FILE_EXTENSION)))
-    # ESFileManager.deleteESFileAndFolder(pdfFile)
-    # TODO: for wci1, need to delete the swf files
-    ESFileManager.deleteESFileAndFolder(file_path)
+    ESFile.deleteESFileAndFolder(file_path)
 
 
 def save_expense_details(claimer_rc: User, office_rc: Office, expense_rc: Expense, expense_detail_rcs: list[ExpenseDetail]) -> Boolean2:
@@ -608,7 +596,7 @@ def submitExpense(claimer_rc: User, office_rc: Office, expense_id: int, payeeID:
         po_rc = None
         if isNotNullBlank(po_sn):
             po_sn = str(po_sn).strip()
-            b = po_manager.validate_po_permission(claimer_rc, po_sn)
+            b = po.validate_po_permission(claimer_rc, po_sn)
             if not b.value:
                 raise IkValidateException(b.data)
             po_rc = Po.objects.filter(sn=po_sn).first()
@@ -743,6 +731,7 @@ def submitExpense(claimer_rc: User, office_rc: Office, expense_id: int, payeeID:
                     totalDefaultCCYAmount = ESTools.add(totalDefaultCCYAmount, pbNewRc.balance_amt)
 
                 priorBalancePayAmount = float(round_currency(priorBalancePayAmount))
+                totalExpenseClaimAmount = float(round_currency(totalExpenseClaimAmount))
                 if priorBalancePayAmount == 0:
                     raise IkValidateException("Total settle by prior balance amount cannot be 0. Please check.")
                 elif priorBalancePayAmount > totalExpenseClaimAmount:
@@ -782,7 +771,7 @@ def submitExpense(claimer_rc: User, office_rc: Office, expense_id: int, payeeID:
         hdr_rc.dsc = expenseDescription
 
         if isDraft:
-            newExpenseSN = SnManager.getNextSN(SnManager.SequenceType.SEQ_TYPE_EXPENSE_SN, office_rc.id)
+            newExpenseSN = ESSeq.getNextSN(ESSeq.SequenceType.SEQ_TYPE_EXPENSE_SN, office_rc.id)
             hdr_rc.sn = newExpenseSN
 
         submit_activity = Activity(tp=ActivityType.EXPENSE.value, transaction_id=hdr_rc.id,
@@ -817,7 +806,7 @@ def submitExpense(claimer_rc: User, office_rc: Office, expense_id: int, payeeID:
         else:
             if isNotNullBlank(newExpenseSN):
                 try:
-                    SnManager.rollbackSeq(SnManager.SequenceType.SEQ_TYPE_EXPENSE_SN, office_rc.code, SnManager.SN2Number(newExpenseSN))
+                    ESSeq.rollbackSeq(ESSeq.SequenceType.SEQ_TYPE_EXPENSE_SN, office_rc.code, ESSeq.SN2Number(newExpenseSN))
                 except Exception as e:
                     logger.error(e, exc_info=True)
         __EXPENSE_LOCK.release()
@@ -885,6 +874,7 @@ def __validatePriorBalances(expenseHdrRc: Expense, expenseRcs: list[ExpenseDetai
         totalDefaultCCYAmount = ESTools.add(totalDefaultCCYAmount, pbNewRc.balance_amt)
 
     priorBalancePayAmount = float(round_currency(priorBalancePayAmount))
+    totalExpenseClaimAmount = float(round_currency(totalExpenseClaimAmount))
     if priorBalancePayAmount == 0:
         return Boolean2.FALSE("Total settle by prior balance amount cannot be 0. Please check.")
     elif priorBalancePayAmount > totalExpenseClaimAmount:
@@ -1190,8 +1180,8 @@ def settle_expense(operator_id: int, expense_id: int, payment_tp: PaymentMethod,
         if not payment_record_file.is_file():
             logger.error("Payment record file doesn't exist. Path=%s" % str(payment_record_file))
             return Boolean2.FALSE("Payment record file doesn't exist.")
-        elif not ESFileManager.validateUploadFileType(payment_record_file):
-            return Boolean2.FALSE('UnSupport file [%s]. Only %s allowed.' % (payment_record_file.name, ESFileManager.ALLOW_FILE_TYPES))
+        elif not ESFile.validateUploadFileType(payment_record_file):
+            return Boolean2.FALSE('UnSupport file [%s]. Only %s allowed.' % (payment_record_file.name, ESFile.ALLOW_FILE_TYPES))
 
     is_success = False
     payment_record_file_rc, payment_record_fileID, payment_record_fileSeq = None, None, None
@@ -1220,7 +1210,7 @@ def settle_expense(operator_id: int, expense_id: int, payment_tp: PaymentMethod,
 
         if isNotNullBlank(payment_record_file):
             payment_record_file_rc = prepare_upload_file(
-                hdr_rc.office, ESFileManager.FileCategory.PAYMENT_RECORD, payment_record_file)
+                hdr_rc.office, ESFile.FileCategory.PAYMENT_RECORD, payment_record_file)
             payment_record_fileID, payment_record_fileSeq = payment_record_file_rc.id, payment_record_file_rc.seq
 
         pay_date = datetime.now()
@@ -1262,19 +1252,19 @@ def settle_expense(operator_id: int, expense_id: int, payment_tp: PaymentMethod,
             if not is_success:
                 if isNotNullBlank(payment_record_fileSeq):  # rollback file seq
                     try:
-                        newSeq = SnManager.rollbackSeq(
-                            SnManager.SequenceType.SEQ_TYPE_PAYMENT_RECORD_FILE, hdr_rc.office, payment_record_fileSeq, exact=True)
+                        newSeq = ESSeq.rollbackSeq(
+                            ESSeq.SequenceType.SEQ_TYPE_PAYMENT_RECORD_FILE, hdr_rc.office, payment_record_fileSeq, exact=True)
                         if newSeq != payment_record_fileSeq - 1:
                             logger.warning("Rollback payment record file sequence failed. Current=%s, Rollback Sequence=%s" % (newSeq, payment_record_fileSeq))
                     except Exception as e:
                         logger.error('Rollback file [%s] sequence [%s] failed: %s' %
-                                     (SnManager.SequenceType.SEQ_TYPE_PAYMENT_RECORD_FILE.value, payment_record_fileSeq, str(e)), e, exc_info=True)
+                                     (ESSeq.SequenceType.SEQ_TYPE_PAYMENT_RECORD_FILE.value, payment_record_fileSeq, str(e)), e, exc_info=True)
                 if isNotNullBlank(payment_record_fileID):
                     try:
-                        if not ESFileManager.rollbackFileRecord(operator_id, payment_record_fileID):
-                            logger.error('Delete echeque file [%s] failed.' % payment_record_fileID)
+                        if not ESFile.rollbackFileRecord(operator_id, payment_record_fileID):
+                            logger.error('Delete expense file [%s] failed.' % payment_record_fileID)
                     except Exception as e:
-                        logger.error('Delete echeque file [%s] failed: %s' % (payment_record_fileID, str(e)), e, exc_info=True)
+                        logger.error('Delete expense file [%s] failed: %s' % (payment_record_fileID, str(e)), e, exc_info=True)
         except Exception as e:
             logger.error('Rollback the uploaded payment record file failed. %s' % str(e), e, exc_info=True)
 
@@ -1354,29 +1344,21 @@ def revert_settled_expense(operator_id: int, expense_hdr_id: int, reason: str) -
                 payment_record_fileSeq = payment_record_file_rc.seq if isNotNullBlank(payment_record_file_rc) else None
                 if isNotNullBlank(payment_record_fileSeq):  # rollback file seq
                     try:
-                        SnManager.rollbackSeq(SnManager.SequenceType.SEQ_TYPE_PAYMENT_RECORD_FILE, hdr_rc.office, payment_record_fileSeq)
+                        ESSeq.rollbackSeq(ESSeq.SequenceType.SEQ_TYPE_PAYMENT_RECORD_FILE, hdr_rc.office, payment_record_fileSeq)
                     except Exception as e:
                         logger.error('Rollback file [%s] sequence [%s] failed: %s' %
-                                     (SnManager.SequenceType.SEQ_TYPE_PAYMENT_RECORD_FILE.value, payment_record_fileSeq, str(e)), e, exc_info=True)
+                                     (ESSeq.SequenceType.SEQ_TYPE_PAYMENT_RECORD_FILE.value, payment_record_fileSeq, str(e)), e, exc_info=True)
                 if isNotNullBlank(payment_record_fileID):
                     try:
-                        if not ESFileManager.rollbackFileRecord(operator_id, payment_record_fileID):
-                            logger.error('Delete echeque file [%s] failed.' % payment_record_fileID)
+                        if not ESFile.rollbackFileRecord(operator_id, payment_record_fileID):
+                            logger.error('Delete expense file [%s] failed.' % payment_record_fileID)
                     except Exception as e:
-                        logger.error('Delete echeque file [%s] failed: %s' % (payment_record_fileID, str(e)), e, exc_info=True)
+                        logger.error('Delete expense file [%s] failed: %s' % (payment_record_fileID, str(e)), e, exc_info=True)
         except Exception as e:
             logger.error('Rollback the uploaded payment record file failed. %s' % str(e), e, exc_info=True)
 
         __EXPENSE_LOCK.release()
         __FILE_UPLOAD_SYNCHRONIZED.release()
-
-
-def getCashAdvancedPriorBalance(payeeID: int, deadline: datetime) -> float:
-    with connection.cursor() as cursor:
-        cursor.execute("SELECT wci_es_get_total_cash_advanced_balance(" + str(payeeID) +
-                       "," + dbUtils.toSqlField(deadline.strftime('%Y-%m-%d %H:%M:%S')) + ")")
-        results = dbUtils.dictfetchall(cursor)
-        return results[0]['wci_es_get_total_cash_advanced_balance']
 
 
 def checkExpenseFileAccessPermission(expense_id: int, fileID: int, requesterRc: User, officeID: int = None, validateClaimerOnly: bool = False) -> Boolean2:
@@ -1479,7 +1461,11 @@ def uploadExpenseSupportingDocument(operatorID: int, expense_rc: Expense, temp_u
     if file_type.upper() != 'PDF':
         raise IkValidateException('Only accept PDF file.')
 
-    old_file_rc = None
+    old_file_rc = expense_rc.supporting_doc
+    new_file_sha256 = ESFile.calculateFileHash(temp_upload_file)
+    if isNotNullBlank(old_file_rc) and old_file_rc.sha256 == new_file_sha256:
+        raise IkValidateException("The uploaded file is the same as previous file. Please check.")
+
     new_file_rc = None
     is_success = False
     getFileUploadLock().acquire()
@@ -1505,15 +1491,12 @@ def uploadExpenseSupportingDocument(operatorID: int, expense_rc: Expense, temp_u
 
         # check the old file exists or not
         is_draft = expense_rc.sts == Status.DRAFT.value
-        old_file_rc = expense_rc.supporting_doc
         # submitted: use the new sequence
-        new_file_rc = prepare_upload_file(expense_rc.office, ESFileManager.FileCategory.SUPPORTING_DOCUMENT,
+        new_file_rc = prepare_upload_file(expense_rc.office, ESFile.FileCategory.SUPPORTING_DOCUMENT,
                                           temp_upload_file, old_file_rc.seq if (is_draft and isNotNullBlank(old_file_rc)) else None)
-        if isNotNullBlank(old_file_rc) and old_file_rc.sha256 == new_file_rc.sha256:
-            raise IkValidateException("The uploaded file is the same as previous file. Please check.")
-
         expense_rc.supporting_doc = new_file_rc
 
+        # raise IkValidateException('Test error.')
         pytrn = IkTransaction(userID=operatorID)
         if isNotNullBlank(old_file_rc):
             pytrn.delete(old_file_rc)
@@ -1533,26 +1516,25 @@ def uploadExpenseSupportingDocument(operatorID: int, expense_rc: Expense, temp_u
         try:
             if not is_success:
                 if isNotNullBlank(new_file_rc):
-                    if isNotNullBlank(new_file_rc.seq):  # rollback file seq
+                    if isNotNullBlank(new_file_rc.seq) and not ((is_draft and isNotNullBlank(old_file_rc))):  # rollback file seq
                         try:
-                            SnManager.rollbackSeq(SnManager.SequenceType.SEQ_TYPE_SUPPORTING_DOCUMENT, expense_rc.office, new_file_rc.seq)
+                            ESSeq.rollbackSeq(ESSeq.SequenceType.SEQ_TYPE_SUPPORTING_DOCUMENT, expense_rc.office, new_file_rc.seq)
                         except Exception as e:
                             logger.error('Rollback file [%s] sequence [%s] failed: %s' %
-                                         (SnManager.SequenceType.SEQ_TYPE_SUPPORTING_DOCUMENT.value, new_file_rc.seq, str(e)), e, exc_info=True)
+                                         (ESSeq.SequenceType.SEQ_TYPE_SUPPORTING_DOCUMENT.value, new_file_rc.seq, str(e)), e, exc_info=True)
                     if isNotNullBlank(new_file_rc.id):
                         try:
-                            if not ESFileManager.rollbackFileRecord(operatorID, new_file_rc.id):
-                                logger.error('Delete echeque file [%s] failed.' % new_file_rc.id)
+                            if not ESFile.rollbackFileRecord(operatorID, None, new_file_rc):
+                                logger.error('Delete supporting document [%s] failed.' % new_file_rc.id)
                         except Exception as e:
-                            logger.error('Delete echeque file [%s] failed: %s' % (new_file_rc.id, str(e)), e, exc_info=True)
+                            logger.error('Delete supporting document [%s] failed: %s' % (new_file_rc.id, str(e)), e, exc_info=True)
             else:  # success
                 if isNotNullBlank(old_file_rc):
-                    if isNotNullBlank(old_file_rc.id):
-                        try:
-                            if not ESFileManager.rollbackFileRecord(operatorID, old_file_rc.id):
-                                logger.error('Delete echeque file [%s] failed.' % old_file_rc.id)
-                        except Exception as e:
-                            logger.error('Delete echeque file [%s] failed: %s' % (old_file_rc.id, str(e)), e, exc_info=True)
+                    try:
+                        if not ESFile.rollbackFileRecord(operatorID, None, old_file_rc):
+                            logger.error('Delete supporting document [%s] failed.' % old_file_rc.id)
+                    except Exception as e:
+                        logger.error('Delete supporting document [%s] failed: %s' % (old_file_rc.id, str(e)), e, exc_info=True)
         except:
             logger.error('Upload expense file failed when do the finally: %s' % str(e))
             logger.error(e, exc_info=True)
@@ -1562,9 +1544,9 @@ def uploadExpenseSupportingDocument(operatorID: int, expense_rc: Expense, temp_u
             try:
                 Path(temp_upload_file).unlink()
             except Exception as e:
-                logger.error('delete the temp file [%s] failed: %s' % (temp_upload_file.absolute(), str(e)))
+                logger.error('delete the temp file [%s] failed: %s' % (temp_upload_file.resolve(), str(e)))
                 logger.error(e, exc_info=True)
-    return (new_file_rc.id, new_file_rc.seq) if is_success else (None, None)
+    return new_file_rc if is_success else None
 
 
 def deleteExpenseSupportingDocument(operatorID: int, expenseHdrRc: Expense) -> int:
@@ -1588,7 +1570,7 @@ def deleteExpenseSupportingDocument(operatorID: int, expenseHdrRc: Expense) -> i
         # check the old file exists or not
         uploadFileRc = expenseHdrRc.supporting_doc
         fileID, fileSeq = uploadFileRc.id, uploadFileRc.seq
-        supporting_doc_file_path = ESFileManager.getReallyFile(uploadFileRc)
+        supporting_doc_file_path = ESFile.getReallyFile(uploadFileRc)
         expenseHdrRc.supporting_doc = None
 
         pytrn = IkTransaction(userID=operatorID)
@@ -1612,32 +1594,32 @@ def deleteExpenseSupportingDocument(operatorID: int, expenseHdrRc: Expense) -> i
             if is_success:
                 if isNotNullBlank(fileSeq):  # rollback file seq
                     try:
-                        SnManager.rollbackSeq(SnManager.SequenceType.SEQ_TYPE_SUPPORTING_DOCUMENT, expenseHdrRc.office, fileSeq)
+                        ESSeq.rollbackSeq(ESSeq.SequenceType.SEQ_TYPE_SUPPORTING_DOCUMENT, expenseHdrRc.office, fileSeq)
                     except Exception as e:
                         logger.error('Rollback file [%s] sequence [%s] failed: %s' %
-                                     (SnManager.SequenceType.SEQ_TYPE_SUPPORTING_DOCUMENT.value, fileSeq, str(e)), e, exc_info=True)
+                                     (ESSeq.SequenceType.SEQ_TYPE_SUPPORTING_DOCUMENT.value, fileSeq, str(e)), e, exc_info=True)
                 if isNotNullBlank(fileID):
                     try:
-                        if not ESFileManager.rollbackFileRecord(operatorID, fileID):
-                            logger.error('Delete echeque file [%s] failed.' % fileID)
+                        if not ESFile.rollbackFileRecord(operatorID, fileID):
+                            logger.error('Delete supporting document [%s] failed.' % fileID)
                     except Exception as e:
-                        logger.error('Delete echeque file [%s] failed: %s' % (fileID, str(e)), e, exc_info=True)
+                        logger.error('Delete supporting document [%s] failed: %s' % (fileID, str(e)), e, exc_info=True)
                     try:
                         # delete the file
-                        ESFileManager.deleteESFileAndFolder(supporting_doc_file_path)
+                        ESFile.deleteESFileAndFolder(supporting_doc_file_path)
                     except Exception as e:
-                        logger.error('Delete echeque file [%s] failed: %s' % (fileID, str(e)), e, exc_info=True)
+                        logger.error('Delete supporting document [%s] failed: %s' % (fileID, str(e)), e, exc_info=True)
         except:
-            logger.error('Upload expense file failed when do the finally: %s' % str(e))
+            logger.error('Upload supporting document failed when do the finally: %s' % str(e))
             logger.error(e, exc_info=True)
         getFileUploadLock().release()
     return fileID if is_success else None
 
 
 def getExpenseSupportingDocumentFilename(fileRc: File) -> str:
-    f = ESFileManager.getFile(fileRc.id)
+    f = ESFile.getFile(fileRc.id)
     fileType = Path(f).suffix[1:]
-    sn = SnManager.getSupportingDocumentFileSN(fileRc.seq)
+    sn = ESSeq.getSupportingDocumentFileSN(fileRc.seq)
     return "%s.%s" % (sn, fileType)
 
 
@@ -1668,10 +1650,11 @@ def query_expenses(retriever: User, office_rc: Office, expense_queryset: QuerySe
     query_status = get_prm('status')
     query_claimer = get_prm('claimer')
     query_payee = get_prm('payee')
+    query_pay_transfer_no = get_prm('pay_transfer_no')
     query_expense_page_no = get_prm('expense_page_no')
+    query_support_document_page_no = get_prm('support_document_page_no')
     query_payment_record_page_no = get_prm('payment_record_page_no')
     query_payment_record_filename = get_prm('payment_record_filename')
-    query_support_document_page_no = get_prm('support_document_page_no')
     query_claim_date_from = get_prm('claim_date_from')
     query_claim_date_to = get_prm('claim_date_to')
     query_approved_date_from = get_prm('approve_date_from')
@@ -1682,17 +1665,17 @@ def query_expenses(retriever: User, office_rc: Office, expense_queryset: QuerySe
     query_prj_nm = get_prm('prj_nm')
     query_desc = get_prm('description')
 
-    def get_page_nos(page_no_str) -> list[int]:
-        page_nos = [int]
-        for page_no1 in str(query_payment_record_page_no).split(","):
-            if page_no1.strip() != '':
-                for page_no2 in str(page_no1).split(" "):
-                    if page_no2.strip() != '':
-                        try:
-                            page_nos.append(int(page_no2))
-                        except:
-                            pass
-        return page_nos
+    # def get_page_nos(page_no_str) -> list[int]:
+    #     page_nos = [int]
+    #     for page_no1 in str(query_payment_record_page_no).split(","):
+    #         if page_no1.strip() != '':
+    #             for page_no2 in str(page_no1).split(" "):
+    #                 if page_no2.strip() != '':
+    #                     try:
+    #                         page_nos.append(int(page_no2))
+    #                     except:
+    #                         pass
+    #     return page_nos
 
     if isNotNullBlank(query_id):
         expense_queryset = expense_queryset.filter(id=query_id)
@@ -1707,19 +1690,14 @@ def query_expenses(retriever: User, office_rc: Office, expense_queryset: QuerySe
             expense_queryset = expense_queryset.filter(claimer__usr_nm__icontains=query_claimer)
         if isNotNullBlank(query_payee):
             expense_queryset = expense_queryset.filter(payee__payee__icontains=query_payee)
+        if isNotNullBlank(query_pay_transfer_no):
+            expense_queryset = expense_queryset.filter(payment_number__icontains=query_pay_transfer_no)
+        if isNotNullBlank(query_expense_page_no):
+            expense_queryset = expense_queryset.filter(expensedetail__file__seq__icontains=query_expense_page_no)
         if isNotNullBlank(query_support_document_page_no):
-            page_nos = query_payment_record_page_no(query_support_document_page_no)
-            if len(page_nos) > 0:
-                expense_queryset = expense_queryset.filter(supporting_doc__seq__in=page_nos)
-        if isNotNullBlank(query_expense_page_no):
-            page_nos = get_page_nos(query_payment_record_page_no)
-            if len(page_nos) > 0:
-                page_no_subquery = ExpenseDetail.objects.filter(hdr=OuterRef('pk'), file__seq=page_nos)
-                expense_queryset = expense_queryset.filter(Exists(page_no_subquery))
-        if isNotNullBlank(query_expense_page_no):
-            page_nos = query_payment_record_page_no(query_payment_record_page_no)
-            if len(page_nos) > 0:
-                expense_queryset = expense_queryset.filter(payment_record_file__seq__in=page_nos)
+            expense_queryset = expense_queryset.filter(supporting_doc__seq__icontains=query_support_document_page_no)
+        if isNotNullBlank(query_payment_record_page_no):
+            expense_queryset = expense_queryset.filter(payment_record_file__seq__icontains=query_payment_record_page_no)
         if isNotNullBlank(query_payment_record_filename):
             expense_queryset = expense_queryset.filter(payment_record_file__file_original_nm__icontains=query_payment_record_filename)
         if isNotNullBlank(query_claim_date_from):

@@ -1,10 +1,12 @@
-import json
 from django.db.models import Q
-from core.log.logger import logger
+
 from core.core.exception import IkValidateException
 from core.core.http import IkErrJsonResponse
+from core.log.logger import logger
 from core.utils.langUtils import isNotNullBlank
-from ..models import Approver, User, Group, UserOffice
+
+from core.models import UserOffice
+from ..models import Approver, Group, User
 from .es_base_views import ESAPIView
 
 
@@ -144,10 +146,10 @@ class ES001D(ESAPIView):
                 return IkErrJsonResponse(message="Either an Approver or an Approver Group must be provided!")
             thisOfficeApprovers = officeApproverIDs.get(rc.office.name, [])
             approver_key = "%s-%s" % (rc.approver.id if rc.approver is not None else "",
-                                        rc.approver_grp.id if rc.approver_grp is not None else "")
+                                      rc.approver_grp.id if rc.approver_grp is not None else "")
             if approver_key in thisOfficeApprovers:
                 return IkErrJsonResponse(message="Approver is unique in an office. Plelse check office [%s]. Approver [%s], approver group [%s]."
-                                            % (rc.office.name, rc.approver.usr_nm if rc.approver is not None else "", rc.approver_grp.grp_nm if rc.approver_grp is not None else ""))
+                                         % (rc.office.name, rc.approver.usr_nm if rc.approver is not None else "", rc.approver_grp.grp_nm if rc.approver_grp is not None else ""))
             thisOfficeApprovers.append(approver_key)
             officeApproverIDs[rc.office.name] = thisOfficeApprovers
             # approver assistant
@@ -161,11 +163,11 @@ class ES001D(ESAPIView):
                     return IkErrJsonResponse(message="The 2nd Approver [%s] Cannot be the same as the first approver. Please check." % rc.approver2.usr_nm)
                 elif rc.approver2_min_amount is None:
                     return IkErrJsonResponse(message="The second approver's minimum approved limit is mandatory. Please check the second approver [%s] in office [%s]."
-                                                % (rc.approver2.usr_nm, rc.office.name))
+                                             % (rc.approver2.usr_nm, rc.office.name))
             if rc.approver2 is None and isNotNullBlank(rc.approver2_min_amount):
                 return IkErrJsonResponse(message="The second approver's minimum approved limit should be empty when the second approver is blank. Please check approver [%s] in office [%s]."
-                                            % (rc.approver.usr_nm, rc.office.name))
+                                         % (rc.approver.usr_nm, rc.office.name))
             if (type(rc.approver2_min_amount) == int or type(rc.approver2_min_amount) == float) and rc.approver2_min_amount <= 0:
                 return IkErrJsonResponse(message="The second approver's minimum approved limit should be greater than 0. Please check the second approver [%s] in office [%s]."
-                                            % (rc.approver2.usr_nm, rc.office.name))
+                                         % (rc.approver2.usr_nm, rc.office.name))
         return super()._BIFSave()

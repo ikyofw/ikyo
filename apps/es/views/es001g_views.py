@@ -1,12 +1,12 @@
 from django.db.models import Q
-from core.log.logger import logger
+
 from core.core.exception import IkValidateException
-from core.utils.langUtils import isNullBlank
-import core.core.http as ikhttp
+from core.log.logger import logger
 from core.models import Setting
+from core.utils.langUtils import isNullBlank
+
+from ..core import const, setting
 from .es_base_views import ESAPIView
-from ..core import const
-from ..core import setting
 
 
 class ES001G(ESAPIView):
@@ -15,14 +15,14 @@ class ES001G(ESAPIView):
 
     def getSettingRcs(self):
         return Setting.objects.filter(Q(cd=const.APP_CODE) & Q(Q(key=setting.ALLOW_ACCOUNTING_TO_REJECT) | Q(key=setting.ENABLE_DEFAULT_INBOX_NOTIFICATION)
-                                                                | Q(key=setting.ENABLE_AUTOMATIC_SETTLEMENT_UPON_APPROVAL))).order_by('key')
+                                                               | Q(key=setting.ENABLE_AUTOMATIC_SETTLEMENT_UPON_APPROVAL))).order_by('key')
 
     # overwrite
     def _BIFSave(self):
         setting_rcs = self.getRequestData().get('settingFg')
         change_logs = []
         for rc in setting_rcs:
-            rc : Setting
+            rc: Setting
             if rc.key in (setting.ALLOW_ACCOUNTING_TO_REJECT, setting.ENABLE_DEFAULT_INBOX_NOTIFICATION, setting.ENABLE_AUTOMATIC_SETTLEMENT_UPON_APPROVAL):
                 if rc.ik_is_status_modified():
                     value = rc.value

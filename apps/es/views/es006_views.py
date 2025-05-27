@@ -2,27 +2,21 @@
 """
 import logging
 import os
-from datetime import datetime
 from pathlib import Path
 
-from django.templatetags.static import static
-
 import core.ui.ui as ikui
-import es.core.acl as acl
-import es.core.status as status
 from core.core.exception import IkValidateException
-from core.core.http import IkErrJsonResponse, IkSccJsonResponse, responseFile
+from core.core.http import (IkErrJsonResponse, IkSccJsonResponse,
+                            IkSysErrJsonResponse, responseFile)
 from core.core.lang import Boolean2
 from core.utils.langUtils import isNotNullBlank, isNullBlank
 from core.view.screenView import _OPEN_SCREEN_PARAM_KEY_NAME
-from es.core import CA, ES, ESFile, activity
-from es.models import *
-from es.views.es_base_views import ESAPIView
 
-from ..core import ESFile as ESFileManager
-from ..core import const
+from ..core import CA, ESFile, acl, activity, const, status
 from ..core.approver import get_office_first_approvers
 from ..core.status import Status
+from ..models import *
+from ..views.es_base_views import ESAPIView
 
 logger = logging.getLogger('ikyo')
 
@@ -44,27 +38,26 @@ class ES006(ESAPIView):
                 self._addWarnMessage("Please ask administrator to add payee.")
             if len(self.getApproverRcs()) == 0:
                 self._addWarnMessage("Please ask administrator to add approver.")
-            userRc = self.getCurrentUser()
-            isNew = self.__isNewCashAdvancement()
-            curCashAdvId = self.__getCurrentCashAdvancementID()
-            isMainScreen = isNullBlank(curCashAdvId) and not isNew
-            isDetailScreen = not isMainScreen
+            user_rc = self.getCurrentUser()
+            is_new = self.__isNewCashAdvancement()
+            cash_id = self.__getCurrentCashAdvancementID()
+            is_main_screen = isNullBlank(cash_id) and not is_new
+            is_detail_screen = not is_main_screen
 
-            screen.setFieldGroupsVisible(('schFg', 'lineFg', 'toolbar1', 'listFg'), isMainScreen)
-            screen.setFieldGroupsVisible(('pdfViewer', 'dtlFg', 'uploadFg', 'priorBalanceExpenseFg', 'toolbar2'), isDetailScreen)
-            screen.setFieldGroupsVisible('activityFg', isDetailScreen and not isNew)
-            if isNew or not screen.getFieldGroup('pdfViewer').visible:
-                screen.layoutParams = ""
+            screen.setFieldGroupsVisible(('schFg', 'lineFg', 'toolbar1', 'listFg'), is_main_screen)
+            screen.setFieldGroupsVisible(('pdfViewer', 'dtlFg', 'uploadFg', 'priorBalanceExpenseFg', 'toolbar2'), is_detail_screen)
+            screen.setFieldGroupsVisible('activityFg', is_detail_screen and not is_new)
 
-            if isDetailScreen:
-                caRc = acl.add_query_filter(CashAdvancement.objects, self.getCurrentUser()).filter(id=curCashAdvId).first() if not isNew else None
-                submittable = isNew or caRc.claimer.id == userRc.id and (caRc.sts == Status.CANCELLED.value or caRc.sts == Status.REJECTED.value)
-                cancelable = not isNew and acl.is_cancelable(caRc.sts, caRc.claimer, userRc) if caRc is not None else False
-                approveable = not isNew and acl.is_approverable(userRc, caRc.sts, caRc.payee, caRc.claim_amt, caRc.approver) if caRc is not None else False
-                rejectable = not isNew and acl.is_rejectable(userRc, caRc.sts, caRc.payee, caRc.claim_amt, caRc.approver) if caRc is not None else False
-                settle_able = not isNew and acl.is_settlable(userRc, caRc.sts, caRc.payee, caRc.claim_amt, caRc.approver) if caRc is not None else False
-                revertSettledPayment = not isNew and acl.can_revert_settled_payment(userRc, caRc.sts, caRc.office) if caRc is not None else False
-                hasPaymentRecordFile = not isNew and caRc.payment_record_file is not None if caRc is not None else False
+            has_payment_record_file = False
+            if is_detail_screen:
+                cash_rc = acl.add_query_filter(CashAdvancement.objects, self.getCurrentUser()).filter(id=cash_id).first() if not is_new else None
+                submittable = is_new or cash_rc.claimer.id == user_rc.id and (cash_rc.sts == Status.CANCELLED.value or cash_rc.sts == Status.REJECTED.value)
+                cancelable = not is_new and acl.is_cancelable(cash_rc.sts, cash_rc.claimer, user_rc) if cash_rc is not None else False
+                approveable = not is_new and acl.is_approverable(user_rc, cash_rc.sts, cash_rc.payee, cash_rc.claim_amt, cash_rc.approver) if cash_rc is not None else False
+                rejectable = not is_new and acl.is_rejectable(user_rc, cash_rc.sts, cash_rc.payee, cash_rc.claim_amt, cash_rc.approver) if cash_rc is not None else False
+                settle_able = not is_new and acl.is_settlable(user_rc, cash_rc.sts, cash_rc.payee, cash_rc.claim_amt, cash_rc.approver) if cash_rc is not None else False
+                revert_settled_payment = not is_new and acl.can_revert_settled_payment(user_rc, cash_rc.sts, cash_rc.office) if cash_rc is not None else False
+                has_payment_record_file = not is_new and cash_rc.payment_record_file is not None if cash_rc is not None else False
 
                 # update the field's display setting: visible, editable
                 screen.setFieldsEditable('dtlFg', 'payeeIDField', submittable)
@@ -79,11 +72,11 @@ class ES006(ESAPIView):
                 # screen.setFieldsVisible('dtlFg', 'trnNoField', settle_able)
 
                 screen.setFieldsEditable('dtlFg', 'cancelRejectReasonField', cancelable or rejectable)
-                screen.setFieldsVisible('dtlFg', 'cancelRejectReasonField', cancelable or rejectable or (caRc is not None and caRc.sts in [
+                screen.setFieldsVisible('dtlFg', 'cancelRejectReasonField', cancelable or rejectable or (cash_rc is not None and cash_rc.sts in [
                                         Status.CANCELLED.value, Status.REJECTED.value]))
 
-                screen.setFieldsEditable('dtlFg', 'revertSettledPaymentReasonField', revertSettledPayment)
-                screen.setFieldsVisible('dtlFg', 'revertSettledPaymentReasonField', revertSettledPayment)
+                screen.setFieldsEditable('dtlFg', 'revertSettledPaymentReasonField', revert_settled_payment)
+                screen.setFieldsVisible('dtlFg', 'revertSettledPaymentReasonField', revert_settled_payment)
 
                 # update button's display setting: visible
                 screen.setFieldsVisible('toolbar2', 'bttSubmit', submittable)
@@ -91,13 +84,17 @@ class ES006(ESAPIView):
                 screen.setFieldsVisible('toolbar2', 'bttCancel', cancelable)
                 screen.setFieldsVisible('toolbar2', 'bttApprove', approveable)
                 screen.setFieldsVisible('toolbar2', 'bttReject', rejectable)
-                screen.setFieldsVisible('toolbar2', 'bttDownloadPaymentRecord', hasPaymentRecordFile)
-                screen.setFieldsVisible('toolbar2', 'bttDisplayPaymentRecord', hasPaymentRecordFile)
+                screen.setFieldsVisible('toolbar2', 'bttDownloadPaymentRecord', has_payment_record_file)
+                screen.setFieldsVisible('toolbar2', 'bttDisplayPaymentRecord', has_payment_record_file)
                 screen.setFieldsVisible('toolbar2', 'bttSettle', settle_able)
-                screen.setFieldsVisible('toolbar2', 'bttRevertSettledPayment', revertSettledPayment)
+                screen.setFieldsVisible('toolbar2', 'bttRevertSettledPayment', revert_settled_payment)
 
+                screen.setFieldGroupsVisible(('pdfViewer'), has_payment_record_file)
                 screen.setFieldGroupsVisible(('uploadFg'), settle_able)
-                screen.setFieldGroupsVisible(('priorBalanceExpenseFg'), caRc is not None and caRc.sts == Status.SETTLED.value)
+                screen.setFieldGroupsVisible(('priorBalanceExpenseFg'), cash_rc is not None and cash_rc.sts == Status.SETTLED.value)
+
+            if is_new or not has_payment_record_file:
+                screen.layoutParams = ""
         self.beforeDisplayAdapter = beforeDisplayAdapter
 
     # Search Fg
@@ -111,11 +108,11 @@ class ES006(ESAPIView):
     # override
     def getOfficeRcs(self):
         offices = super().getOfficeRcs()
-        ca_rc = self.__getCurrentCashAdvancementRc()
-        if ca_rc:
-            ca_office_id = ca_rc.office.id
+        cash_rc = self.__getCurrentCashAdvancementRc()
+        if cash_rc:
+            ca_office_id = cash_rc.office.id
             if not any(office['id'] == ca_office_id for office in offices):
-                offices.append({'id': ca_rc.office.id, 'name': ca_rc.office.name})
+                offices.append({'id': cash_rc.office.id, 'name': cash_rc.office.name})
                 offices.sort(key=lambda x: x['name'])
         return offices
 
@@ -126,9 +123,9 @@ class ES006(ESAPIView):
 
     def getApproverRcs(self):
         """Approver combobox data"""
-        ca_rc = self.__getCurrentCashAdvancementRc()
-        office_rc = ca_rc.office if ca_rc is not None else self._getCurrentOffice()
-        claimer_rc = ca_rc.claimer if ca_rc is not None else self.getCurrentUser()
+        cash_rc = self.__getCurrentCashAdvancementRc()
+        office_rc = cash_rc.office if cash_rc is not None else self._getCurrentOffice()
+        claimer_rc = cash_rc.claimer if cash_rc is not None else self.getCurrentUser()
         return [{'id': r.id, 'approver': r.usr_nm} for r in get_office_first_approvers(office_rc, claimer_rc)]
 
     def getCashAdvRcs(self):
@@ -173,14 +170,6 @@ class ES006(ESAPIView):
                         petty_expense_summary += '\n'
                     petty_expense_summary += '%s. %s - %s' % (seq, pbRc.expense.sn, pbRc.balance_amt)
 
-                fx_expense_summary = ''
-                seq = 0
-                for pbRc in fx_expenses:
-                    seq += 1
-                    if seq > 1:
-                        fx_expense_summary += '\n'
-                    fx_expense_summary += '%s. %s - %s (%s)' % (seq, pbRc.expense.sn, pbRc.fx_balance_amt, pbRc.fx.fx_ccy.code)
-
                 queryUsage = ''
                 seq = 0
                 left_flag = False
@@ -194,7 +183,6 @@ class ES006(ESAPIView):
 
                 r['query_expenses'] = normal_expense_summary
                 r['query_petty_expenses'] = petty_expense_summary
-                r['query_fx_expenses'] = fx_expense_summary
                 r['query_usage'] = queryUsage
                 r['left_flag'] = left_flag
             return results
@@ -210,13 +198,13 @@ class ES006(ESAPIView):
 
     def openCashAdvDetail(self):
         """Click open detail icon in the table's last column."""
-        cashAdvId = self._getEditIndexField()
+        cash_id = self._getEditIndexField()
         # TODO: permission check
-        self.setSessionParameter(self.SESSION_KEY_CASH_ADVANCEMENT_ID, cashAdvId)
-        ca_rc = acl.add_query_filter(CashAdvancement.objects, self.getCurrentUser()).filter(id=cashAdvId).first()
-        if ca_rc is None:
+        self.setSessionParameter(self.SESSION_KEY_CASH_ADVANCEMENT_ID, cash_id)
+        cash_rc = acl.add_query_filter(CashAdvancement.objects, self.getCurrentUser()).filter(id=cash_id).first()
+        if cash_rc is None:
             return Boolean2.FALSE("System error. Cash advancement ID doesn't exist.")
-        default_display_file_id = ca_rc.payment_record_file.id if ca_rc.payment_record_file is not None else None
+        default_display_file_id = cash_rc.payment_record_file.id if cash_rc.payment_record_file is not None else None
         self.setSessionParameter(self.SESSION_KEY_FILE_ID, default_display_file_id)
         self._deletePreviousScreenRequestData()
 
@@ -236,9 +224,6 @@ class ES006(ESAPIView):
                 logger.error("Cash advancement doesn't exist. ID=%s" % cash_id)
                 self.deleteSessionParameters(self.SESSION_KEY_CASH_ADVANCEMENT_ID)
                 raise IkValidateException("Cash advancement doesn't exist.")
-            # TODO: validate permission
-            # cash_rc.payment_tp = cash_rc.pay.id
-            # cash_rc.payment_number = cash_rc.pay.payment_number
 
             # display default file
             if isNullBlank(self.getSessionParameterInt(self.SESSION_KEY_FILE_ID)) and cash_rc.payment_record_file is not None:
@@ -250,24 +235,17 @@ class ES006(ESAPIView):
             cash_rc.claimer = self.getCurrentUser()
             cash_rc.ccy = cash_rc.office.ccy
             cash_rc.sts = Status.DRAFT.value
-            cash_rc.claim_dt = datetime.now()
-            # TODO:
-            # if isNotNullBlank(payeeID):
-            #     priorBalance = ES.getCashAdvancedPriorBalance(payeeID, currentTime)
-            #     data.ccy = payeeOfficeCCY
-            #     data.deduction_amt = priorBalance
-            # message = None
         return cash_rc
 
     def getPdfViewer(self):
         """Get current file."""
-        displayFileID = self.getSessionParameter(self.SESSION_KEY_FILE_ID)
-        if isNotNullBlank(displayFileID):
-            ef = ESFile.getESFile(displayFileID)
+        display_file_id = self.getSessionParameter(self.SESSION_KEY_FILE_ID)
+        if isNotNullBlank(display_file_id):
+            ef = ESFile.getESFile(display_file_id)
             if isNotNullBlank(ef):
                 if os.path.isfile(ef.file):
                     return responseFile(filePath=ef.file, filename=ef.filename)
-            filePath = ESFileManager.get_not_exist_file_template()
+            filePath = ESFile.get_not_exist_file_template()
             return responseFile(filePath)
         return IkSccJsonResponse()
 
@@ -277,11 +255,11 @@ class ES006(ESAPIView):
         cash_id = self.__getCurrentCashAdvancementID()
         if cash_id is None:
             return None
-        caRc = acl.add_query_filter(CashAdvancement.objects, self.getCurrentUser()).filter(id=cash_id).first()
-        if caRc is None:
+        cash_rc = acl.add_query_filter(CashAdvancement.objects, self.getCurrentUser()).filter(id=cash_id).first()
+        if cash_rc is None:
             return None
-        rcs = PriorBalance.objects.filter(ca=caRc).exclude(expense__sts__in=(Status.DRAFT.value,
-                                                                             Status.CANCELLED.value, Status.REJECTED.value)).order_by('expense__id')
+        rcs = PriorBalance.objects.filter(ca=cash_rc).exclude(expense__sts__in=(Status.DRAFT.value,
+                                                                                Status.CANCELLED.value, Status.REJECTED.value)).order_by('expense__id')
         rcs = [r for r in rcs]
         for r in rcs:
             if r.expense.is_petty_expense:
@@ -310,61 +288,64 @@ class ES006(ESAPIView):
     def submit(self):
         """ Click the [Submit] button to submit the cash advancement.
         """
-        cash_adv_rc = self._getRequestValue('dtlFg')
+        cash_rc = self._getRequestValue('dtlFg')
         is_new = self.__isNewCashAdvancement()
 
-        cash_adv_id = None if is_new else cash_adv_rc.id
-        ccy_rc = cash_adv_rc.ccy
-        office_rc = cash_adv_rc.office
-        payee_rc = cash_adv_rc.payee
-        desc = cash_adv_rc.dsc
-        po_sn = cash_adv_rc.po_sn
-        claim_amt = cash_adv_rc.claim_amt
-        approver_rc = cash_adv_rc.approver
+        cash_id = None if is_new else cash_rc.id
+        ccy_rc = cash_rc.ccy
+        office_rc = cash_rc.office
+        payee_rc = cash_rc.payee
+        desc = cash_rc.dsc
+        po_sn = cash_rc.po_sn
+        claim_amt = cash_rc.claim_amt
+        approver_rc = cash_rc.approver
         if self._getCurrentOfficeID() != office_rc.id:
             raise IkValidateException("The office [%s] is not the same as the current office [%s]. Please check." % (office_rc.name, self._getCurrentOffice().name))
-        result = CA.submit_cash_advancement(self.getCurrentUserId(), cash_adv_id, office_rc, ccy_rc, payee_rc, desc, claim_amt, po_sn, approver_rc)
+        result = CA.submit_cash_advancement(self.getCurrentUserId(), cash_id, office_rc, ccy_rc, payee_rc, desc, claim_amt, po_sn, approver_rc)
         if not result.value:
             return result
-        cash_adv_id = result.data
-        caRc = acl.add_query_filter(CashAdvancement.objects, self.getCurrentUser()).filter(id=cash_adv_id).first()
-        self.setSessionParameter(self.SESSION_KEY_CASH_ADVANCEMENT_ID, cash_adv_id)
-        return IkSccJsonResponse(message="Cash advancement [%s] submitted." % caRc.sn)
+        cash_id = result.data
+        cash_rc = acl.add_query_filter(CashAdvancement.objects, self.getCurrentUser()).filter(id=cash_id).first()
+        self.setSessionParameter(self.SESSION_KEY_CASH_ADVANCEMENT_ID, cash_id)
+        return IkSccJsonResponse(message="Cash advancement [%s] submitted." % cash_rc.sn)
 
     def cancel(self):
         """Click the [Cancel] button to cancel the cash advancement."""
-        requestData = self.getRequestData()
-        caRc = requestData.get('dtlFg')
-        caRc: CashAdvancement
-        return CA.cancel_cash_advancement(self.getCurrentUserId(), caRc.id, caRc.action_rmk)
+        cash_rc = self.getRequestData().get('dtlFg')
+        if isNullBlank(cash_rc):
+            return IkSysErrJsonResponse()
+        cash_rc: CashAdvancement
+        return CA.cancel_cash_advancement(self.getCurrentUserId(), cash_rc.id, cash_rc.action_rmk)
 
     def reject(self):
         """Click the [Reject] button to cancel the cash advancement."""
-        requestData = self.getRequestData()
-        caRc = requestData.get('dtlFg')
-        caRc: CashAdvancement
-        return CA.reject_cash_advancement(self.getCurrentUserId(), caRc.id, caRc.action_rmk)
+        cash_rc = self.getRequestData().get('dtlFg')
+        if isNullBlank(cash_rc):
+            return IkSysErrJsonResponse()
+        cash_rc: CashAdvancement
+        return CA.reject_cash_advancement(self.getCurrentUserId(), cash_rc.id, cash_rc.action_rmk)
 
     def approve(self):
-        requestData = self.getRequestData()
-        caRc = requestData.get('dtlFg')
-        caRc: CashAdvancement
-        return CA.approve_cash_advancement(self.getCurrentUserId(), caRc.id)
+        cash_rc = self.getRequestData().get('dtlFg')
+        if isNullBlank(cash_rc):
+            return IkSysErrJsonResponse()
+        cash_rc: CashAdvancement
+        return CA.approve_cash_advancement(self.getCurrentUserId(), cash_rc.id)
 
     def downloadPaymentRecordFile(self):
         """Click the [Download Payment Record] button to download the uploaded payment record file."""
         cash_id = self.__getCurrentCashAdvancementID()
         if isNullBlank(cash_id):
             return Boolean2.FALSE("Please select a cash advancement first.")
-        caRc = acl.add_query_filter(CashAdvancement.objects, self.getCurrentUser()).filter(id=cash_id).first()
-        if caRc is None:
+        cash_rc = acl.add_query_filter(CashAdvancement.objects, self.getCurrentUser()).filter(id=cash_id).first()
+        if cash_rc is None:
             return Boolean2.FALSE("Please select a cash advancement first.")
-        if caRc.payment_record_file is None:
+        if cash_rc.payment_record_file is None:
             return Boolean2.FALSE("Payment record file doesn't exist. Please upload first.")
-        f = ESFileManager.getESFile(caRc.payment_record_file)
+        f = ESFile.getESFile(cash_rc.payment_record_file)
         if f is None:
             return Boolean2.FALSE("Please upload the payment record first.")
-        return self.downloadFile(f.file, "%s-CA-PR-%s" % (caRc.office.code, Path(f.file).name))
+        return self.downloadFile(f.file, "%s-CA-PR-%s" % (cash_rc.office.code, Path(f.file).name))
 
     def displayPaymentRecordFile(self):
         """Click the [Display Payment Record] button to display the uploaded payment record file."""
@@ -372,21 +353,21 @@ class ES006(ESAPIView):
         self.deleteSessionParameters(self.SESSION_KEY_FILE_ID)
         cash_id = self.__getCurrentCashAdvancementID()
         if isNotNullBlank(cash_id):
-            caRc = acl.add_query_filter(CashAdvancement.objects, self.getCurrentUser()).filter(id=cash_id).first()
-            if caRc is None:
+            cash_rc = acl.add_query_filter(CashAdvancement.objects, self.getCurrentUser()).filter(id=cash_id).first()
+            if cash_rc is None:
                 return Boolean2.FALSE("Please select a cash advancement first.")
-            if caRc.payment_record_file is not None:
-                self.setSessionParameters({self.SESSION_KEY_FILE_ID: caRc.payment_record_file.id})
+            if cash_rc.payment_record_file is not None:
+                self.setSessionParameters({self.SESSION_KEY_FILE_ID: cash_rc.payment_record_file.id})
 
     def settle(self):
         """Click the [Settle] button to pay the current cash advancement."""
         upload_page_file = None
         is_success = False
         try:
-            cash_adv_id = self.__getCurrentCashAdvancementID()
-            if isNullBlank(cash_adv_id):
+            cash_id = self.__getCurrentCashAdvancementID()
+            if isNullBlank(cash_id):
                 return Boolean2.FALSE("Please select an approved cash advancement first.")
-            cash_rc = acl.add_query_filter(CashAdvancement.objects, self.getCurrentUser()).filter(id=cash_adv_id).first()
+            cash_rc = acl.add_query_filter(CashAdvancement.objects, self.getCurrentUser()).filter(id=cash_id).first()
             if cash_rc is None:
                 logger.error("Cash Advancement doesn't exist.")
                 return Boolean2.FALSE("Cash advancement doesn't exist.")
@@ -403,12 +384,12 @@ class ES006(ESAPIView):
             payment_no = str(payment_no).strip() if isNotNullBlank(payment_no) else None
             payment_rmk = cash_rc.action_rmk  # add payment remarks to screen
 
-            uploadFiles = self.getRequestData().getFiles('uploadFile')
-            if uploadFiles is None or len(uploadFiles) == 0 or uploadFiles[0] is None:
+            upload_files = self.getRequestData().getFiles('uploadFile')
+            if upload_files is None or len(upload_files) == 0 or upload_files[0] is None:
                 if payment_type.tp != PaymentMethod.BANK_TRANSFER:
                     return IkErrJsonResponse(message="Please select a file to upload.")
             else:
-                upload_page_file = ESFileManager.save_uploaded_really_file(uploadFiles[0], self.__class__.__name__, self.getCurrentUserName())
+                upload_page_file = ESFile.save_uploaded_really_file(upload_files[0], self.__class__.__name__, self.getCurrentUserName())
             result = CA.settle_cash_advancement(self.getCurrentUserId(), cash_rc.id, payment_type, payment_no, upload_page_file, payment_rmk)
             is_success = result.value
             if is_success:
@@ -417,23 +398,22 @@ class ES006(ESAPIView):
             return result
         finally:
             if not is_success and upload_page_file is not None:
-                ESFileManager.delete_really_file(upload_page_file)
+                ESFile.delete_really_file(upload_page_file)
 
     def revertSettledPayment(self):
         """Click the [Revert Settled Payment] button to revert the current settled cash advancement."""
-        request_data = self.getRequestData()
-        ca_rc = request_data.get('dtlFg')
-        ca_rc: CashAdvancement
-        result = CA.revert_settled_cash_advancement(self.getCurrentUserId(), ca_rc.id, ca_rc.action_rmk)
+        cash_rc = self.getRequestData().get('dtlFg')
+        cash_rc: CashAdvancement
+        result = CA.revert_settled_cash_advancement(self.getCurrentUserId(), cash_rc.id, cash_rc.action_rmk)
         if result.value:
             self.deleteSessionParameters(self.SESSION_KEY_FILE_ID)
         return result
 
     def getActivityRcs(self):
         data = None
-        cash_adv_id = self.__getCurrentCashAdvancementID()
-        if isNotNullBlank(cash_adv_id):
-            data = Activity.objects.filter(transaction_id=cash_adv_id, tp=activity.ActivityType.CASH_ADVANCEMENT.value).order_by("operate_dt")
+        cash_id = self.__getCurrentCashAdvancementID()
+        if isNotNullBlank(cash_id):
+            data = Activity.objects.filter(transaction_id=cash_id, tp=activity.ActivityType.CASH_ADVANCEMENT.value).order_by("operate_dt")
         return IkSccJsonResponse(data=data)
 
     def __isNewCashAdvancement(self) -> bool:

@@ -1,9 +1,10 @@
 """Petty expense management
 """
 from decimal import Decimal
+
 from core.core.lang import Boolean2
-from core.log.logger import logger
-from ..models import Office, User, PettyCashExpenseAdmin
+
+from ..models import Office, PettyCashExpenseAdmin, User
 
 
 def get_petty_admin_setting(office: Office) -> PettyCashExpenseAdmin:
@@ -19,7 +20,7 @@ def get_petty_admin(office: Office) -> User:
     return petty_admin_rc.admin if petty_admin_rc is not None else None
 
 
-def vaildiate_petty_admin(office: Office, user: User, pay_amount: float) -> Boolean2:
+def validate_petty_admin(office: Office, user: User, pay_amount: float) -> Boolean2:
     """
     Validates whether a user has permission to approve an expense request.
 

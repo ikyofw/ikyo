@@ -1,12 +1,15 @@
 """Office management
 """
 from django.db.models import Exists, OuterRef, Q
-from core.core.lang import Boolean2
-from core.log.logger import logger
-from core.db.transaction import IkTransaction
+
 from core.core.exception import IkException
-from core.models import UserGroup
-from ..models import User, Office, UserOffice, UserWorkOffice, Approver, Accounting, PettyCashExpenseAdmin, UserRole
+from core.core.lang import Boolean2
+from core.db.transaction import IkTransaction
+from core.log.logger import logger
+from core.models import Office, User, UserGroup, UserOffice
+
+from ..models import (Accounting, Approver, PettyCashExpenseAdmin, UserRole,
+                      UserWorkOffice)
 
 
 def get_user_offices(user: User, contains_acl_offices: bool = False) -> list[Office]:
@@ -39,34 +42,35 @@ def get_user_offices(user: User, contains_acl_offices: bool = False) -> list[Off
             exists_user_office=Exists(subquery)).filter(exists_user_office=True).order_by('code')
 
     office_ids = list(Office.objects.annotate(
-                exists_user_office=Exists(subquery)).filter(exists_user_office=True).values_list('id', flat=True))
+        exists_user_office=Exists(subquery)).filter(exists_user_office=True).values_list('id', flat=True))
     user_grp_ids = UserGroup.objects.filter(usr=user).values_list('grp_id', flat=True)
     # 1. Approver
     additional_office_ids = Approver.objects.filter(
-        Q(approver = user)
-        | Q(approver_grp_id__in = user_grp_ids)
-        | Q(approver_assistant = user)
-        | Q(approver_assistant_grp_id__in = user_grp_ids)
-        | Q(approver2 = user)
+        Q(approver=user)
+        | Q(approver_grp_id__in=user_grp_ids)
+        | Q(approver_assistant=user)
+        | Q(approver_assistant_grp_id__in=user_grp_ids)
+        | Q(approver2=user)
         | Q(approver2_grp_id__in=user_grp_ids),
-        enable=True 
-    ).exclude(office_id__in = office_ids).values_list('office_id', flat=True).distinct()
+        enable=True
+    ).exclude(office_id__in=office_ids).values_list('office_id', flat=True).distinct()
     office_ids.extend(list(additional_office_ids))
-    
+
     # 2. Accounting
-    additional_office_ids = Accounting.objects.filter(usr = user).exclude(office_id__in = office_ids).values_list('office_id', flat=True).distinct()
+    additional_office_ids = Accounting.objects.filter(usr=user).exclude(office_id__in=office_ids).values_list('office_id', flat=True).distinct()
     office_ids.extend(list(additional_office_ids))
 
     # 3. PettyCashExpenseAdmin
-    additional_office_ids = PettyCashExpenseAdmin.objects.filter(enable = True, admin = user).exclude(office_id__in = office_ids).values_list('office_id', flat=True).distinct()
+    additional_office_ids = PettyCashExpenseAdmin.objects.filter(enable=True, admin=user).exclude(office_id__in=office_ids).values_list('office_id', flat=True).distinct()
     office_ids.extend(list(additional_office_ids))
 
     # 4. UserRole
-    additional_office_ids = UserRole.objects.filter(Q(usr = user) | Q(usr_grp_id__in = user_grp_ids), enable = True).exclude(office_id__in = office_ids).values_list('office_id', flat=True).distinct()
+    additional_office_ids = UserRole.objects.filter(Q(usr=user) | Q(usr_grp_id__in=user_grp_ids), enable=True).exclude(
+        office_id__in=office_ids).values_list('office_id', flat=True).distinct()
     office_ids.extend(list(additional_office_ids))
 
     # sort by office code
-    return Office.objects.filter(id__in = office_ids).order_by('code')
+    return Office.objects.filter(id__in=office_ids).order_by('code')
 
 
 def update_user_work_office(office: Office, user: User) -> Boolean2:

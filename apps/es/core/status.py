@@ -3,7 +3,6 @@
 from enum import Enum, unique
 
 from core.core.lang import Boolean2
-from core.log.logger import logger
 
 from ..core.approver import get_second_approvers
 from ..models import Office, User

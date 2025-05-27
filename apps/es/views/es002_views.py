@@ -1,12 +1,9 @@
-import logging
 from core.core.http import IkErrJsonResponse
+from core.models import Office
 from core.utils.langUtils import isNullBlank
-from core.models import Office, UserOffice
+
 from ..core.office import get_user_offices
 from ..views.es_base_views import ESAPIView
-                
-
-logger = logging.getLogger('ikyo')
 
 
 class ES002(ESAPIView):

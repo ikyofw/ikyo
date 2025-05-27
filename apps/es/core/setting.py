@@ -1,14 +1,10 @@
 from threading import Lock
 
-from django.db.models import Exists, OuterRef, Q
-
 import core.user.userManager as UserManager
-from core.core.exception import IkException
 from core.db.transaction import IkTransaction
 from core.log.logger import logger
 from core.models import Setting
 
-from ..models import Office, User, UserGroup, UserRole
 from . import const
 
 # Lock to ensure thread-safe initialization of settings
@@ -22,6 +18,7 @@ ENABLE_DEFAULT_INBOX_NOTIFICATION = "Enable inbox notification"
 
 # Setting name for enabling default inbox notification
 ENABLE_AUTOMATIC_SETTLEMENT_UPON_APPROVAL = "Enable automatic settlement upon approval"
+
 
 def is_accounting_rejectable() -> bool:
     """
@@ -39,6 +36,7 @@ def is_enable_default_inbox_message() -> bool:
 
 def is_enable_automatic_settlement_upon_approval() -> bool:
     return __get_bool_setting(ENABLE_AUTOMATIC_SETTLEMENT_UPON_APPROVAL, True)
+
 
 def __get_bool_setting(name: str, default_value: bool = False) -> bool:
     """

@@ -1,19 +1,10 @@
-.row_submitted {background: #DEFFAC;}
-.row_cancelled {background: #996666; color: #fff;}
-.row_rejected {background: #FFD9EC;}
-.row_approved {background: #33CCFF;}
-/* .row_pce_un_submit {color: #FFFF00;} */
-.row_settled {background: #00A600;color: #fff;}
-.row_deleted {text-decoration:line-through;}
-.cell_left_ccy { background: #ff8c00;}
+.row_submitted {background: rgb(222, 255, 172);}
+.row_cancelled {background: rgb(153, 102, 102); color: rgb(255, 255, 255);}
+.row_rejected {background: rgb(255, 217, 236);}
+.row_approved {background: rgb(51, 204, 255);}
+.row_settled {background: rgb(0, 166, 0);color: rgb(255, 255, 255);}
+
+.cell_left_ccy { background: rgb(255, 140, 0);}
 
 #pageTitleDiv {color:blue; font-size: 1.8em; padding: 5px; 
 	border-bottom:1px solid blue;  }
-
-.row_select{
-  background-color: aqua;
-}
-
-.cell_no_file{
-  background-color: red;
-}

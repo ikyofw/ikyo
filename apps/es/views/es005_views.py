@@ -3,25 +3,19 @@ import os
 import traceback
 
 import core.ui.ui as ikui
-import es.core.acl as acl
-import es.core.ESTools as ESTools
-import es.core.status as status
 from core.core.exception import IkValidateException
 from core.core.http import (IkErrJsonResponse, IkSccJsonResponse,
                             IkSysErrJsonResponse, responseFile)
 from core.core.lang import Boolean2
 from core.utils.langUtils import isNotNullBlank, isNullBlank
 from core.view.screenView import _OPEN_SCREEN_PARAM_KEY_NAME
-from es.core import CA, ES, ESFile, activity, const
-from es.models import (Activity, CashAdvancement, Currency, Expense,
-                       ExpenseDetail, ForeignExchange, PaymentMethod,
-                       PettyCashExpenseAdmin, PriorBalance)
-from es.views.es_base_views import ESAPIView
 
-from ..core import ESFile as ESFileManager
-from ..core import const
-from ..core.finance import round_currency, round_rate
+from ..core import CA, ES, ESFile, ESTools, acl, activity, const, status
 from ..core.status import Status
+from ..models import (Activity, CashAdvancement, Currency, Expense,
+                      ExpenseDetail, ForeignExchange, PaymentMethod,
+                      PettyCashExpenseAdmin, PriorBalance)
+from ..views.es_base_views import ESAPIView
 
 logger = logging.getLogger('ikyo')
 
@@ -50,7 +44,7 @@ class ES005(ESAPIView):
             isDetailPage = hdrRc is not None
             screen.setFieldGroupsVisible(fieldGroupNames=['schFg', 'lineFg', 'hdrListFg'], visible=not isDetailPage)
             screen.setFieldGroupsVisible(fieldGroupNames=[
-                "pdfViewer", "dtlFg", "fxDtlFg", "hdrFg", "uploadFg", "priorBalanceExpenseFg", "pettyExpensePriorBalanceExpenseFg",
+                "pdfViewer", "dtlFg", "hdrFg", "uploadFg", "priorBalanceExpenseFg", "pettyExpensePriorBalanceExpenseFg",
                 "settleByPriorBalanceDetailFg", "sdToolbar", "toolbar", "activityFg"
             ], visible=isDetailPage)
             if not screen.getFieldGroup('pdfViewer').visible:
@@ -74,7 +68,6 @@ class ES005(ESAPIView):
                 hasPaymentRecordFile = hdrRc.payment_record_file is not None
                 isPettyExpense = hdrRc.is_petty_expense
                 isSettleByPrioriBalance = hdrRc.use_prior_balance
-                isSettleByFx = hdrRc.fx_amt is not None and hdrRc.fx_amt > 0
 
                 pettyCashExpenseAdminRc = PettyCashExpenseAdmin.objects.filter(office=hdrRc.office, admin=operatorRc).first() if isPettyExpense else None
                 isPettyCashExpenseOfficeAdministrator = pettyCashExpenseAdminRc is not None
@@ -86,14 +79,12 @@ class ES005(ESAPIView):
 
                 hasSupportingDoc = hdrRc is not None and hdrRc.supporting_doc is not None
 
-                screen.setFieldGroupsVisible('dtlFg', not isSettleByFx)
                 if isPettyExpense:
                     dtlFgCaption = "Petty Cash Expense Detail"
                     if isWait4SubmitPettyCashExpense:
                         dtlFgCaption += " - Wait for office administrator to confirm"
                     screen.setFieldGroupCaption("dtlFg", dtlFgCaption)
 
-                screen.setFieldGroupsVisible('fxDtlFg', isSettleByFx)
                 screen.setFieldGroupsVisible('priorBalanceExpenseFg', isSettleByPrioriBalance)
                 screen.setFieldGroupsVisible('settleByPriorBalanceDetailFg', isSettleByPriorBalanceDetailFgVisible)
                 screen.setFieldGroupsVisible('pettyExpensePriorBalanceExpenseFg', isPettyExpensePriorBalanceExpenseFgVisible)
@@ -144,11 +135,12 @@ class ES005(ESAPIView):
         search_data = self.getSearchData(fieldGroupName='schFg')
         if isNotNullBlank(search_data):
             query_params['sn'] = search_data.get('schSNField', None)
-            query_params['status'] = search_data.get('schStsField', None)
             query_params['claimer'] = search_data.get('schClaimerField', None)
+            query_params['status'] = search_data.get('schStsField', None)
             query_params['payee'] = search_data.get('schPayeeField', None)
-            query_params['support_document_page_no'] = search_data.get('schSupportDocumentPageNo', None)
+            query_params['pay_transfer_no'] = search_data.get('schPayTransferNoField', None)
             query_params['expense_page_no'] = search_data.get('schExpensePageNoField', None)
+            query_params['support_document_page_no'] = search_data.get('schSupportDocumentPageNo', None)
             query_params['payment_record_page_no'] = search_data.get('schPaymentRecordPageNoField', None)
             query_params['payment_record_filename'] = search_data.get('schPaymentRecordField', None)
             query_params['claim_date_from'] = search_data.get('schClaimDateFromField', None)
@@ -217,45 +209,17 @@ class ES005(ESAPIView):
         expense_id = self.__getCurrentExpenseHdrID()
         if isNullBlank(expense_id):
             return
-        # TODO: expense permission check
-
         hdrRc = acl.add_query_filter(Expense.objects, self.getCurrentUser()).filter(id=expense_id).first()
         if hdrRc is None:
             logger.error("Expense doesn't exist. ID=%s" % expense_id)
             raise IkValidateException("Expense doesn't exist.")
         rcs = ExpenseDetail.objects.filter(hdr=hdrRc).order_by("file__seq", "incur_dt", 'seq')
         displayFileID = self.getSessionParameter(self.SESSION_KEY_FILE_ID)
-
-        balanceInfoList = []
-        if hdrRc.fx_ccy is not None:
-            # update for FX detail table
-            for pbRc in PriorBalance.objects.filter(expense=hdrRc).order_by('id'):
-                balanceInfoList.append([pbRc.fx_balance_amt, pbRc.fx.fx_rate])
         for rc in rcs:
             rc.is_current = False  # used for display
-            if isNotNullBlank(displayFileID) and rc.file.id == displayFileID:
+            if isNotNullBlank(displayFileID) and rc.file and rc.file.id == displayFileID:
                 rc.ik_set_cursor()
                 rc.is_current = True
-            if hdrRc.fx_ccy is not None:
-                # update for FX detail table
-                fxAmount = rc.amt
-                fxLocalAmount = 0
-                for balanceInfo in balanceInfoList:
-                    if balanceInfo[0] != 0:
-                        b = 0
-                        if balanceInfo[0] >= fxAmount:
-                            balanceInfo[0] -= fxAmount
-                            b = fxAmount
-                            fxAmount = 0
-                        else:
-                            fxAmount -= balanceInfo[0]
-                            b = balanceInfo[0]
-                            balanceInfo[0] = 0
-                        fxLocalAmount += b / balanceInfo[1]
-                    if fxAmount <= 0:
-                        break
-                rc.fx_local_amt = float(round_currency(fxLocalAmount))
-                rc.fx_rate = float(round_rate(ESTools.div(rc.amt, fxLocalAmount)))
         return rcs
 
     def displayExpenseFile(self):
@@ -289,17 +253,8 @@ class ES005(ESAPIView):
         else:
             return responseFile(filePath=f.file, filename=f.filename)
 
-    def displayFXExpenseFile(self):
-        """Click the [FX Expense Details] table to display the selected record's file."""
-        return self.displayExpenseFile()
-
-    def downloadFXExpenseFile(self):
-        """Click the [FX Expense Details] table to display the selected record's file."""
-        return self.downloadExpenseFile()
-
     def displayPaymentRecordFile(self):
-        requestData = self.getRequestData()
-        hdrFg = requestData.get('hdrFg')
+        hdrFg = self.getRequestData().get('hdrFg')
         if isNotNullBlank(hdrFg):
             self.setSessionParameters({"displayFileID": hdrFg.e_cheque_file_id, "isOpenEChequeFile": True})
             return IkSccJsonResponse()
@@ -331,8 +286,8 @@ class ES005(ESAPIView):
                     return responseFile(filePath=ef.file, filename=ef.filename)
             expense_sn = self.__getCurrentExpenseHdr().sn
             logger.error("ES File is not found. SN=%s, FileID=%s, Path=%s" % (expense_sn, displayFileID, ef.file.resolve()))
-            filePath = ESFileManager.get_not_exist_file_template()
-        filePath = ESFileManager.get_blank_page_file_template()
+            filePath = ESFile.get_not_exist_file_template()
+        filePath = ESFile.get_blank_page_file_template()
         return responseFile(filePath)
 
     def getPriorBalanceRcs(self):
@@ -410,38 +365,32 @@ class ES005(ESAPIView):
 
     def cancel(self):
         """Click the [Cancel] button to cancel the expense."""
-        requestData = self.getRequestData()
-        postHdrRc = requestData.get('hdrFg', None)
-        postHdrRc: Expense
-        result = ES.cancel_expense(self.getCurrentUserId(), postHdrRc.id, postHdrRc.action_rmk)
+        expense_rc = self.getRequestData().get('hdrFg', None)
+        if isNullBlank(expense_rc):
+            return IkSysErrJsonResponse()
+        expense_rc: Expense
+        result = ES.cancel_expense(self.getCurrentUserId(), expense_rc.id, expense_rc.action_rmk)
         if not result.value:
             return result.toIkJsonResponse1()
         self._addInfoMessage(result.dataStr)
-        return self._openScreen(const.MENU_ES004, parameters={'id': postHdrRc.id})
+        return self._openScreen(const.MENU_ES004, parameters={'id': expense_rc.id})
 
     def reject(self):
         """Click the [Reject] button to cancel the expense."""
-        requestData = self.getRequestData()
-        postHdrRc = requestData.get('hdrFg', None)
-        postHdrRc: Expense
-        result = ES.reject_expense(self.getCurrentUserId(), postHdrRc.id, postHdrRc.action_rmk)
-        if not result.value:
-            return result.toIkJsonResponse1()
-        self._addInfoMessage(result.dataStr)
-        return self.deleteSessionParameters(nameFilters=[self.SESSION_KEY_EXPENSE_HDR_ID, self.SESSION_KEY_FILE_ID, self.SESSION_KEY_PB_DATA])
+        expense_rc = self.getRequestData().get('hdrFg', None)
+        if isNullBlank(expense_rc):
+            return IkSysErrJsonResponse()
+        expense_rc: Expense
+        result = ES.reject_expense(self.getCurrentUserId(), expense_rc.id, expense_rc.action_rmk)
+        return result.toIkJsonResponse1()
 
     def approve(self):
         """Click the [Approve] button to cancel the expense."""
-        expense_id = self.__getCurrentExpenseHdrID()
-        if isNullBlank(expense_id):
-            return IkValidateException("Please select an expense first.")
-        postHdrRc = self.getRequestData().get('hdrFg', None)
-        if postHdrRc is None:
-            return IkValidateException("System error.")
-        elif postHdrRc.id != expense_id:
-            logger.error('Session expense ID [%s] is not the same as post expense id [%s]!' % (expense_id, postHdrRc.id))
-            return IkValidateException("System error.")
-        result = ES.approve_expense(self.getCurrentUserId(), expense_id)
+        expense_rc = self.getRequestData().get('hdrFg', None)
+        if isNullBlank(expense_rc):
+            return IkSysErrJsonResponse()
+        expense_rc: Expense
+        result = ES.approve_expense(self.getCurrentUserId(), expense_rc.id)
         return result.toIkJsonResponse1()
 
     def submitPettyCashExpense(self):
@@ -500,8 +449,7 @@ class ES005(ESAPIView):
                 logger.error("Expense doesn't exist.")
                 return IkErrJsonResponse(message="Expense doesn't exist.")
 
-            request_data = self.getRequestData()
-            hdr_rc = request_data.get('hdrFg')
+            hdr_rc = self.getRequestData().get('hdrFg')
             hdr_rc: Expense
 
             payment_type = hdr_rc.payment_tp
@@ -518,7 +466,7 @@ class ES005(ESAPIView):
                 if payment_type.tp != PaymentMethod.BANK_TRANSFER and payment_type.tp != PaymentMethod.PETTY_CASH and not (payment_type.tp == PaymentMethod.PRIOR_BALANCE and (isNullBlank(hdr_rc.pay_amt) or hdr_rc.pay_amt == 0)):
                     return IkErrJsonResponse(message="Please select a file to upload.")
             else:
-                upload_page_file = ESFileManager.save_uploaded_really_file(uploadFiles[0], self.__class__.__name__, self.getCurrentUserName())
+                upload_page_file = ESFile.save_uploaded_really_file(uploadFiles[0], self.__class__.__name__, self.getCurrentUserName())
             result = ES.settle_expense(self.getCurrentUserId(), hdr_rc.id, payment_type, payment_no, upload_page_file, payment_rmk)
             is_success = result.value
             if is_success:
@@ -527,13 +475,14 @@ class ES005(ESAPIView):
             return result
         finally:
             if not is_success and upload_page_file is not None:
-                ESFileManager.delete_really_file(upload_page_file)
+                ESFile.delete_really_file(upload_page_file)
 
     def revertSettledPayment(self):
-        request_data = self.getRequestData()
-        hdr_rc = request_data.get('hdrFg')
-        hdr_rc: Expense
-        result = ES.revert_settled_expense(self.getCurrentUserId(), hdr_rc.id, hdr_rc.action_rmk)
+        expense_rc = self.getRequestData().get('hdrFg')
+        if isNullBlank(expense_rc):
+            return IkSysErrJsonResponse()
+        expense_rc: Expense
+        result = ES.revert_settled_expense(self.getCurrentUserId(), expense_rc.id, expense_rc.action_rmk)
         if result.value:
             self.deleteSessionParameters(self.SESSION_KEY_FILE_ID)
         return result
@@ -553,7 +502,7 @@ class ES005(ESAPIView):
         hdr_rc = self.__getCurrentExpenseHdr()
         if isNullBlank(hdr_rc.payment_record_file):
             return IkErrJsonResponse(message="No payment record file found.")
-        f = ESFileManager.getESFile(hdr_rc.payment_record_file)
+        f = ESFile.getESFile(hdr_rc.payment_record_file)
         if f is None:
             return IkErrJsonResponse(message="Payment record file doesn't exist.")
         else:
@@ -571,14 +520,14 @@ class ES005(ESAPIView):
         hdrRc = self.__getCurrentExpenseHdr()
         uploadPageFile = None
         try:
-            uploadPageFile = ESFileManager.save_uploaded_really_file(uploadFiles[0], self.__class__.__name__, self.getCurrentUserName())
-            fileID, fileSeq = ES.uploadExpenseSupportingDocument(self.getCurrentUserId(), hdrRc, uploadPageFile)
-            self.setSessionParameter(self.SESSION_KEY_FILE_ID, fileID)
+            uploadPageFile = ESFile.save_uploaded_really_file(uploadFiles[0], self.__class__.__name__, self.getCurrentUserName())
+            new_file_rc = ES.uploadExpenseSupportingDocument(self.getCurrentUserId(), hdrRc, uploadPageFile)
+            self.setSessionParameter(self.SESSION_KEY_FILE_ID, new_file_rc.id)
             uploadMessage = "If the supporting document has a hard copy, please write the sequence number %s "\
-                "on the top right corner of the page and give it to the accounts department!" % fileSeq
+                "on the top right corner of the page and give it to the accounts department!" % new_file_rc.seq
             return IkSccJsonResponse(message=uploadMessage)
         finally:
-            ESFileManager.delete_really_file(uploadPageFile)
+            ESFile.delete_really_file(uploadPageFile)
 
     def displaySupportingDoc(self):
         """Click [Display Supporting Document] button to display the supporting document."""
@@ -594,7 +543,7 @@ class ES005(ESAPIView):
         """Click [Download Supporting Document] button to download the supporting document."""
         hdrRc = self.__getCurrentExpenseHdr()
         if hdrRc is not None and hdrRc.supporting_doc is not None:
-            f = ESFileManager.getESFile(hdrRc.supporting_doc.id)
+            f = ESFile.getESFile(hdrRc.supporting_doc.id)
             if not isNullBlank(f):
                 return self.downloadFile(f.file, ES.getExpenseSupportingDocumentFilename(hdrRc.supporting_doc))
         return IkErrJsonResponse(message="Supporting document doesn't exist.")

@@ -1,6 +1,6 @@
 from enum import Enum, unique
 
-# todo
+
 @unique
 class ExpenseType(Enum):
     """ExpenseType type

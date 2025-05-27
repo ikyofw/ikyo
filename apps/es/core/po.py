@@ -8,7 +8,7 @@ import logging
 from datetime import datetime
 from threading import Lock
 
-from django.db.models import Exists, OuterRef, Q
+from django.db.models import Q
 
 import core.core.fs as ikfs
 from core.core.exception import *
@@ -17,11 +17,7 @@ from core.db.transaction import IkTransaction
 from core.utils.langUtils import isNotNullBlank, isNullBlank
 
 from ..models import *
-from . import ES
-from . import ESFile as ESFileManager
-from . import ESSeq as SnManager
-from . import acl
-from . import approver as ApproverManager
+from . import ES, ESFile, ESSeq, acl, approver
 from .ESNotification import send_po_notify
 
 logger = logging.getLogger('ikyo')
@@ -80,7 +76,7 @@ def is_approvable(operator_rc: User, po_rc: Po, is_admin: bool) -> bool:
     if po_rc.status == Po.SUBMITTED_STATUS:
         if is_admin or po_rc.assigned_approver == operator_rc:
             return True
-        for assistant_approver_rc in ApproverManager.get_approver_assistants(po_rc.office, po_rc.assigned_approver):
+        for assistant_approver_rc in approver.get_approver_assistants(po_rc.office, po_rc.assigned_approver):
             if assistant_approver_rc == operator_rc:
                 return True
     return False
@@ -100,7 +96,7 @@ def is_rejectable(operator_rc: User, po_rc: Po, is_admin: bool) -> bool:
     if po_rc.status == Po.SUBMITTED_STATUS or po_rc.status == Po.APPROVED_STATUS:
         if is_admin or po_rc.assigned_approver == operator_rc:
             return True
-        for assistant_approver_rc in ApproverManager.get_approver_assistants(po_rc.office, po_rc.assigned_approver):
+        for assistant_approver_rc in approver.get_approver_assistants(po_rc.office, po_rc.assigned_approver):
             if assistant_approver_rc == operator_rc:
                 return True
     return False
@@ -244,19 +240,19 @@ def save_or_submit_po_detail(user_rc: User, is_admin: bool, office_rc: Office, p
                 if isNotNullBlank(delete_file) and len(delete_file) > 0:  # delete po quotation file
                     for file_id, file_seq in delete_file:
                         try:
-                            SnManager.rollbackSeq(SnManager.SequenceType.SEQ_TYPE_PO_FILE, office_rc, file_seq)
+                            ESSeq.rollbackSeq(ESSeq.SequenceType.SEQ_TYPE_PO_FILE, office_rc, file_seq)
                         except Exception as e:
                             logger.error('Rollback file [%s] sequence [%s] failed: %s' %
-                                         (SnManager.SequenceType.SEQ_TYPE_PO_FILE.value, file_seq, str(e)), e, exc_info=True)
+                                         (ESSeq.SequenceType.SEQ_TYPE_PO_FILE.value, file_seq, str(e)), e, exc_info=True)
 
                         try:
-                            if not ESFileManager.rollbackFileRecord(user_rc.id, file_id):
+                            if not ESFile.rollbackFileRecord(user_rc.id, file_id):
                                 logger.error('Delete po quotation file [%s] failed.' % file_id)
                         except Exception as e:
                             logger.error('Delete po quotation file [%s] failed: %s' % (file_id, str(e)), e, exc_info=True)
                         try:
                             # delete the file
-                            ESFileManager.deleteESFileAndFolder(ESFileManager.getFile(file_id))
+                            ESFile.deleteESFileAndFolder(ESFile.getFile(file_id))
                         except Exception as e:
                             logger.error('Delete po quotation file [%s] failed: %s' % (file_id, str(e)), e, exc_info=True)
             except:
@@ -410,8 +406,8 @@ def upload_quotation_file(user_rc: User, class_nm: str, quo_id: int, upload_file
 
     is_success = False
     new_file_rc = None
-    uploaded_file_path = ESFileManager.save_uploaded_really_file(upload_file, class_nm, user_rc.usr_nm)
-    uploaded_file_hash = ESFileManager.calculateFileHash(uploaded_file_path)
+    uploaded_file_path = ESFile.save_uploaded_really_file(upload_file, class_nm, user_rc.usr_nm)
+    uploaded_file_hash = ESFile.calculateFileHash(uploaded_file_path)
     __FILE_UPLOAD_LOCK.acquire()
     try:
         # check file is exists or not
@@ -420,7 +416,7 @@ def upload_quotation_file(user_rc: User, class_nm: str, quo_id: int, upload_file
             raise IkValidateException("This file exists. Please check. File name is [%s]. SN is %s." %
                                       (exist_file_rc.file.file_original_nm, exist_file_rc.file.seq))
 
-        new_file_rc = ES.prepare_upload_file(quo_rc.po.office, ESFileManager.FileCategory.PO, uploaded_file_path)
+        new_file_rc = ES.prepare_upload_file(quo_rc.po.office, ESFile.FileCategory.PO, uploaded_file_path)
         if isNotNullBlank(new_file_rc):
             quo_rc.file = new_file_rc
             quo_rc.ik_set_status_modified()
@@ -445,18 +441,18 @@ def upload_quotation_file(user_rc: User, class_nm: str, quo_id: int, upload_file
         try:
             if not is_success:  # failed
                 if isNotNullBlank(uploaded_file_path) and uploaded_file_path.is_file():
-                    ESFileManager.delete_really_file(uploaded_file_path)
+                    ESFile.delete_really_file(uploaded_file_path)
                 if isNotNullBlank(new_file_rc):
                     if isNotNullBlank(new_file_rc.seq):  # rollback file seq
                         try:
-                            SnManager.rollbackSeq(SnManager.SequenceType.SEQ_TYPE_PO_FILE, new_file_rc.office.id, new_file_rc.seq)
+                            ESSeq.rollbackSeq(ESSeq.SequenceType.SEQ_TYPE_PO_FILE, new_file_rc.office.id, new_file_rc.seq)
                         except Exception as e:
                             logger.error('Rollback po quotation file [%s] sequence [%s] failed: %s' %
-                                         (SnManager.SequenceType.SEQ_TYPE_PO_FILE.value, new_file_rc.seq, str(e)))
+                                         (ESSeq.SequenceType.SEQ_TYPE_PO_FILE.value, new_file_rc.seq, str(e)))
                             logger.error(e, exc_info=True)
                     if isNotNullBlank(new_file_rc.id):
                         try:
-                            if not ESFileManager.rollbackFileRecord(user_rc.id, new_file_rc.id):
+                            if not ESFile.rollbackFileRecord(user_rc.id, new_file_rc.id):
                                 logger.error('Delete po quotation file [%s] failed.' % new_file_rc.id)
                         except Exception as e:
                             logger.error('Delete po quotation file [%s] failed: %s' % (new_file_rc.id, str(e)))
@@ -491,8 +487,8 @@ def upload_po_file(user_rc: User, class_nm: str, po_id: int, rmk: str, upload_fi
     is_success = False
     new_file_rc = None
     old_file_info = (po_rc.file.id, po_rc.file.file_nm) if isNotNullBlank(po_rc.file) else None
-    uploaded_file_path = ESFileManager.save_uploaded_really_file(upload_file, class_nm, user_rc.usr_nm)
-    uploaded_file_hash = ESFileManager.calculateFileHash(uploaded_file_path)
+    uploaded_file_path = ESFile.save_uploaded_really_file(upload_file, class_nm, user_rc.usr_nm)
+    uploaded_file_hash = ESFile.calculateFileHash(uploaded_file_path)
     __FILE_UPLOAD_LOCK.acquire()
     try:
         # check file is exists or not
@@ -501,7 +497,7 @@ def upload_po_file(user_rc: User, class_nm: str, po_id: int, rmk: str, upload_fi
             raise IkValidateException("This file exists. Please check. File name is [%s]. SN is %s." %
                                       (exist_file_rc.file.file_original_nm, exist_file_rc.file.seq))
 
-        new_file_rc = ES.prepare_upload_file(po_rc.office, ESFileManager.FileCategory.PO, uploaded_file_path)
+        new_file_rc = ES.prepare_upload_file(po_rc.office, ESFile.FileCategory.PO, uploaded_file_path)
         if isNotNullBlank(new_file_rc):
             po_rc.file = new_file_rc
             po_rc.file_rmk = rmk
@@ -535,22 +531,22 @@ def upload_po_file(user_rc: User, class_nm: str, po_id: int, rmk: str, upload_fi
             if is_success:
                 if isNotNullBlank(old_file_info):
                     # delete the old file
-                    original_file = ESFileManager.getIdFile(old_file_info[0], old_file_info[1])
-                    ESFileManager.delete_really_file(original_file)
+                    original_file = ESFile.getIdFile(old_file_info[0], old_file_info[1])
+                    ESFile.delete_really_file(original_file)
             else:  # failed
                 if isNotNullBlank(uploaded_file_path) and uploaded_file_path.is_file():
-                    ESFileManager.delete_really_file(uploaded_file_path)
+                    ESFile.delete_really_file(uploaded_file_path)
                 if isNotNullBlank(new_file_rc):
                     if isNotNullBlank(new_file_rc.seq):  # rollback file seq
                         try:
-                            SnManager.rollbackSeq(SnManager.SequenceType.SEQ_TYPE_PO_FILE, new_file_rc.office.id, new_file_rc.seq)
+                            ESSeq.rollbackSeq(ESSeq.SequenceType.SEQ_TYPE_PO_FILE, new_file_rc.office.id, new_file_rc.seq)
                         except Exception as e:
                             logger.error('Rollback po file [%s] sequence [%s] failed: %s' %
-                                         (SnManager.SequenceType.SEQ_TYPE_PO_FILE.value, new_file_rc.seq, str(e)))
+                                         (ESSeq.SequenceType.SEQ_TYPE_PO_FILE.value, new_file_rc.seq, str(e)))
                             logger.error(e, exc_info=True)
                     if isNotNullBlank(new_file_rc.id):
                         try:
-                            if not ESFileManager.rollbackFileRecord(user_rc.id, new_file_rc.id):
+                            if not ESFile.rollbackFileRecord(user_rc.id, new_file_rc.id):
                                 logger.error('Delete po file [%s] failed.' % new_file_rc.id)
                         except Exception as e:
                             logger.error('Delete po file [%s] failed: %s' % (new_file_rc.id, str(e)))

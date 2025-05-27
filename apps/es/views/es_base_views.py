@@ -1,5 +1,3 @@
-import logging
-
 from core.core.lang import Boolean2
 from core.log.logger import logger
 from core.models import UserOffice
@@ -18,7 +16,7 @@ class ESAPIView(ScreenAPIView):
         self._addStaticResource('es/css/es-v1.css')
 
     def getYesNo(self):
-        """Combox data"""
+        """Combobox data"""
         return [{
             'value': const.SETTLE_BY_PRIOR_BALANCE_NO,
             'display': const.SETTLE_BY_PRIOR_BALANCE_NO_DISPLAY

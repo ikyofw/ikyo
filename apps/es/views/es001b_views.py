@@ -1,10 +1,12 @@
 import logging
 
 from django.db.models import Q
+
 from core.core.exception import IkValidateException
 from core.utils.langUtils import isNullBlank
-from .es_base_views import ESAPIView
+
 from ..models import Payee
+from .es_base_views import ESAPIView
 
 logger = logging.getLogger('ikyo')
 
@@ -12,7 +14,6 @@ logger = logging.getLogger('ikyo')
 class ES001B(ESAPIView):
     """ES001B - Payee
     """
-    # TODO: each user belong to office, e.g. admin, others
 
     def getPayeeRcs(self):
         """Get payee records"""

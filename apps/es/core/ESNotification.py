@@ -4,11 +4,7 @@ import logging
 import traceback
 from enum import Enum, unique
 
-from django.db.models import Exists, OuterRef, Q
-
-import core.core.fs as ikfs
 import core.user.userManager as UserManager
-import core.utils.db as dbUtils
 from core.core.lang import Boolean2
 from core.core.mailer import MailManager
 from core.inbox import InboxManager
@@ -16,8 +12,8 @@ from core.menu.menuManager import MenuManager
 from core.models import User
 from core.sys.systemSetting import SystemSetting
 from core.utils.langUtils import isNotNullBlank, isNullBlank
-from es.models import *
 
+from ..models import *
 from . import approver, const
 from .accounting import get_accounting_user_ids
 from .activity import ActivityType
@@ -25,8 +21,6 @@ from .expense_type import ExpenseType
 from .petty_expense import get_petty_admin
 from .setting import is_enable_default_inbox_message
 from .status import Status
-
-# from wci.models import WciOffice
 
 logger = logging.getLogger('ikyo')
 
@@ -64,7 +58,6 @@ class MessageCategory(Enum):
 
 
 def is_email_notify_enabled() -> bool:
-    # TODO: old name ES-Email-Notify@WCI2
     v = SystemSetting.get(name="ES-Email-Notify", code=const.APP_CODE)
     return isNotNullBlank(v) and str(v).strip().lower() == "true"
 
@@ -315,7 +308,8 @@ def __send_approve_confirm_petty_notify(operator_id: int, payment_type: ExpenseT
             else:
                 # accounting(payer)
                 for usr_id in get_accounting_user_ids(office_rc):
-                    send_to_user_id_list.append(usr_id)
+                    if usr_id != operator_id:
+                        send_to_user_id_list.append(usr_id)
         send_to_user_id_list = list(set(send_to_user_id_list))
 
         # 1. send email
