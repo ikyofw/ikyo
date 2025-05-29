@@ -198,10 +198,17 @@ export const getFooterData = (footerPram, columnNumber, tableData, showRange) =>
   if (formula === "sum") {
     if (dataType === "int" || dataType === "float") {
       res = 0
+      let maxDecimalPlaces = 0
       columnDataList.forEach((data) => {
-        data = Number(data.replace(/,/g, ""))
-        res ? (res += data) : (res = data)
+        data = data.replace(/,/g, "")
+        const num = Number(data)
+        const decimalPart = data.split(".")[1]
+        if (decimalPart) {
+          maxDecimalPlaces = Math.max(maxDecimalPlaces, decimalPart.length)
+        }
+        res += num
       })
+      res = parseFloat(res.toFixed(maxDecimalPlaces))
     } else if ((dataType === "date" || dataType === "time" || dataType === "datetime") && format === "HH:mm:ss") {
       const resList = columnDataList[0].split(":")
       columnDataList.forEach((data, index) => {
@@ -232,10 +239,19 @@ export const getFooterData = (footerPram, columnNumber, tableData, showRange) =>
     }
   } else if (formula === "avg") {
     if (dataType === "int" || dataType === "float") {
+      let sum = 0
+      let maxDecimalPlaces = 0
       columnDataList.forEach((data) => {
-        data = Number(data.replace(/,/g, ""))
-        res ? (res += data / columnDataList.length) : (res = data / columnDataList.length)
+        data = data.replace(/,/g, "")
+        const num = Number(data)
+        const decimalPart = data.split(".")[1]
+        if (decimalPart) {
+          maxDecimalPlaces = Math.max(maxDecimalPlaces, decimalPart.length)
+        }
+        sum += num
       })
+      const avg = sum / columnDataList.length
+      res = parseFloat(avg.toFixed(maxDecimalPlaces))
     } else if ((dataType === "date" || dataType === "time" || dataType === "datetime") && format === "HH:mm:ss") {
       const resList = columnDataList[0].split(":")
       columnDataList.forEach((data, index) => {
