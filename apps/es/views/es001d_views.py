@@ -145,7 +145,10 @@ class ES001D(ESAPIView):
             if rc.approver is None and rc.approver_grp is None:
                 return IkErrJsonResponse(message="Either an Approver or an Approver Group must be provided!")
             thisOfficeApprovers = officeApproverIDs.get(rc.office.name, [])
-            approver_key = "%s-%s" % (rc.approver.id if rc.approver is not None else "",
+            approver_key = "%s-%s-%s-%s" % (
+                                        rc.claimer.id if rc.claimer is not None else "",
+                                        rc.claimer_grp.id if rc.claimer_grp is not None else "",
+                                        rc.approver.id if rc.approver is not None else "",
                                       rc.approver_grp.id if rc.approver_grp is not None else "")
             if approver_key in thisOfficeApprovers:
                 return IkErrJsonResponse(message="Approver is unique in an office. Plelse check office [%s]. Approver [%s], approver group [%s]."

@@ -13,6 +13,9 @@ __INIT_LOCK = Lock()
 # Setting name for allowing accounting to reject expenses and cash advances
 ALLOW_ACCOUNTING_TO_REJECT = "Allow accounting to reject expenses and cash advances"
 
+# Setting name for enabling default email notification
+ENABLE_DEFAULT_EMAIL_NOTIFICATION = "Enable email notification"
+
 # Setting name for enabling default inbox notification
 ENABLE_DEFAULT_INBOX_NOTIFICATION = "Enable inbox notification"
 
@@ -28,6 +31,10 @@ def is_accounting_rejectable() -> bool:
         bool: True if accounting rejection is allowed, otherwise False.
     """
     return __get_bool_setting(ALLOW_ACCOUNTING_TO_REJECT, True)
+
+
+def is_enable_email_notification() -> bool:
+    return __get_bool_setting(ENABLE_DEFAULT_EMAIL_NOTIFICATION, True)
 
 
 def is_enable_default_inbox_message() -> bool:
@@ -71,6 +78,8 @@ def init_settings() -> None:
     __INIT_LOCK.acquire()
     try:
         __add_setting(ALLOW_ACCOUNTING_TO_REJECT, 'true',
+                      "Options: true, false. Default is true.")
+        __add_setting(ENABLE_DEFAULT_EMAIL_NOTIFICATION, 'true',
                       "Options: true, false. Default is true.")
         __add_setting(ENABLE_DEFAULT_INBOX_NOTIFICATION, 'true',
                       "Options: true, false. Default is true.")

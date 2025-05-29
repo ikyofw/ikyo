@@ -14,8 +14,8 @@ class ES001G(ESAPIView):
     """
 
     def getSettingRcs(self):
-        return Setting.objects.filter(Q(cd=const.APP_CODE) & Q(Q(key=setting.ALLOW_ACCOUNTING_TO_REJECT) | Q(key=setting.ENABLE_DEFAULT_INBOX_NOTIFICATION)
-                                                               | Q(key=setting.ENABLE_AUTOMATIC_SETTLEMENT_UPON_APPROVAL))).order_by('key')
+        return Setting.objects.filter(Q(cd=const.APP_CODE) & Q(Q(key=setting.ALLOW_ACCOUNTING_TO_REJECT) | Q(key=setting.ENABLE_DEFAULT_EMAIL_NOTIFICATION)
+                                                               | Q(key=setting.ENABLE_DEFAULT_INBOX_NOTIFICATION) | Q(key=setting.ENABLE_AUTOMATIC_SETTLEMENT_UPON_APPROVAL))).order_by('key')
 
     # overwrite
     def _BIFSave(self):
@@ -23,7 +23,7 @@ class ES001G(ESAPIView):
         change_logs = []
         for rc in setting_rcs:
             rc: Setting
-            if rc.key in (setting.ALLOW_ACCOUNTING_TO_REJECT, setting.ENABLE_DEFAULT_INBOX_NOTIFICATION, setting.ENABLE_AUTOMATIC_SETTLEMENT_UPON_APPROVAL):
+            if rc.key in (setting.ALLOW_ACCOUNTING_TO_REJECT, setting.setting.ENABLE_DEFAULT_EMAIL_NOTIFICATION, setting.ENABLE_DEFAULT_INBOX_NOTIFICATION, setting.ENABLE_AUTOMATIC_SETTLEMENT_UPON_APPROVAL):
                 if rc.ik_is_status_modified():
                     value = rc.value
                     if isNullBlank(value):

@@ -19,7 +19,8 @@ from .accounting import get_accounting_user_ids
 from .activity import ActivityType
 from .expense_type import ExpenseType
 from .petty_expense import get_petty_admin
-from .setting import is_enable_default_inbox_message
+from .setting import (is_enable_default_inbox_message,
+                      is_enable_email_notification)
 from .status import Status
 
 logger = logging.getLogger('ikyo')
@@ -57,11 +58,6 @@ class MessageCategory(Enum):
     # TS_REMINDER = "TS Reminder"  # INBOX_NOTIFY_CATEGORY_TS_REMINDER
 
 
-def is_email_notify_enabled() -> bool:
-    v = SystemSetting.get(name="ES-Email-Notify", code=const.APP_CODE)
-    return isNotNullBlank(v) and str(v).strip().lower() == "true"
-
-
 def __is_add_notify_url(status: str, claimer_id: int, receiver_id: int) -> bool:
     return status != Status.REJECTED.value or claimer_id == receiver_id
 
@@ -81,7 +77,7 @@ def send_submit_cancel_reject_cash_advancement_notify(operator_id: int, cash_adv
 
 def __send_submit_cancel_reject_notify(operator_id: int, payment_type: ExpenseType, hdr_rc: Expense | CashAdvancement) -> None:
     try:
-        need_to_send_mail = is_email_notify_enabled()
+        need_to_send_mail = is_enable_email_notification()
         need_to_send_inbox = is_enable_default_inbox_message()
         if not need_to_send_mail and not need_to_send_inbox:
             logger.info("ignore send email and inbox.")
@@ -219,7 +215,7 @@ def send_approve_cash_advancement_notify(operator_id: int, cash_advancement_reco
 
 def __send_approve_confirm_petty_notify(operator_id: int, payment_type: ExpenseType, hdr_rc: Expense | CashAdvancement) -> None:
     try:
-        need_to_send_mail = is_email_notify_enabled()
+        need_to_send_mail = is_enable_email_notification()
         need_to_send_inbox = is_enable_default_inbox_message()
         if not need_to_send_mail and not need_to_send_inbox:
             logger.info("ignore send email and inbox.")
@@ -347,7 +343,7 @@ def send_po_notify(operator_id: int, po_rc: Po) -> None:
         po_rc (Po): Po Record
     """
     try:
-        need_to_send_mail = is_email_notify_enabled()
+        need_to_send_mail = is_enable_email_notification()
         need_to_send_inbox = is_enable_default_inbox_message()
         if not need_to_send_mail and not need_to_send_inbox:
             logger.info("ignore send email and inbox.")
