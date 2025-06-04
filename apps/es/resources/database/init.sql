@@ -44,6 +44,9 @@ insert into ik_menu(version_no ,menu_nm,menu_caption,screen_nm,parent_menu_id,"e
 insert into ik_menu(version_no,menu_nm,menu_caption,screen_nm,parent_menu_id,"enable",order_no,sub_menu_lct)
 	values(0, 'ES101', 'ES101 - Expense Report', 'ES101', (select id from ik_menu where menu_nm='ES'), true, 700, 'top');
 
+insert into ik_menu(version_no,menu_nm,menu_caption,screen_nm,parent_menu_id,"enable",order_no,sub_menu_lct)
+	values(0, 'ES102', 'ES102 - Cash Advancement Report', 'ES102', (select id from ik_menu where menu_nm='ES'), true, 800, 'top');
+
 -- ES001A - Payment Method
 INSERT INTO es_paymentmethod(cre_usr_id,cre_dt,mod_usr_id,mod_dt,version_no,tp,dsc) VALUES
     (1, now(), 1, now(), 0, 'bank transfer', NULL), 
@@ -125,6 +128,8 @@ CREATE OR REPLACE VIEW es_v_user_expense AS
 	FROM es_expense e
 	JOIN es_approver a ON a.enable IS true AND a.office_id = e.office_id
 	WHERE a.approver_id IS NOT NULL
+	  AND (a.claimer_id IS NULL OR e.claimer_id = a.claimer_id)
+	  AND (a.claimer_grp_id IS NULL OR EXISTS (SELECT id FROM ik_usr_grp ug WHERE ug.grp_id=a.claimer_grp_id AND ug.usr_id=e.claimer_id))
 	
 	-- 4.2 Approver Group
 	UNION
@@ -136,6 +141,8 @@ CREATE OR REPLACE VIEW es_v_user_expense AS
 	JOIN es_approver a ON a.enable IS true AND a.office_id = e.office_id
 	JOIN ik_usr_grp ug ON ug.grp_id = a.approver_grp_id
 	WHERE a.approver_grp_id IS NOT NULL
+	  AND (a.claimer_id IS NULL OR e.claimer_id = a.claimer_id)
+	  AND (a.claimer_grp_id IS NULL OR EXISTS (SELECT id FROM ik_usr_grp ug WHERE ug.grp_id=a.claimer_grp_id AND ug.usr_id=e.claimer_id))
 	
 	UNION
 	
@@ -147,6 +154,8 @@ CREATE OR REPLACE VIEW es_v_user_expense AS
 	FROM es_expense e
 	JOIN es_approver a ON a.enable IS true AND a.office_id = e.office_id
 	WHERE a.approver_assistant_id IS NOT NULL
+	  AND (a.claimer_id IS NULL OR e.claimer_id = a.claimer_id)
+	  AND (a.claimer_grp_id IS NULL OR EXISTS (SELECT id FROM ik_usr_grp ug WHERE ug.grp_id=a.claimer_grp_id AND ug.usr_id=e.claimer_id))
 	
 	UNION 
 	-- 4.4 Approver Assistant Group
@@ -158,6 +167,8 @@ CREATE OR REPLACE VIEW es_v_user_expense AS
 	JOIN es_approver a ON a.enable IS true AND a.office_id = e.office_id
 	JOIN ik_usr_grp ug ON ug.grp_id = a.approver_assistant_grp_id
 	WHERE a.approver_assistant_grp_id IS NOT NULL
+	  AND (a.claimer_id IS NULL OR e.claimer_id = a.claimer_id)
+	  AND (a.claimer_grp_id IS NULL OR EXISTS (SELECT id FROM ik_usr_grp ug WHERE ug.grp_id=a.claimer_grp_id AND ug.usr_id=e.claimer_id))
 	
 	-- 4.5 Approver2
 	UNION
@@ -168,6 +179,8 @@ CREATE OR REPLACE VIEW es_v_user_expense AS
 	FROM es_expense e
 	JOIN es_approver a ON a.enable IS true AND a.office_id = e.office_id
 	WHERE a.approver2_id IS NOT NULL AND e.claim_amt >= a.approver2_min_amount
+	  AND (a.claimer_id IS NULL OR e.claimer_id = a.claimer_id)
+	  AND (a.claimer_grp_id IS NULL OR EXISTS (SELECT id FROM ik_usr_grp ug WHERE ug.grp_id=a.claimer_grp_id AND ug.usr_id=e.claimer_id))
 	
 	-- 4.6 Approver2 Group
 	UNION
@@ -179,6 +192,8 @@ CREATE OR REPLACE VIEW es_v_user_expense AS
 	JOIN es_approver a ON a.enable IS true AND a.office_id = e.office_id
 	JOIN ik_usr_grp ug ON ug.grp_id = a.approver2_grp_id
 	WHERE a.approver2_grp_id IS NOT NULL AND e.claim_amt >= a.approver2_min_amount
+	  AND (a.claimer_id IS NULL OR e.claimer_id = a.claimer_id)
+	  AND (a.claimer_grp_id IS NULL OR EXISTS (SELECT id FROM ik_usr_grp ug WHERE ug.grp_id=a.claimer_grp_id AND ug.usr_id=e.claimer_id))
 	
 	-- 5. UserRole with acl
 	UNION
@@ -199,6 +214,7 @@ CREATE OR REPLACE VIEW es_v_user_expense AS
 COMMENT ON VIEW es_v_user_expense IS 'Query the expenses that user can accessable';
 
 -- create view es_v_user_cash_advancement
+
 CREATE OR REPLACE VIEW es_v_user_cash_advancement AS
  SELECT DISTINCT * FROM (
 	-- 1. Claimer can access their own expense (admin)
@@ -238,6 +254,8 @@ CREATE OR REPLACE VIEW es_v_user_cash_advancement AS
 	JOIN es_approver a ON a.enable IS true AND a.office_id = e.office_id
 	JOIN ik_usr_grp ug ON ug.grp_id = a.approver_grp_id
 	WHERE a.approver_grp_id IS NOT NULL
+	  AND (a.claimer_id IS NULL OR e.claimer_id = a.claimer_id)
+	  AND (a.claimer_grp_id IS NULL OR EXISTS (SELECT id FROM ik_usr_grp ug WHERE ug.grp_id=a.claimer_grp_id AND ug.usr_id=e.claimer_id))
 	
 	-- 3.3 Approver Assistant
 	UNION
@@ -248,6 +266,8 @@ CREATE OR REPLACE VIEW es_v_user_cash_advancement AS
 	FROM es_cashadvancement e
 	JOIN es_approver a ON a.enable IS true AND a.office_id = e.office_id
 	WHERE a.approver_assistant_id IS NOT NULL
+	  AND (a.claimer_id IS NULL OR e.claimer_id = a.claimer_id)
+	  AND (a.claimer_grp_id IS NULL OR EXISTS (SELECT id FROM ik_usr_grp ug WHERE ug.grp_id=a.claimer_grp_id AND ug.usr_id=e.claimer_id))
 	 
 	-- 3.4 Approver Assistant Group
 	UNION
@@ -259,6 +279,8 @@ CREATE OR REPLACE VIEW es_v_user_cash_advancement AS
 	JOIN es_approver a ON a.enable IS true AND a.office_id = e.office_id
 	JOIN ik_usr_grp ug ON ug.grp_id = a.approver_assistant_grp_id
 	WHERE a.approver_assistant_grp_id IS NOT NULL
+	  AND (a.claimer_id IS NULL OR e.claimer_id = a.claimer_id)
+	  AND (a.claimer_grp_id IS NULL OR EXISTS (SELECT id FROM ik_usr_grp ug WHERE ug.grp_id=a.claimer_grp_id AND ug.usr_id=e.claimer_id))
 	
 	-- 3.5 Approver2
 	UNION
@@ -269,6 +291,8 @@ CREATE OR REPLACE VIEW es_v_user_cash_advancement AS
 	FROM es_cashadvancement e
 	JOIN es_approver a ON a.enable IS true AND a.office_id = e.office_id
 	WHERE a.approver2_id IS NOT NULL AND e.claim_amt >= a.approver2_min_amount
+	  AND (a.claimer_id IS NULL OR e.claimer_id = a.claimer_id)
+	  AND (a.claimer_grp_id IS NULL OR EXISTS (SELECT id FROM ik_usr_grp ug WHERE ug.grp_id=a.claimer_grp_id AND ug.usr_id=e.claimer_id))
 	
 	UNION
 	
@@ -281,6 +305,8 @@ CREATE OR REPLACE VIEW es_v_user_cash_advancement AS
 	JOIN es_approver a ON a.enable IS true AND a.office_id = e.office_id
 	JOIN ik_usr_grp ug ON ug.grp_id = a.approver2_grp_id
 	WHERE a.approver2_grp_id IS NOT NULL AND e.claim_amt >= a.approver2_min_amount
+	  AND (a.claimer_id IS NULL OR e.claimer_id = a.claimer_id)
+	  AND (a.claimer_grp_id IS NULL OR EXISTS (SELECT id FROM ik_usr_grp ug WHERE ug.grp_id=a.claimer_grp_id AND ug.usr_id=e.claimer_id))
 	
 	-- 4. UserRole with acl
 	UNION

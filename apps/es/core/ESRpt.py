@@ -12,18 +12,20 @@ from core.utils.langUtils import isNotNullBlank, isNullBlank
 from core.utils.modelUtils import redcordsets2List
 from core.utils.spreadsheet import SpreadsheetWriter
 
-from ..models import CashAdvancement, ExpenseDetail, Office, PriorBalance
-from . import ESFile
+from . import ESFile, acl
 from .status import Status
+
+from ..models import CashAdvancement, Expense, ExpenseDetail, Office, PriorBalance, PaymentMethod
+from core.models import User
 
 logger = logging.getLogger('ikyo')
 
 
-def generate_rpt(operator_id: int, template_file: Path, sch_items: dict) -> Path:
+def generate_rpt(operator: User, template_file: Path, sch_items: dict) -> Path:
     """Generate expense report (ES101).
 
     Args:
-        operator_id (int): Report generator's ID.
+        operator (User): Report generator.
         template_file (:obj:'pathlib.Path'): Report template file. E.g. resource\templates\ES101\ES101-v1.xlsx
         sch_items (dict): Office code and date range.
 
@@ -37,6 +39,17 @@ def generate_rpt(operator_id: int, template_file: Path, sch_items: dict) -> Path
     office = sch_items.get('schOffice', None)
     incurrence_date_from = sch_items.get("schDateFrom", None)
     incurrence_date_to = sch_items.get('schDateTo', None)
+    pay_med = sch_items.get('schPayMed', None)
+    if str(pay_med) == "-1":
+        pay_med = list(
+            PaymentMethod.objects.filter(tp__in=["petty cash", "prior balance"])
+            .order_by("tp")
+            .values_list("id", flat=True)
+        )
+    elif isNotNullBlank(pay_med):
+        pay_med = [pay_med]
+    else:
+        pay_med = []
 
     if isNullBlank(office):
         raise IkValidateException("Please select an office.")
@@ -54,10 +67,14 @@ def generate_rpt(operator_id: int, template_file: Path, sch_items: dict) -> Path
         logger.error('Template file [%s] does not exist.' % template_file.absolute())
         raise IkValidateException('System error: template file does not exist.')
 
+    filter_expense_queryset = acl.add_query_filter(Expense.objects, operator)
     queryset = ExpenseDetail.objects.filter(
         hdr__payee__office=office_rc,
-        hdr__sts=Status.SETTLED.value
+        hdr__sts=Status.SETTLED.value,
+        hdr__in=filter_expense_queryset,
     )
+    if len(pay_med) > 0:
+        queryset = queryset.filter(hdr__payment_tp_id__in=pay_med)
     if isNotNullBlank(incurrence_date_from):
         queryset = queryset.filter(incur_dt__gte=incurrence_date_from)  # d.incur_dt>=%s
     if isNotNullBlank(incurrence_date_to):
@@ -77,12 +94,17 @@ def generate_rpt(operator_id: int, template_file: Path, sch_items: dict) -> Path
         ),
         claimer_nm=F('hdr__claimer__usr_nm')
     ).values(
-        'incur_dt', 'dsc', 'cat__cat', 'ccy__code', 'amt', 'ex_rate',
+        'hdr__id', 'incur_dt', 'dsc', 'cat__cat', 'ccy__code', 'amt', 'ex_rate',
         'amt_calculated', 'prj_nm', 'hdr__payment_tp__tp', 'trn_ref',
         'claimer_nm', 'hdr__sn', 'file__seq'
     )
 
     queryset = queryset.order_by('incur_dt', 'dsc', 'cat')
+    for rc in queryset:
+        related_ca = PriorBalance.objects.filter(expense_id=rc['hdr__id']).select_related('ca')
+        ca_sns = related_ca.order_by('ca__sn').values_list('ca__sn', flat=True)
+        rc['ref_ca_no'] = ','.join(ca_sns)
+
     expense_table = list(queryset)
     for i in expense_table:
         i['incur_dt'] = __to_datetime(i['incur_dt'])
@@ -92,7 +114,10 @@ def generate_rpt(operator_id: int, template_file: Path, sch_items: dict) -> Path
         hdr__payee__office=office_rc,
         hdr__sts=Status.SETTLED.value,
         hdr__payment_record_file__file_original_nm__isnull=False,
+        hdr__in=filter_expense_queryset,
     )
+    if len(pay_med) > 0:
+        expense_queryset = expense_queryset.filter(hdr__payment_tp_id__in=pay_med)
     if isNotNullBlank(incurrence_date_from):
         expense_queryset = expense_queryset.filter(incur_dt__gte=incurrence_date_from)
     if isNotNullBlank(incurrence_date_to):
@@ -112,13 +137,17 @@ def generate_rpt(operator_id: int, template_file: Path, sch_items: dict) -> Path
             repeat_flag.append(sn)
 
     # Part 2: e-Cheque for Cash Advancement
-    cash_queryset = CashAdvancement.objects.select_related(
+    cash_queryset = CashAdvancement.objects
+    cash_queryset = acl.add_query_filter(cash_queryset, operator)
+    cash_queryset = cash_queryset.select_related(
         'payment_activity', 'payment_record_file', 'payee'
     ).filter(
         payee__office=office_rc,
         sts=Status.SETTLED.value,
         payment_record_file__file_original_nm__isnull=False,
     )
+    if len(pay_med) > 0:
+        cash_queryset = cash_queryset.filter(payment_tp_id__in=pay_med,)
     if isNotNullBlank(incurrence_date_from):
         cash_queryset = cash_queryset.filter(payment_activity__operate_dt__gte=incurrence_date_from)
     if isNotNullBlank(incurrence_date_to):
@@ -151,10 +180,11 @@ def generate_rpt(operator_id: int, template_file: Path, sch_items: dict) -> Path
     data['ccy'] = office_rc.ccy.code
     data['dateFrom'] = '-' if isNullBlank(incurrence_date_from) else incurrence_date_from
     data['dateTo'] = '-' if isNullBlank(incurrence_date_to) else incurrence_date_to
-    data['reporter'] = UserManager.getUser(operator_id).usr_nm
+    data['reporter'] = operator.usr_nm
     data['reportDate'] = rptDate
     data['expenseTable'] = redcordsets2List(expense_table,
-                                            ["incur_dt", "dsc", "cat__cat", "ccy__code", "amt", "ex_rate", "amt_calculated", "prj_nm", "hdr__payment_tp__tp", "trn_ref", "claimer_nm", "hdr__sn", "file__seq"])
+                                            ["incur_dt", "dsc", "cat__cat", "ccy__code", "amt", "ex_rate", "amt_calculated", "prj_nm", "hdr__payment_tp__tp",
+                                             "trn_ref", "claimer_nm", "hdr__sn", "file__seq", "ref_ca_no"])
     # sheet 2
     data['echequeFileListTable'] = redcordsets2List(e_cheque_table, ["row_no", "sn", "echeque_file_nm", "type", "ref_expense_no"])
 
@@ -172,12 +202,12 @@ def generate_rpt(operator_id: int, template_file: Path, sch_items: dict) -> Path
         date_from_list = []
         date_from_list.append(__to_datetime(expense_table[0]['incur_dt'])) if len(expense_table) > 0 else None
         date_from_list.append(e_cheque_table[0]['incur_dt']) if len(e_cheque_table) > 0 else None
-        incurrence_date_from = min(date_from_list).strftime("%Y-%m-%d")
+        incurrence_date_from = min(date_from_list).strftime("%Y-%m-%d") if len(date_from_list) > 0 else None
     if isNullBlank(incurrence_date_to):
         date_to_list = []
-        date_to_list.append(__to_datetime(expense_table[0]['incur_dt'])) if len(expense_table) > 0 else None
+        date_to_list.append(__to_datetime(expense_table[-1]['incur_dt'])) if len(expense_table) > 0 else None
         date_to_list.append(e_cheque_table[-1]['incur_dt']) if len(e_cheque_table) > 0 else None
-        incurrence_date_to = max(date_to_list).strftime("%Y-%m-%d")
+        incurrence_date_to = max(date_to_list).strftime("%Y-%m-%d") if len(date_to_list) > 0 else None
     return outputFile, incurrence_date_from, incurrence_date_to
 
 

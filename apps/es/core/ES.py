@@ -757,7 +757,7 @@ def submitExpense(claimer_rc: User, office_rc: Office, expense_id: int, payeeID:
 
         # update expense hdr
         now = datetime.now()
-        originalStatus = hdr_rc.sts
+        #originalStatus = hdr_rc.sts
         hdr_rc.sts = Status.SUBMITTED.value
         hdr_rc.office = office_rc
         hdr_rc.claimer = claimer_rc
@@ -767,6 +767,8 @@ def submitExpense(claimer_rc: User, office_rc: Office, expense_id: int, payeeID:
         hdr_rc.payee = payeeRc
         hdr_rc.approver = approver_rc
         hdr_rc.use_prior_balance = isSettleByPriorBalance
+        if isSettleByPriorBalance:
+            hdr_rc.payment_tp = PaymentMethod.objects.filter(tp=PaymentMethod.PRIOR_BALANCE.value).first()
         hdr_rc.po = po_rc
         hdr_rc.dsc = expenseDescription
 
@@ -780,6 +782,7 @@ def submitExpense(claimer_rc: User, office_rc: Office, expense_id: int, payeeID:
         hdr_rc.is_petty_expense = isSettleByPettyCash
         if isSettleByPettyCash:
             hdr_rc.pay_amt = hdr_rc.claim_amt
+            hdr_rc.payment_tp = PaymentMethod.objects.filter(tp=PaymentMethod.PETTY_CASH.value).first()
 
         pytrn = IkTransaction(userID=claimer_rc.id)
         pytrn.add(submit_activity)
@@ -985,6 +988,7 @@ def cancel_expense(operator_id: int, expense_hdr_id: int, cancel_reason: str) ->
     try:
         # validate
         hdr_rc = acl.add_query_filter(Expense.objects, canceller_rc).filter(id=expense_hdr_id).first()
+        hdr_rc : Expense
         if hdr_rc is None:
             logger.error("Expense doesn't exist. ID=%s" % expense_hdr_id)
             return Boolean2.FALSE("Expense doesn't exist.")
@@ -998,6 +1002,8 @@ def cancel_expense(operator_id: int, expense_hdr_id: int, cancel_reason: str) ->
         cancel_date = datetime.now()
         hdr_rc.sts = Status.CANCELLED.value
         hdr_rc.use_prior_balance = False
+        hdr_rc.is_petty_expense = False
+        hdr_rc.payment_tp = None
         hdr_rc.pay_amt = hdr_rc.claim_amt
 
         cancel_activity = Activity(tp=ActivityType.EXPENSE.value, transaction_id=hdr_rc.id,
@@ -1043,6 +1049,7 @@ def reject_expense(operator_id: int, expense_hdr_id: int, reject_reason: str) ->
     try:
         # validate
         hdr_rc = acl.add_query_filter(Expense.objects, rejector_rc).filter(id=expense_hdr_id).first()
+        hdr_rc: Expense
         if hdr_rc is None:
             logger.error("Expense doesn't exist. ID=%s" % expense_hdr_id)
             return Boolean2.FALSE("Expense doesn't exist.")
@@ -1064,6 +1071,8 @@ def reject_expense(operator_id: int, expense_hdr_id: int, reject_reason: str) ->
         reject_date = datetime.now()
         hdr_rc.sts = Status.REJECTED.value
         hdr_rc.use_prior_balance = False
+        hdr_rc.is_petty_expense = False
+        hdr_rc.payment_tp = None
         hdr_rc.pay_amt = hdr_rc.claim_amt
 
         reject_activity = Activity(tp=ActivityType.EXPENSE.value, transaction_id=hdr_rc.id,

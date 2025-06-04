@@ -109,7 +109,7 @@ class ES005(ESAPIView):
                 screen.setFieldsVisible('sdToolbar', 'bttDeleteSD', hasSupportingDoc and approveable)
 
                 screen.setFieldsVisible('toolbar', 'bttApprove', approveable)
-                screen.setFieldsVisible('toolbar', 'bttSubmitPettyCashExpense', isWait4SubmitPettyCashExpense and isPettyCashExpenseOfficeAdministrator)
+                screen.setFieldsVisible('toolbar', 'bttSettlePettyExpense', isWait4SubmitPettyCashExpense and isPettyCashExpenseOfficeAdministrator)
                 screen.setFieldsVisible('toolbar', 'bttReject', rejectable)
                 screen.setFieldsVisible('toolbar', 'bttSettle', settle_able)
                 screen.setFieldsVisible('toolbar', 'bttRevertSettledPayment', revertSettledPayment)

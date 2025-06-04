@@ -22,7 +22,7 @@ def get_user_offices(user: User, contains_acl_offices: bool = False) -> list[Off
     Args:
         user (User): The user whose associated offices are to be retrieved.
         contains_acl_offices (bool, optional): If True, only offices with an entry in the `UserOffice` table and other accessable offices (Approver, Accounting, PettyCashExpenseAdmin, UserRole, etc)
-                                                are included in the result. Defaults to True.
+                                                are included in the result. Defaults to False.
 
     Returns:
         list[Office]: A list of `Office` objects associated with the user, ordered by their `code`.

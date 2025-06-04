@@ -170,20 +170,23 @@ class ES006(ESAPIView):
                         petty_expense_summary += '\n'
                     petty_expense_summary += '%s. %s - %s' % (seq, pbRc.expense.sn, pbRc.balance_amt)
 
-                queryUsage = ''
+                query_usage = ''
                 seq = 0
                 left_flag = False
-                for (ccy_rc, _isFx, total, _used, left) in usages:
-                    if int(left) > 0:
-                        left_flag = True
-                    seq += 1
-                    if seq > 1:
-                        queryUsage += '\n'
-                    queryUsage += '%s. %s:  %s / %s' % (seq, ccy_rc.code, left, total)
+                if len(usages) == 1:
+                    query_usage = usages[0][4]
+                else:
+                    for (ccy_rc, _isFx, total, _used, left) in usages:
+                        if int(left) > 0:
+                            left_flag = True
+                        seq += 1
+                        if seq > 1:
+                            query_usage += '\n'
+                        query_usage += '%s. %s:  %s / %s' % (seq, ccy_rc.code, left, total)
 
                 r['query_expenses'] = normal_expense_summary
                 r['query_petty_expenses'] = petty_expense_summary
-                r['query_usage'] = queryUsage
+                r['query_usage'] = query_usage
                 r['left_flag'] = left_flag
             return results
 
