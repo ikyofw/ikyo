@@ -768,7 +768,7 @@ def submitExpense(claimer_rc: User, office_rc: Office, expense_id: int, payeeID:
         hdr_rc.approver = approver_rc
         hdr_rc.use_prior_balance = isSettleByPriorBalance
         if isSettleByPriorBalance:
-            hdr_rc.payment_tp = PaymentMethod.objects.filter(tp=PaymentMethod.PRIOR_BALANCE.value).first()
+            hdr_rc.payment_tp = PaymentMethod.objects.filter(tp=PaymentMethod.PRIOR_BALANCE).first()
         hdr_rc.po = po_rc
         hdr_rc.dsc = expenseDescription
 
@@ -782,7 +782,7 @@ def submitExpense(claimer_rc: User, office_rc: Office, expense_id: int, payeeID:
         hdr_rc.is_petty_expense = isSettleByPettyCash
         if isSettleByPettyCash:
             hdr_rc.pay_amt = hdr_rc.claim_amt
-            hdr_rc.payment_tp = PaymentMethod.objects.filter(tp=PaymentMethod.PETTY_CASH.value).first()
+            hdr_rc.payment_tp = PaymentMethod.objects.filter(tp=PaymentMethod.PETTY_CASH).first()
 
         pytrn = IkTransaction(userID=claimer_rc.id)
         pytrn.add(submit_activity)
