@@ -67,7 +67,7 @@ def saveScreen(self, screenSn, isNew, currentBtnClick) -> Boolean2:
             if isNotNullBlank(classNm) and appNm not in classNm:
                 return Boolean2(False, "Screen Class Name must contain App Name, please check.")
             if isNotNullBlank(classNm) and sn not in classNm:
-                return Boolean2(False, "Screen Class Name must contain Screen SN, please check.")
+                return Boolean2(False, "Screen Class Name must contain Screen ID, please check.")
 
             b = __is_model_class_exists(appNm, sn, classNm)
             if not b.value:

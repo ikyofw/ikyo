@@ -210,7 +210,10 @@ class ScreenDfnView(ScreenAPIView):
         if not strUtils.isEmpty(screenSn) and not isNewScreen:
             data = Screen.objects.filter(screen_sn__iexact=screenSn).order_by("-rev").first()
         else:
-            data['template_version'] = 1
+            templateFileFolder = ikui.IkUI.getScreenFileTemplateFolder()
+            templateFile = ikfs.getLastRevisionFile(templateFileFolder, 'template.xlsx')
+            template_rev = ikuidb._extract_version_from_path(templateFile)
+            data['template_version'] = template_rev
             data['editable'] = True
         return data
 
@@ -881,7 +884,8 @@ class ScreenDfnView(ScreenAPIView):
                 for d in dialogs:
                     if isNotNullBlank(d):
                         parts = d.split(":", 1)
-                        dialog[parts[0]] = parts[1]
+                        if len(parts) == 2:
+                            dialog[parts[0]] = parts[1]
                 widgetPrams['name'] = dialog["name"] if 'name' in dialog else ''
                 widgetPrams['title'] = dialog["title"] if 'title' in dialog else ''
                 widgetPrams['uploadTip'] = dialog["uploadTip"] if 'uploadTip' in dialog else ''

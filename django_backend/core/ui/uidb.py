@@ -29,7 +29,7 @@ def syncScreenDefinitions(userID: int = None):
 
     # excel to database
     template_file = ikfs.getLastRevisionFile(ikui.getScreenFileTemplateFolder(), 'template.xlsx')
-    template_rev = __extract_version_from_path(template_file)
+    template_rev = _extract_version_from_path(template_file)
     
     def get_app_screen_files(fp, app_name) -> dict:
         screen_files = {}
@@ -257,7 +257,7 @@ def screenDbWriteToExcel(screenRc: Screen, fileRmk: str = None) -> Boolean2:
 # get screen definition from database
 def __getExpDataFromDB(screenRc: Screen, isCSV: bool = None):
     template_file = ikfs.getLastRevisionFile(ikui.getScreenFileTemplateFolder(), 'template.xlsx')
-    template_rev = __extract_version_from_path(template_file)
+    template_rev = _extract_version_from_path(template_file)
 
     rsRcs = ScreenRecordset.objects.filter(screen=screenRc).order_by('seq', 'id')
     fgRcs = ScreenFieldGroup.objects.filter(screen=screenRc).order_by('seq', 'id')
@@ -420,7 +420,7 @@ def __toBool(yesNo, default=None) -> bool:
     return yesNo is not None and yesNo.lower() == 'yes'
 
 
-def __extract_version_from_path(file_path):
+def _extract_version_from_path(file_path):
     file_path_str = str(file_path)
     match = re.search(r'v(\d+)', file_path_str)
     if match:
