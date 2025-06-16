@@ -29,7 +29,6 @@ import core.ui.ui as ikui
 import core.utils.db as dbUtils
 import core.utils.modelUtils as modelUtils
 import core.utils.spreadsheet as spreadsheet
-from core.utils import templateManager
 from core.core.code import MessageType
 from core.core.exception import (IkException, IkMessageException,
                                  IkValidateException)
@@ -38,6 +37,7 @@ from core.db.model import DummyModel, Model
 from core.db.transaction import IkTransaction, IkTransactionForeignKey
 from core.menu.menuManager import MenuManager
 from core.sys.accessLog import addAccessLog
+from core.utils import templateManager
 from core.utils.langUtils import isNotNullBlank, isNullBlank
 from core.view.authView import AuthAPIView
 from iktools import IkConfig
@@ -487,10 +487,10 @@ class ScreenAPIView(AuthAPIView):
                     data = None
             else:
                 tableModelAdditionalFields = []
-                if field is None: # table, if field is not None, then ignore it, e.g. get combox data
+                if field is None:  # table, if field is not None, then ignore it, e.g. get combox data
                     for field2 in fieldGroup.fields:
                         if field2.dataField and (ikDbModels.FOREIGN_KEY_VALUE_FLAG in field2.dataField
-                                                or field2.dataField.startswith(ikDbModels.MODEL_PROPERTY_ATTRIBUTE_NAME_PREFIX)):
+                                                 or field2.dataField.startswith(ikDbModels.MODEL_PROPERTY_ATTRIBUTE_NAME_PREFIX)):
                             tableModelAdditionalFields.append(field2.dataField)
                 if isinstance(r, ikhttp.IkJsonResponse):
                     self._addMessages(r.messages)
@@ -572,6 +572,36 @@ class ScreenAPIView(AuthAPIView):
         logLevel = IkConfig.get('System', "browserLogLevel")
         return ikhttp.IkSccJsonResponse(data={'fieldGroupNames': fieldGroupNames, PARAMETER_KEY_NAME_SCREEN_UUID: SUUID, 'logLevel': logLevel})
 
+    def get_static_folder(self) -> str:
+        """
+        Get the static folder path in the current app.
+
+        :return: The full static folder path: resources/static.
+        """
+        app_name = self.__module__.split('.')[0]
+        base_dir = Path(__file__).resolve().parent.parent.parent
+        static_dir = base_dir / app_name / 'resources' / 'static'
+        return static_dir
+
+    def get_last_static_revision_file(self, filename=None, code=None) -> str:
+        ''' 
+            return static file. E.g. el/css/xxxx-v99.css
+        '''
+        code = self._functionCode if code is None else code
+        path = self.get_static_folder()
+        if code is not None:
+            path = path / str(code)
+        else:
+            path = path / str(self.__class__.__name__)
+        static_file = ikfs.getLastRevisionFile(path, filename)
+        static_file = Path(static_file)
+        try:
+            parts = static_file.parts
+            static_index = parts.index("static")
+            return str(Path(*parts[static_index + 1:]))
+        except ValueError:
+            return str(static_file)
+
     def get_templates_folder(self) -> str:
         """
         Get the template folder path in the current app.
@@ -586,7 +616,7 @@ class ScreenAPIView(AuthAPIView):
     def getLastTemplateRevisionFile(self, filename=None, code=None) -> str:
         ''' 
             filename: if filename is None, then try to find the last file named [code].xlsx, then [code]-Template.xlsx file if exists.
-            return tempate file. E.g. var/templates/ikyo/GP/GP020/xxxx-v99.xlsx
+            return template file. E.g. var/templates/ikyo/GP/GP020/xxxx-v99.xlsx
         '''
         templateFilename = filename
         if templateFilename is None and self._functionCode is not None:
@@ -1236,13 +1266,13 @@ class ScreenAPIView(AuthAPIView):
             get previous screen's menu name from session
         """
         return self.getSessionParameter(name=_OPEN_SCREEN_PARAM_KEY_NAME, isGlobal=True)
-    
+
     def _deletePreviousScreenRequestData(self) -> dict:
         """
             get previous screen's menu name from session
         """
         return self.getSessionParameter(name=_OPEN_SCREEN_PARAM_KEY_NAME, delete=True, isGlobal=True)
-    
+
     def _getPreviousScreenName(self) -> str:
         """
             get previous screen's menu name from session
