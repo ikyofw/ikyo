@@ -68,6 +68,7 @@ export function showMessage(messages: Array<Object>, refresh: boolean = true) {
       }
     })
   }
+  pyiLocalStorage.clearSysMsgs()
 
   if (messages && messages.length > 0) {
     // clearMessage()
