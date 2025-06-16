@@ -23,9 +23,8 @@ from core.core.lang import Boolean2
 from core.models import Mail, MailAddr, MailAttch
 from core.sys.systemSetting import SystemSetting
 from core.utils import strUtils, templateManager
-from core.utils.langUtils import isNotNullBlank, isNullBlank, validateEmail
+from core.utils.langUtils import isNotNullBlank, isNullBlank
 from django.db import DatabaseError, transaction
-from django.db.models.query import QuerySet
 from iktools import IkConfig
 
 logger = logging.getLogger('ikyo')
@@ -365,46 +364,54 @@ class __MailManager:
         if isNullBlank(to) or (isinstance(to, list) and len(to) == 0):
             return Boolean2(False, 'The recipient of the email is mandatory.')
 
+        # distinct
+        if isinstance(to, list):
+            to = list(dict.fromkeys(to))
+        if isinstance(cc, list):
+            cc = list(dict.fromkeys(cc))
+        if isinstance(bcc, list):
+            bcc = list(dict.fromkeys(bcc))
+
         mail_type = None
-        if isNotNullBlank(type):
-            if type == Mail.MAIL_TYPE_HTML:
-                mail_type = Mail.MAIL_TYPE_HTML
-                if isNullBlank(content):
-                    content = templateManager.loadTemplateFile(template_file, template_parameter)
-            else:
-                mail_type = Mail.MAIL_TYPE_TEXT
-        else:
-            if isNotNullBlank(template_file):  # 1. html email
-                mail_type = Mail.MAIL_TYPE_HTML
-                # read templates
-                content = templateManager.loadTemplateFile(template_file, template_parameter)
-            else:  # 2. text mail
-                mail_type = Mail.MAIL_TYPE_TEXT
-
-        # get to & cc information
-        to_dict_list = self.__getEmailAddressList(to)
-        cc_dict_list = self.__getEmailAddressList(cc)
-        bcc_dict_list = self.__getEmailAddressList(bcc)
-        if isNullBlank(to_dict_list) or len(to_dict_list) == 0:
-            logger.info("Send pass, to_dict_list is empty. to : %s" % str(to))
-            return Boolean2(False, "Send email failure, To [%s] has been filtered." % str(to).replace("[", " ").replace("]", " "))
-
-        if send_in_background:  # run background, save to database
-            if send_one_by_one and isinstance(to_dict_list, list) and len(to_dict_list) > 1:  # split to
-                b = None
-                for to_obj in to_dict_list:
-                    b = self.__add(sender=sender, subject=subject, content=content, template_file=template_file,
-                                   template_parameter=template_parameter, to=to_obj, cc=cc_dict_list, bcc=bcc_dict_list, description=description, attachments=attachments)
-                return b
-            else:
-                return self.__add(sender=sender, subject=subject, content=content, template_file=template_file, template_parameter=template_parameter, to=to_dict_list, cc=cc_dict_list, bcc=bcc_dict_list, description=description, attachments=attachments)
-
-        to_dict_list_str = [str(address) for address in to_dict_list]
-        cc_dict_list_str = [str(address) for address in cc_dict_list]
-        bcc_dict_list_str = [str(address) for address in bcc_dict_list]
-
-        # Use transactions to store Mail and MailAddr
         try:
+            if isNotNullBlank(type):
+                if type == Mail.MAIL_TYPE_HTML:
+                    mail_type = Mail.MAIL_TYPE_HTML
+                    if isNullBlank(content):
+                        content = templateManager.loadTemplateFile(template_file, template_parameter)
+                else:
+                    mail_type = Mail.MAIL_TYPE_TEXT
+            else:
+                if isNotNullBlank(template_file):  # 1. html email
+                    mail_type = Mail.MAIL_TYPE_HTML
+                    # read templates
+                    content = templateManager.loadTemplateFile(template_file, template_parameter)
+                else:  # 2. text mail
+                    mail_type = Mail.MAIL_TYPE_TEXT
+
+            # get to & cc information
+            to_dict_list = self.__getEmailAddressList(to)
+            cc_dict_list = self.__getEmailAddressList(cc)
+            bcc_dict_list = self.__getEmailAddressList(bcc)
+            if isNullBlank(to_dict_list) or len(to_dict_list) == 0:
+                logger.info("Send pass, to_dict_list is empty. to : %s" % str(to))
+                return Boolean2(False, "Send email failure, To [%s] has been filtered." % str(to).replace("[", " ").replace("]", " "))
+
+            if send_in_background:  # run background, save to database
+                if send_one_by_one and isinstance(to_dict_list, list) and len(to_dict_list) > 1:  # split to
+                    b = None
+                    for to_obj in to_dict_list:
+                        b = self.__add(sender=sender, subject=subject, content=content, template_file=template_file,
+                                       template_parameter=template_parameter, to=to_obj, cc=cc_dict_list, bcc=bcc_dict_list, description=description, attachments=attachments)
+                    return b
+                else:
+                    return self.__add(sender=sender, subject=subject, content=content, template_file=template_file, template_parameter=template_parameter, to=to_dict_list, cc=cc_dict_list, bcc=bcc_dict_list, description=description, attachments=attachments)
+
+            to_dict_list_str = [str(address) for address in to_dict_list]
+            cc_dict_list_str = [str(address) for address in cc_dict_list]
+            bcc_dict_list_str = [str(address) for address in bcc_dict_list]
+
+            # Use transactions to store Mail and MailAddr
             # send email and save
             if send_one_by_one:  # split to send
                 for to_dict_obj in to_dict_list:
@@ -581,7 +588,7 @@ class __MailManager:
             logger.info("__saveEmail pass , to_dict_list is empty. to : %s" % str(to))
             return Boolean2(False, "Save email failure, To [%s] has been filtered." % str(to).replace("[", " ").replace("]", " "))
 
-        # remove same
+        # remove same in to, cc, bcc
         to_dict_set = set([str(email) for email in to_dict_list])
         cc_dict_list = [email for email in cc_dict_list if str(email) not in to_dict_set]
         to_and_cc_set = set([str(email) for email in to_dict_list + cc_dict_list])
