@@ -16,6 +16,7 @@ import Label from "./Label"
 import TextArea from "./TextArea"
 import TextBox from "./TextBox"
 import PasswordBox from "./PasswordBox"
+import InlineRadioGroup from "./InlineRadioGroup"
 
 import { formatData } from "./tableFg/reducer"
 
@@ -80,7 +81,7 @@ const SimpleFg: React.FC<ISimpleFg> = forwardRef((props, ref: Ref<any>) => {
             value = Array.from(refs[field.name].current.options)
               .filter((option: any) => option.selected)
               .map((option: any) => option.value)
-          } else if (widget === global.FIELD_TYPE_ADVANCED_COMBOBOX) {
+          } else if (widget === global.FIELD_TYPE_ADVANCED_COMBOBOX || widget === global.FIELD_TYPE_INLINE_RADIO_GROUP) {
             value = refs[field.name].current.getSelected()
           } else if (widget !== global.FIELD_TYPE_BUTTON) {
             value = refs[field.name].current?.value
@@ -106,7 +107,8 @@ const SimpleFg: React.FC<ISimpleFg> = forwardRef((props, ref: Ref<any>) => {
         const formData = new FormData()
         formData.append("id", data && data["id"] ? data["id"] : "")
         fields.forEach((field) => {
-          if (field.widget.trim().toLowerCase() === global.FIELD_TYPE_FILE) {
+          const widget = field.widget.trim().toLocaleLowerCase()
+          if (widget === global.FIELD_TYPE_FILE) {
             // TODO: pass a array to server (2022-11-03, Li)
             const files = refs[field.name].current?.files
             if (!files || files.length === 0) {
@@ -137,7 +139,7 @@ const SimpleFg: React.FC<ISimpleFg> = forwardRef((props, ref: Ref<any>) => {
                 formData.append(field.name + "_FILES_" + i, currentFile)
               }
             }
-          } else if (field.widget.trim().toLowerCase() === global.FIELD_TYPE_ADVANCED_COMBOBOX) {
+          } else if (widget === global.FIELD_TYPE_ADVANCED_COMBOBOX || widget === global.FIELD_TYPE_INLINE_RADIO_GROUP) {
             formData.append(
               field.dataField ? field.dataField : field.name, // get sql column, if not, get field name
               refs[field.name].current.getSelected()
@@ -285,6 +287,7 @@ const SimpleFg: React.FC<ISimpleFg> = forwardRef((props, ref: Ref<any>) => {
                           name={field.name}
                           editable={editable && field.editable}
                           style={field.style}
+                          tip={field.tooltip}
                           widgetParameter={field.widgetParameter}
                         />
                       ) : String(field.widget).trim().toLocaleLowerCase() === global.FIELD_TYPE_ADVANCED_SELECTION ? (
@@ -339,6 +342,19 @@ const SimpleFg: React.FC<ISimpleFg> = forwardRef((props, ref: Ref<any>) => {
                           key={index}
                           ref={refs[field.name]}
                           fileBoxLabel={field.caption}
+                          name={field.name}
+                          widgetParameter={field.widgetParameter}
+                          editable={editable && field.editable}
+                          style={field.style}
+                          tip={field.tooltip}
+                        />
+                      ) : String(field.widget).trim().toLocaleLowerCase() === global.FIELD_TYPE_INLINE_RADIO_GROUP ? (
+                        <InlineRadioGroup
+                          key={index}
+                          ref={refs[field.name]}
+                          inlineRadioGroupLabel={field.caption}
+                          value={formatValue(data, field)}
+                          require={field.required}
                           name={field.name}
                           widgetParameter={field.widgetParameter}
                           editable={editable && field.editable}

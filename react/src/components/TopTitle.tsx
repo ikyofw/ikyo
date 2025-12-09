@@ -21,11 +21,8 @@ const TopTitle = () => {
   }, [])
 
   const checkHasNewSysMsg = async () => {
-    await HttpGet("/api/inbox/getNewMsgSize")
-      .then((response) => {
-        if (response.ok) return response.json()
-        throw response
-      })
+    await HttpGet("/api/inbox/get_new_msg_count")
+      .then((response) => response.json())
       .then((result) => {
         setNewMsgSize(result.data)
       })

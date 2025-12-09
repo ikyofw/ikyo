@@ -1,9 +1,3 @@
-'''
-Description: Mail Manager
-version:
-Author: YL
-Date: 2024-11-06 14:52:13
-'''
 import logging
 import os
 import smtplib
@@ -16,15 +10,16 @@ from email.mime.text import MIMEText
 from email.utils import formataddr
 from threading import Lock
 
+from django.db import DatabaseError, transaction
+
 import core.core.fs as ikfs
-import core.utils.djangoUtils as du
+import core.utils.django_utils as du
 from core.core.exception import IkException, IkValidateException
 from core.core.lang import Boolean2
 from core.models import Mail, MailAddr, MailAttch
-from core.sys.systemSetting import SystemSetting
-from core.utils import strUtils, templateManager
-from core.utils.langUtils import isNotNullBlank, isNullBlank
-from django.db import DatabaseError, transaction
+from core.sys.system_setting import SystemSetting
+from core.utils import str_utils, template_utils
+from core.utils.lang_utils import isNotNullBlank, isNullBlank
 from iktools import IkConfig
 
 logger = logging.getLogger('ikyo')
@@ -79,15 +74,18 @@ def getEmailAddressName(emailAddress):
 
 def toEmailAddressList(addressStr) -> list:
     addressList = []
-    if strUtils.isEmpty(addressStr):
+    if str_utils.isEmpty(addressStr):
         return addressList
     addrArr = addressStr.split(";")
     for addr in addrArr:
         addr = addr.strip()
-        if not strUtils.isEmpty(addr):
-            name = addr[:addr.index("<")].strip()
-            email = addr[addr.index("<") + 1:len(addr) - 1].strip()
-            addressList.append(convert2EmailAddress(email) if strUtils.isEmpty(name) else EmailAddress(email, name))
+        if not str_utils.isEmpty(addr):
+            if '<' in addr:
+                name = addr[:addr.index("<")].strip()
+                email = addr[addr.index("<") + 1:len(addr) - 1].strip()
+                addressList.append(convert2EmailAddress(email) if str_utils.isEmpty(name) else EmailAddress(email, name))
+            else:
+                addressList.append(convert2EmailAddress(addr))
     return addressList
 
 
@@ -142,7 +140,8 @@ class _Mailer():
     def _get_default_mail_sender(self) -> EmailAddress:
         return EmailAddress(email=self.sender_address, name=self.sender_name)
 
-    def _send(self, subject: str, content: str, to: list[EmailAddress], cc: list[EmailAddress], bcc: list[EmailAddress] = [], content_type='plain', attachments: list[MailAttch] = None) -> tuple:
+    def _send(self, subject: str, content: str, to: list[EmailAddress], cc: list[EmailAddress], bcc: list[EmailAddress] = [], content_type='plain', attachments: list[MailAttch] = None,
+              smtp_account: str | None = None, smtp_password: str | None = None, sender_address: str | None = None, sender_name: str | None = None) -> tuple:
         '''
             contentType=plain / html. Default is plain
             to/cc/bcc/attachments: list
@@ -154,6 +153,16 @@ class _Mailer():
 
         server = None
         try:
+            # Get mail from address
+            real_smtp_account = smtp_account or self.smtp_account
+            real_smtp_password = smtp_password or self.smtp_password
+            real_from_addr = str(standardEmailAddress(self._get_default_mail_sender()))
+            # Use the specified email from address
+            if isNotNullBlank(smtp_account) and isNotNullBlank(smtp_password):
+                real_from_addr = str(convert2EmailAddress(smtp_account))
+                if isNotNullBlank(sender_name):
+                    real_from_addr = str(EmailAddress(smtp_account, sender_name))
+
             # filter disable receiver
             to_list = []
             for addr in to:
@@ -210,7 +219,7 @@ class _Mailer():
             # attachments - end
 
             # message receivers
-            msg['From'] = str(standardEmailAddress(self._get_default_mail_sender()))
+            msg['From'] = real_from_addr
             msg['To'] = ','.join(to_list)
             if cc_list and len(cc_list) > 0:
                 msg['Cc'] = ','.join(cc_list)
@@ -236,7 +245,7 @@ class _Mailer():
                 raise connect_exception
             # server.ehlo()
             # server.starttls()
-            server.login(self.smtp_account, self.smtp_password)
+            server.login(real_smtp_account, real_smtp_password)
             server.sendmail(msg['From'], to_list, msg.as_string())
             return True, "sent"
         except Exception as e:
@@ -248,7 +257,7 @@ class _Mailer():
 
 
 Mailer = None
-import core.utils.djangoUtils as ikDjangoUtils
+import core.utils.django_utils as ikDjangoUtils
 
 if ikDjangoUtils.isRunDjangoServer():
     Mailer = du.instanceClass(_Mailer)
@@ -270,12 +279,14 @@ class __MailManager:
 
     # send email
 
-    def __sendEmail(self, mail: Mail, to_addresses: list[EmailAddress], cc_addresses: list[EmailAddress], bcc_addresses: list[EmailAddress] = None, attachments: list[MailAttch] = None) -> tuple:
+    def __sendEmail(self, mail: Mail, to_addresses: list[EmailAddress], cc_addresses: list[EmailAddress], bcc_addresses: list[EmailAddress] = None, attachments: list[MailAttch] = None,
+                    smtp_account: str | None = None, smtp_password: str | None = None, sender_address: str | None = None, sender_name: str | None = None,) -> tuple:
         if isNullBlank(to_addresses):
             return False, "No receiver found."
 
         is_success, message = _Mailer()._send(subject=mail.subject, content=mail.content, to=to_addresses, cc=cc_addresses, bcc=bcc_addresses,
-                                              content_type=mail.type if mail.type == "html" else "plain", attachments=attachments)
+                                              content_type=mail.type if mail.type == "html" else "plain", attachments=attachments,
+                                              smtp_account=smtp_account, smtp_password=smtp_password, sender_address=sender_address, sender_name=sender_name)
         return is_success, message
 
     # check email database
@@ -343,7 +354,7 @@ class __MailManager:
                             mail.save()
                             self.attempts_counter.pop(mail.id, None)
 
-    # API: send email & save result
+    # API 1: send email & save result
     def send(self, sender, subject, to, cc=None, bcc=None, content=None, template_file=None, template_parameter=None, description=None, attachments=None,
              send_in_background: bool = True, send_one_by_one: bool = False, type=None) -> Boolean2:
         '''
@@ -375,17 +386,17 @@ class __MailManager:
         mail_type = None
         try:
             if isNotNullBlank(type):
-                if type == Mail.MAIL_TYPE_HTML:
+                if type.lower() == Mail.MAIL_TYPE_HTML:
                     mail_type = Mail.MAIL_TYPE_HTML
                     if isNullBlank(content):
-                        content = templateManager.loadTemplateFile(template_file, template_parameter)
+                        content = template_utils.loadTemplateFile(template_file, template_parameter)
                 else:
                     mail_type = Mail.MAIL_TYPE_TEXT
             else:
                 if isNotNullBlank(template_file):  # 1. html email
                     mail_type = Mail.MAIL_TYPE_HTML
                     # read templates
-                    content = templateManager.loadTemplateFile(template_file, template_parameter)
+                    content = template_utils.loadTemplateFile(template_file, template_parameter)
                 else:  # 2. text mail
                     mail_type = Mail.MAIL_TYPE_TEXT
 
@@ -402,10 +413,10 @@ class __MailManager:
                     b = None
                     for to_obj in to_dict_list:
                         b = self.__add(sender=sender, subject=subject, content=content, template_file=template_file,
-                                       template_parameter=template_parameter, to=to_obj, cc=cc_dict_list, bcc=bcc_dict_list, description=description, attachments=attachments)
+                                       template_parameter=template_parameter, to=to_obj, cc=cc_dict_list, bcc=bcc_dict_list, description=description, attachments=attachments, type=mail_type)
                     return b
                 else:
-                    return self.__add(sender=sender, subject=subject, content=content, template_file=template_file, template_parameter=template_parameter, to=to_dict_list, cc=cc_dict_list, bcc=bcc_dict_list, description=description, attachments=attachments)
+                    return self.__add(sender=sender, subject=subject, content=content, template_file=template_file, template_parameter=template_parameter, to=to_dict_list, cc=cc_dict_list, bcc=bcc_dict_list, description=description, attachments=attachments, type=mail_type)
 
             to_dict_list_str = [str(address) for address in to_dict_list]
             cc_dict_list_str = [str(address) for address in cc_dict_list]
@@ -542,8 +553,149 @@ class __MailManager:
             logger.fatal(e, exc_info=True)
         return Boolean2(False, "Send email failed.")
 
+    # API 2: Send emails using the specified mailing address without queuing
+    def send_with_account(self, account_name: str, account_password: str, account_display_name: str | None, sender: str, subject: str, to, cc=None, bcc=None, content: str | None = None,
+                          template_file: str | None = None, template_parameter: dict | None = None, description: str | None = None, attachments=None, type=None) -> Boolean2:
+        '''
+            account_name: str
+            account_password: str
+            account_display_name: str | None
+            sender: str
+            subject: str
+            to/cc/bcc: str(xxx@xxx.com) | int(system user ID) | EmailAddress(abc <xxx@xxx.com>) | list
+            content: str
+            template_file: str
+            template_parameter: dict
+            description: str
+            attachments: str | list
+            type: str, html / text
+        '''
+        if isNullBlank(content) and isNullBlank(template_file):
+            return Boolean2(False, 'Send email error, no content.')
+        if isNullBlank(to) or (isinstance(to, list) and len(to) == 0):
+            return Boolean2(False, 'The recipient of the email is mandatory.')
+
+        # distinct
+        if isinstance(to, list):
+            to = list(dict.fromkeys(to))
+        if isinstance(cc, list):
+            cc = list(dict.fromkeys(cc))
+        if isinstance(bcc, list):
+            bcc = list(dict.fromkeys(bcc))
+
+        # encapsulate data
+        account_address = getEmailAddressName(account_name)
+        if isNotNullBlank(account_display_name):
+            account_address = EmailAddress(account_name, account_display_name)
+        new_description = "Mail From: %s" % account_address
+        if isNotNullBlank(description):
+            new_description += "\r\n" + description
+
+        mail_type = None
+        try:
+            if isNotNullBlank(type):
+                if type.lower() == Mail.MAIL_TYPE_HTML:
+                    mail_type = Mail.MAIL_TYPE_HTML
+                    if isNullBlank(content):
+                        content = template_utils.loadTemplateFile(template_file, template_parameter)
+                else:
+                    mail_type = Mail.MAIL_TYPE_TEXT
+            else:
+                if isNotNullBlank(template_file):  # 1. html email
+                    mail_type = Mail.MAIL_TYPE_HTML
+                    # read templates
+                    content = template_utils.loadTemplateFile(template_file, template_parameter)
+                else:  # 2. text mail
+                    mail_type = Mail.MAIL_TYPE_TEXT
+
+            # get to & cc information
+            to_dict_list = self.__getEmailAddressList(to)
+            cc_dict_list = self.__getEmailAddressList(cc)
+            bcc_dict_list = self.__getEmailAddressList(bcc)
+            if isNullBlank(to_dict_list) or len(to_dict_list) == 0:
+                logger.info("Send pass, to_dict_list is empty. to : %s" % str(to))
+                return Boolean2(False, "Send email failure, To [%s] has been filtered." % str(to).replace("[", " ").replace("]", " "))
+
+            to_dict_list_str = [str(address) for address in to_dict_list]
+            cc_dict_list_str = [str(address) for address in cc_dict_list]
+            bcc_dict_list_str = [str(address) for address in bcc_dict_list]
+
+            # Use transactions to store Mail and MailAddr
+            # send email and save
+            # get email & email attachment
+            mail_record, mail_attchs = self.__newMailAndAttchs(sender=sender, subject=subject, content=content, type=mail_type,
+                                                               sts=Mail.STATUS_PENDING, dsc=new_description, queue=False, attachments=attachments)
+            mail_record.send_ts = datetime.now()
+
+            # 1. send
+            is_success, message = self.__sendEmail(mail=mail_record, to_addresses=to_dict_list, cc_addresses=cc_dict_list,
+                                                   bcc_addresses=bcc_dict_list_str, attachments=mail_attchs,
+                                                   smtp_account=account_name,
+                                                   smtp_password=account_password,
+                                                   sender_name=account_display_name,
+                                                   sender_address=account_address)
+            if is_success:
+                mail_record.sts = Mail.STATUS_COMPLETE
+                mail_record.duration = round((datetime.now() - mail_record.send_ts).total_seconds() * 1000)
+                logger.info("Send mail [%s], to %s, cc %s, bcc %s successfully takes %s ms.", subject,
+                            to_dict_list_str, cc_dict_list_str, bcc_dict_list_str, mail_record.duration)
+            else:
+                mail_record.sts = Mail.STATUS_ERROR
+                mail_record.error = message
+                logger.warn("Send mail [%s], to %s, cc %s, bcc %s failed: %s", subject, to_dict_list_str, cc_dict_list_str, bcc_dict_list_str, message)
+
+            # 2. save send result
+            with transaction.atomic():
+                # create Mail record
+                mail_record.save()
+
+                # create MailAddr to records
+                for idx, email_addr in enumerate(to_dict_list):
+                    MailAddr.objects.create(
+                        mail=mail_record,
+                        type=MailAddr.TYPE_TO,
+                        name=email_addr.name,
+                        address=email_addr.email,
+                        seq=idx + 1
+                    )
+
+                # create MailAddr cc records
+                for idx, email_addr in enumerate(cc_dict_list):
+                    MailAddr.objects.create(
+                        mail=mail_record,
+                        type=MailAddr.TYPE_CC,
+                        name=email_addr.name,
+                        address=email_addr.email,
+                        seq=idx + 1
+                    )
+
+                # create MailAddr cc records
+                for idx, email_addr in enumerate(bcc_dict_list):
+                    MailAddr.objects.create(
+                        mail=mail_record,
+                        type=MailAddr.TYPE_BCC,
+                        name=email_addr.name,
+                        address=email_addr.email,
+                        seq=idx + 1
+                    )
+
+                # create MailAttch records if have
+                if isNotNullBlank(mail_attchs):
+                    for mail_attch in mail_attchs:
+                        mail_attch.save()
+
+            logger.info("Save mail [%s], to %s, cc %s, bcc %s successfully.", subject, to_dict_list_str, cc_dict_list_str, bcc_dict_list_str)
+            return Boolean2(True, mail_record)
+        except DatabaseError as e:
+            logger.error("Save mail [%s] failed: %s", subject, str(e))
+            logger.fatal(e, exc_info=True)
+        except Exception as e:
+            logger.error("Send mail [%s] failed: %s", subject, str(e))
+            logger.fatal(e, exc_info=True)
+        return Boolean2(False, "Send email failed.")
+
     # just save mail information to queue
-    def __add(self, sender, subject, content, template_file, template_parameter, to, cc, bcc, description=None, attachments=None) -> Boolean2:
+    def __add(self, sender, subject, content, template_file, template_parameter, to, cc, bcc, description=None, attachments=None, type=None) -> Boolean2:
         '''
             sender: str
             subject: str
@@ -553,17 +705,21 @@ class __MailManager:
             to/cc/bcc: str(xxx@xxx.com) | int(system user ID) | EmailAddress(abc <xxx@xxx.com>) | list
             description: str
             attachments: str | list
+            type: str
         '''
         if isNullBlank(content) and isNullBlank(template_file):
             return Boolean2(False, 'send email error, no content.')
 
         mail_type = None
-        if isNotNullBlank(template_file):  # 1. html email
-            mail_type = Mail.MAIL_TYPE_HTML
-            # read templates
-            content = templateManager.loadTemplateFile(template_file, template_parameter)
-        else:  # 2. text mail
-            mail_type = Mail.MAIL_TYPE_TEXT
+        if isNotNullBlank(type):
+            mail_type = type
+        else:
+            if isNotNullBlank(template_file):  # 1. html email
+                mail_type = Mail.MAIL_TYPE_HTML
+                # read templates
+                content = template_utils.loadTemplateFile(template_file, template_parameter)
+            else:  # 2. text mail
+                mail_type = Mail.MAIL_TYPE_TEXT
 
         return self.__saveEmail(sender, subject, content, mail_type, to, cc, bcc, description, attachments)
 
@@ -589,10 +745,10 @@ class __MailManager:
             return Boolean2(False, "Save email failure, To [%s] has been filtered." % str(to).replace("[", " ").replace("]", " "))
 
         # remove same in to, cc, bcc
-        to_dict_set = set([str(email) for email in to_dict_list])
-        cc_dict_list = [email for email in cc_dict_list if str(email) not in to_dict_set]
-        to_and_cc_set = set([str(email) for email in to_dict_list + cc_dict_list])
-        bcc_dict_list = [email for email in bcc_dict_list if str(email) not in to_and_cc_set]
+        # to_dict_set = set([str(email) for email in to_dict_list])
+        # cc_dict_list = [email for email in cc_dict_list if str(email) not in to_dict_set]
+        # to_and_cc_set = set([str(email) for email in to_dict_list + cc_dict_list])
+        # bcc_dict_list = [email for email in bcc_dict_list if str(email) not in to_and_cc_set]
 
         # Use transactions to store Mail and MailAddr
         try:
@@ -714,7 +870,7 @@ class __MailManager:
         return mail_record, mail_attchs
 
     def __getEmailAddressList(self, obj) -> list:
-        email_addr_dict = []
+        email_addr_list = []
         if isNotNullBlank(obj):
             if isinstance(obj, list):  # user id list or address list
                 for addr in obj:
@@ -725,13 +881,13 @@ class __MailManager:
                         if EMAIL_ADDRESS_FILTER and len(EMAIL_ADDRESS_FILTER) > 0:
                             for filter in EMAIL_ADDRESS_FILTER:
                                 if filter(str(addr.email)):
-                                    email_addr_dict.append(addr)
+                                    email_addr_list.append(addr)
                                 else:
                                     logger.info("Email recipient [%s] has been filtered." % str(addr.email))
                         else:
-                            email_addr_dict.append(addr)
+                            email_addr_list.append(addr)
                     elif isinstance(addr, int) or addr.isdigit():  # user id
-                        from core.user.userManager import getUserEmailAddress
+                        from core.user.user_manager import getUserEmailAddress
                         email_addr = getUserEmailAddress(addr)
                         if isNullBlank(email_addr.email):
                             logger.error("The email of %s is empty." % str(email_addr))
@@ -739,15 +895,15 @@ class __MailManager:
                         if EMAIL_ADDRESS_FILTER and len(EMAIL_ADDRESS_FILTER) > 0:
                             for filter in EMAIL_ADDRESS_FILTER:
                                 if filter(str(email_addr.email)):
-                                    email_addr_dict.append(email_addr)
+                                    email_addr_list.append(email_addr)
                                 else:
                                     logger.info("Email recipient [%s] has been filtered." % str(email_addr.email))
                         else:
-                            email_addr_dict.append(email_addr)
+                            email_addr_list.append(email_addr)
                     elif isinstance(addr, str):  # str list
                         for ad in addr.split(','):  # '1, 2, 3'
                             if isinstance(ad, int) or ad.isdigit():  # user id
-                                from core.user.userManager import \
+                                from core.user.user_manager import \
                                     getUserEmailAddress
                                 email_addr = getUserEmailAddress(ad)
                                 if isNullBlank(email_addr.email):
@@ -757,11 +913,11 @@ class __MailManager:
                                 if EMAIL_ADDRESS_FILTER and len(EMAIL_ADDRESS_FILTER) > 0:
                                     for filter in EMAIL_ADDRESS_FILTER:
                                         if filter(str(email_addr.email)):
-                                            email_addr_dict.append(email_addr)
+                                            email_addr_list.append(email_addr)
                                         else:
                                             logger.info("Email recipient [%s] has been filtered." % str(email_addr.email))
                                 else:
-                                    email_addr_dict.append(email_addr)
+                                    email_addr_list.append(email_addr)
                             else:
                                 if isNullBlank(standardEmailAddress(ad).email):
                                     logger.error("The email of %s is empty." % str(standardEmailAddress(ad)))
@@ -769,11 +925,11 @@ class __MailManager:
                                 if EMAIL_ADDRESS_FILTER and len(EMAIL_ADDRESS_FILTER) > 0:
                                     for filter in EMAIL_ADDRESS_FILTER:
                                         if filter(str(ad)):
-                                            email_addr_dict.append(standardEmailAddress(ad))
+                                            email_addr_list.append(standardEmailAddress(ad))
                                         else:
                                             logger.info("Email recipient [%s] has been filtered." % str(ad))
                                 else:
-                                    email_addr_dict.append(standardEmailAddress(ad))
+                                    email_addr_list.append(standardEmailAddress(ad))
 
             elif isinstance(obj, EmailAddress):
                 if isNullBlank(obj.email):
@@ -782,13 +938,13 @@ class __MailManager:
                 if EMAIL_ADDRESS_FILTER and len(EMAIL_ADDRESS_FILTER) > 0:
                     for filter in EMAIL_ADDRESS_FILTER:
                         if filter(str(obj.email)):
-                            email_addr_dict = [obj]
+                            email_addr_list = [obj]
                         else:
                             logger.info("Email recipient [%s] has been filtered." % str(obj.email))
                 else:
-                    email_addr_dict = [obj]
+                    email_addr_list = [obj]
             elif isinstance(obj, int) or obj.isdigit():  # user id
-                from core.user.userManager import getUserEmailAddress
+                from core.user.user_manager import getUserEmailAddress
                 email_addr = getUserEmailAddress(obj)
                 if isNullBlank(email_addr.email):
                     logger.error("The email of %s is empty." % str(email_addr))
@@ -797,16 +953,16 @@ class __MailManager:
                 if EMAIL_ADDRESS_FILTER and len(EMAIL_ADDRESS_FILTER) > 0:
                     for filter in EMAIL_ADDRESS_FILTER:
                         if filter(str(email_addr.email)):
-                            email_addr_dict = [email_addr]
+                            email_addr_list = [email_addr]
                         else:
                             logger.info("Email recipient [%s] has been filtered." % str(email_addr.email))
                 else:
-                    email_addr_dict = [email_addr]
+                    email_addr_list = [email_addr]
             elif isinstance(obj, str):  # str list
                 for addr in obj.split(','):  # '1, 2, 3'
                     addr = addr.strip()
                     if isinstance(addr, int) or addr.isdigit():  # user id
-                        from core.user.userManager import getUserEmailAddress
+                        from core.user.user_manager import getUserEmailAddress
                         email_addr = getUserEmailAddress(addr)
                         if isNullBlank(email_addr.email):
                             logger.error("The email of %s is empty." % str(email_addr))
@@ -814,11 +970,11 @@ class __MailManager:
                         if EMAIL_ADDRESS_FILTER and len(EMAIL_ADDRESS_FILTER) > 0:
                             for filter in EMAIL_ADDRESS_FILTER:
                                 if filter(str(email_addr.email)):
-                                    email_addr_dict.append(email_addr)
+                                    email_addr_list.append(email_addr)
                                 else:
                                     logger.info("Email recipient [%s] has been filtered." % str(email_addr.email))
                         else:
-                            email_addr_dict.append(email_addr)
+                            email_addr_list.append(email_addr)
                     else:
                         if isNullBlank(standardEmailAddress(addr).email):
                             logger.error("The email of %s is empty." % str(standardEmailAddress(addr)))
@@ -826,14 +982,14 @@ class __MailManager:
                         if EMAIL_ADDRESS_FILTER and len(EMAIL_ADDRESS_FILTER) > 0:
                             for filter in EMAIL_ADDRESS_FILTER:
                                 if filter(str(addr)):
-                                    email_addr_dict.append(standardEmailAddress(addr))
+                                    email_addr_list.append(standardEmailAddress(addr))
                                 else:
                                     logger.info("Email recipient [%s] has been filtered." % str(addr))
                         else:
-                            email_addr_dict.append(standardEmailAddress(addr))
+                            email_addr_list.append(standardEmailAddress(addr))
             else:
                 raise IkException('Unknown email address: %s' % obj)
-        return email_addr_dict
+        return email_addr_list
 
 
 # create one instance only

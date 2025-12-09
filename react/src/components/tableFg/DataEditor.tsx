@@ -4,7 +4,7 @@
  * @Author: Lucy
  * @Date: 2022-04-06 08:55:14
  */
-import * as React from "react"
+import React from "react"
 import DropdownList from "react-widgets/DropdownList"
 import * as Types from "./types"
 import { moveCursorToEnd } from "./util"
@@ -93,7 +93,7 @@ const DataEditor: React.FC<Types.DataEditorProps> = ({ onChange, cell, column, c
     [isTextarea, onChange, cell]
   )
 
-  const inputRef = React.useRef<HTMLInputElement>()
+  const inputRef = React.useRef<HTMLInputElement>(null)
   React.useEffect(() => {
     if (inputRef.current) {
       moveCursorToEnd(inputRef.current)

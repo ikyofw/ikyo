@@ -50,7 +50,7 @@ const AdvancedSelection: React.FC<IAdvancedSelection> = forwardRef((props, ref: 
     } else {
       setTooltip('')
     }
-  }, [props, props.labelValue, props.tip])
+  }, [props.labelValue, props.tip])
 
   const buttonClick = async () => {
     Loading.show()

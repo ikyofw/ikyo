@@ -3,10 +3,11 @@
     Please reference to django_backend/django_backend/settings.py and react/package.json
     2022-07-05
 """
-import os
 import configparser
+import os
 from pathlib import Path
-import core.utils.djangoUtils as ikDjangoUtils
+
+import core.utils.django_utils as ikDjangoUtils
 
 PROJECT_APP = 'django_backend'
 

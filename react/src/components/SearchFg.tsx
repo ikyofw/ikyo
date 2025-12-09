@@ -5,11 +5,14 @@ import pyiLocalStorage from "../utils/pyiLocalStorage"
 import { validateResponse } from "../utils/sysUtil"
 import CheckBox from "./CheckBox"
 import ComboBox from "./ComboBox"
-import ListBox from "./ListBox"
 import DateBox from "./DateBox"
-import * as simpleFg from "./SimpleFg"
-import TextBox from "./TextBox"
 import Label from "./Label"
+import ListBox from "./ListBox"
+import * as simpleFg from "./SimpleFg"
+import TextArea from "./TextArea"
+import TextBox from "./TextBox"
+import AdvancedComboBox from "./AdvancedComboBox"
+import InlineRadioGroup from "./InlineRadioGroup"
 
 const global = pyiLocalStorage.globalParams
 
@@ -52,10 +55,13 @@ const SearchFg: React.FC<ISearchFg> = forwardRef((props, ref: Ref<any>) => {
         const formData = new FormData()
         fields.forEach((field) => {
           let value = null
-          if (field.widget.trim().toLocaleLowerCase() === global.FIELD_TYPE_LIST_BOX) {
+          const widget = field.widget.trim().toLocaleLowerCase()
+          if (widget === global.FIELD_TYPE_LIST_BOX) {
             value = Array.from(refs[field.name].current.options)
               .filter((option: any) => option.selected)
               .map((option: any) => option.value)
+          } else if (widget === global.FIELD_TYPE_ADVANCED_COMBOBOX || widget === global.FIELD_TYPE_INLINE_RADIO_GROUP) {
+            value = refs[field.name].current.getSelected()
           } else {
             value = refs[field.name].current?.value
           }
@@ -155,6 +161,17 @@ const SearchFg: React.FC<ISearchFg> = forwardRef((props, ref: Ref<any>) => {
                                 style={field.style}
                                 widgetParameter={field.widgetParameter}
                               />
+                            ) : String(field.widget).trim().toLocaleLowerCase() === global.FIELD_TYPE_TEXTAREA ? (
+                              <TextArea
+                                key={index}
+                                ref={refs[field.name]}
+                                textAreaLabel={field.caption}
+                                textAreaValue={simpleFg.formatValue(searchData, field)}
+                                name={field.name}
+                                editable={editable && field.editable}
+                                style={field.style}
+                                widgetParameter={field.widgetParameter}
+                              />
                             ) : String(field.widget).trim().toLocaleLowerCase() === global.FIELD_TYPE_COMBO_BOX ? (
                               <ComboBox
                                 key={index}
@@ -167,6 +184,19 @@ const SearchFg: React.FC<ISearchFg> = forwardRef((props, ref: Ref<any>) => {
                                 onChangeEvent={props.onChangeEvent}
                                 editable={editable && field.editable}
                                 style={field.style}
+                                widgetParameter={field.widgetParameter}
+                              />
+                            ) : String(field.widget).trim().toLocaleLowerCase() === global.FIELD_TYPE_ADVANCED_COMBOBOX ? (
+                              <AdvancedComboBox
+                                key={index}
+                                ref={refs[field.name]}
+                                advancedComboBoxLabel={field.caption}
+                                value={simpleFg.formatValue(searchData, field)}
+                                require={field.required}
+                                name={field.name}
+                                editable={editable && field.editable}
+                                style={field.style}
+                                tip={field.tooltip}
                                 widgetParameter={field.widgetParameter}
                               />
                             ) : String(field.widget).trim().toLocaleLowerCase() === global.FIELD_TYPE_LIST_BOX ? (
@@ -192,6 +222,19 @@ const SearchFg: React.FC<ISearchFg> = forwardRef((props, ref: Ref<any>) => {
                                 editable={editable && field.editable}
                                 style={field.style}
                                 widgetParameter={field.widgetParameter}
+                              />
+                            ) : String(field.widget).trim().toLocaleLowerCase() === global.FIELD_TYPE_INLINE_RADIO_GROUP ? (
+                              <InlineRadioGroup
+                                key={index}
+                                ref={refs[field.name]}
+                                inlineRadioGroupLabel={field.caption}
+                                value={simpleFg.formatValue(searchData, field)}
+                                require={field.required}
+                                name={field.name}
+                                widgetParameter={field.widgetParameter}
+                                editable={editable && field.editable}
+                                style={field.style}
+                                tip={field.tooltip}
                               />
                             ) : String(field.widget).trim().toLocaleLowerCase() === global.FIELD_TYPE_DATE_BOX ? (
                               <DateBox

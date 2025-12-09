@@ -1,5 +1,5 @@
+import { createRoot } from "react-dom/client";
 import * as React from "react"
-import ReactDOM from "react-dom"
 import pyiLocalStorage from "../../utils/pyiLocalStorage"
 import * as Loading from "../Loading"
 import * as Actions from "./actions"
@@ -31,7 +31,7 @@ interface IButton {
 }
 
 const Button: React.FC<IButton> = (props) => {
-  const { screenID, closeDialog, openDialog, createEventData } = useContext(DialogContext)
+  const { screenID, closeDialog, openDialog, createEventData, setShowPdfViewer } = useContext(DialogContext)
 
   const HttpPost = useHttp(pyiLocalStorage.globalParams.HTTP_TYPE_POST)
   const HttpDownload = useHttp(pyiLocalStorage.globalParams.HTTP_TYPE_DOWNLOAD)
@@ -65,7 +65,7 @@ const Button: React.FC<IButton> = (props) => {
   )
   const refreshTable = React.useCallback((refreshFlag: boolean) => dispatch(Actions.refreshTable(refreshFlag)), [dispatch])
   const refreshPrams = props.dialogPrams.eventHandler[dialogIndex].refreshPrams
-  const refresh = () => refreshPrams.includes('false') ? refreshTable(false) : refreshTable(true)
+  const refresh = () => (refreshPrams.includes("false") ? refreshTable(false) : refreshTable(true))
 
   const domDownload = (fileName, blob, eventHandler) => {
     if (fileName) {
@@ -219,6 +219,7 @@ const Button: React.FC<IButton> = (props) => {
   const onClickEvent = async (btnType, eventHandler, buttonData) => {
     let removeLoadingDiv = true
     Loading.show()
+    setShowPdfViewer(false)
     try {
       if (btnType && btnType.toLocaleLowerCase() === pyiGlobal.TABLE_BTN_TYPE_NORMAL) {
         await HttpPost(eventHandler, JSON.stringify(buttonData))
@@ -256,12 +257,11 @@ const Button: React.FC<IButton> = (props) => {
               let fileType = respType.split("/")[1]
               let newPdfBlob = "data:" + (fileType === "pdf" ? "application" : "image") + "/" + fileType + ";base64," + base64
 
-              ReactDOM.render(
-                <React.StrictMode>
-                  <FileViewer params={{ dataUrl: newPdfBlob }} />
-                </React.StrictMode>,
-                document.getElementById("pdfContainer")
-              )
+              const root = createRoot(document.getElementById("pdfContainer"));
+
+              root.render(<React.StrictMode>
+                <FileViewer params={{ dataUrl: newPdfBlob }} />
+              </React.StrictMode>);
             }
           }
         })
@@ -292,6 +292,10 @@ const Button: React.FC<IButton> = (props) => {
         removeLoadingDiv = false
       } else if (btnType && btnType.toLocaleLowerCase() === pyiGlobal.TABLE_BTN_TYPE_DOWNLOAD) {
         HttpDownload(eventHandler, JSON.stringify(buttonData)).then((response) => {
+          const blob = new Blob([response.data])
+          let fileName = response?.headers?.["content-disposition"]?.split("filename=")[1]
+          domDownload(fileName, blob, eventHandler)
+
           let respType = response.headers?.["content-type"]
           if (respType.trim().toLocaleLowerCase() === "application/json") {
             var reader = new FileReader()
@@ -302,11 +306,13 @@ const Button: React.FC<IButton> = (props) => {
               }
             }
             reader.readAsText(response.data)
-          } else {
-            const blob = new Blob([response.data])
-            let fileName = response?.headers?.["content-disposition"]?.split("filename=")[1]
-            domDownload(fileName, blob, eventHandler)
-          }
+            setShowPdfViewer(true)
+          } 
+          // else {
+          //   const blob = new Blob([response.data])
+          //   let fileName = response?.headers?.["content-disposition"]?.split("filename=")[1]
+          //   domDownload(fileName, blob, eventHandler)
+          // }
         })
       } else {
         await HttpPost(eventHandler, JSON.stringify(buttonData))

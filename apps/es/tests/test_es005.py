@@ -1,16 +1,17 @@
 from pathlib import Path
-from django.test import RequestFactory
-from unittest.mock import MagicMock, patch
 from types import SimpleNamespace
+from unittest.mock import MagicMock, patch
+
+from django.test import RequestFactory
 
 from core.core.http import IkJsonResponse
 from core.core.lang import Boolean2
-from es.views.es004_views import ES004
-from es.views.es005_views import ES005
-from es.core.status import Status
+from es.views.es004 import ES004
+from es.views.es005 import ES005
+
+from ..models import (DraftFile, Expense, ExpenseCategory, ExpenseDetail, File,
+                      Payee)
 from .test_es_base import ESTestCase
-from core.models import UserOffice, Currency
-from ..models import ExpenseDetail, Expense, ExpenseCategory, DraftFile, File, Payee
 
 
 class ES005TestCase(ESTestCase):
@@ -21,9 +22,9 @@ class ES005TestCase(ESTestCase):
         self.view2 = ES005()
         self.view1.getCurrentUser = MagicMock(return_value=self.admin_user)
         self.view2.getCurrentUser = MagicMock(return_value=self.admin_user)
-        
+
         self.view2.request = MagicMock()
-        
+
         mock_screen1 = MagicMock()
         mock_screen2 = MagicMock()
         mock_fg1 = MagicMock()
@@ -66,7 +67,7 @@ class ES005TestCase(ESTestCase):
         }
         self.view1._requestData = {'expenseFg': [mock_expense_data], 'paymentFg': payment_data}
         self.view2._requestData = {'EditIndexField': 1, 'PAGEABLE_hdrListFg_pageNum': 10, 'hdrFg': SimpleNamespace(id='1', action_rmk='cancel remark')}
-        
+
         response = self.view1.saveExpense()
         self.assertIsInstance(response, IkJsonResponse)
         self.assertEqual(response.messages, [{'type': 'info', 'message': 'Saved.'}])
@@ -86,7 +87,7 @@ class ES005TestCase(ESTestCase):
         self.assertEqual(response.data['data'][0]['sts'], 'submitted')
         self.assertEqual(response.data['data'][0]['claimer_id'], 1)
         self.assertEqual(response.data['data'][0]['claim_amt'], 10)
-        
+
     @patch('es.core.ES.cancel_expense')
     def test_cancel(self, mock_cancel_expense):
         # Mock CashAdvancement
@@ -98,7 +99,7 @@ class ES005TestCase(ESTestCase):
         # Mock `getRequestData` return
         self.view2.getRequestData = MagicMock(return_value={'EditIndexField': 1, 'PAGEABLE_hdrListFg_pageNum': 10, 'hdrFg': mock_hdr})
         self.view2.getCurrentUserId = MagicMock(return_value=self.admin_user.id)
-        
+
         # Mock `cancel_cash_advancement` return
         mock_cancel_expense.return_value = Boolean2.TRUE("Expense [ES2025001] has been cancelled.")
 
@@ -111,7 +112,7 @@ class ES005TestCase(ESTestCase):
         mock_cancel_expense.assert_called_once_with(
             self.admin_user.id, mock_hdr.id, mock_hdr.action_rmk
         )
-        
+
     @patch('es.core.ES.reject_expense')
     def test_reject(self, mock_reject_expense):
         # Mock CashAdvancement
@@ -123,7 +124,7 @@ class ES005TestCase(ESTestCase):
         # Mock `getRequestData` return
         self.view2.getRequestData = MagicMock(return_value={'EditIndexField': 1, 'PAGEABLE_hdrListFg_pageNum': 10, 'hdrFg': mock_hdr})
         self.view2.getCurrentUserId = MagicMock(return_value=self.admin_user.id)
-        
+
         # Mock `cancel_cash_advancement` return
         mock_reject_expense.return_value = Boolean2.TRUE("Expense [ES2025001] has been rejected.")
 
@@ -136,7 +137,7 @@ class ES005TestCase(ESTestCase):
         mock_reject_expense.assert_called_once_with(
             self.admin_user.id, mock_hdr.id, mock_hdr.action_rmk
         )
-        
+
     @patch('es.core.ES.approve_expense')
     def test_approve(self, mock_approve_expense):
         # Mock CashAdvancement
@@ -149,7 +150,7 @@ class ES005TestCase(ESTestCase):
         self.view2.getRequestData = MagicMock(return_value={'EditIndexField': 1, 'PAGEABLE_hdrListFg_pageNum': 10, 'hdrFg': mock_hdr})
         self.view2.getCurrentUserId = MagicMock(return_value=self.admin_user.id)
         self.view2.getSessionParameterInt = MagicMock(return_value=mock_hdr.id)
-        
+
         # Mock `cancel_cash_advancement` return
         mock_approve_expense.return_value = Boolean2.TRUE("Expense [ES2025001] has been approved.")
 
@@ -162,7 +163,7 @@ class ES005TestCase(ESTestCase):
         mock_approve_expense.assert_called_once_with(
             self.admin_user.id, mock_hdr.id, mock_hdr.dsc
         )
-        
+
     @patch('es.core.ES.pay_expense')
     @patch('es.core.ESFile.save_uploaded_really_file')
     @patch('es.models.Expense.objects.filter')
@@ -220,7 +221,7 @@ class ES005TestCase(ESTestCase):
             self.view2.SESSION_KEY_FILE_ID,
             mock_hdr.payment_record_file.id
         )
-        
+
     @patch('es.core.ES.revert_paid_expense')
     def test_revert_paid_payment_success(self, mock_revert_paid_expense):
         # Mock CashAdvancement
@@ -254,7 +255,7 @@ class ES005TestCase(ESTestCase):
 
         # validate deleteSessionParameters has been called
         self.view2.deleteSessionParameters.assert_called_once_with(self.view2.SESSION_KEY_FILE_ID)
-        
+
     @patch('es.core.ES.settle_paid_expense')
     def test_settle_success(self, mock_settle_paid_expense):
         # Mock Expense
@@ -280,7 +281,7 @@ class ES005TestCase(ESTestCase):
 
         # validate ES.settle_paid_cash_advancement has been called
         mock_settle_paid_expense.assert_called_once_with(123, 1000)
-        
+
     @patch('es.core.ES.settle_paid_expense')
     def test_settle_failure(self, mock_settle_paid_expense):
         # Mock Expense

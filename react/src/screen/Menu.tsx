@@ -37,10 +37,7 @@ const Menu = () => {
   const refreshMenu = async () => {
     try {
       await HttpGet("/api/menu/initScreen")
-        .then((response) => {
-          if (response.ok) return response.json()
-          throw response
-        })
+        .then((response) => response.json())
         .then((result) => {
           initPage()
         })
@@ -54,10 +51,7 @@ const Menu = () => {
     // get table data
     try {
       await HttpGet("/api/menu/getScreen?last=" + (lastSelectedMenuId ? lastSelectedMenuId : ""))
-        .then((response) => {
-          if (response.ok) return response.json()
-          throw response
-        })
+        .then((response) => response.json())
         .then((result) => {
           let screenDfn = getScreenDfn(result)
           if (!screenDfn) {

@@ -1,11 +1,14 @@
-import * as React from "react";
-import { createContext } from "use-context-selector";
-import reducer, { INITIAL_STATE } from "./reducer";
+import * as React from "react"
+import { createContext } from "use-context-selector"
+import reducer, { INITIAL_STATE } from "./reducer"
 
-export type ReducerState = React.ReducerState<typeof reducer>;
-export type Dispatch = React.Dispatch<React.ReducerAction<any>>;
-export type Value = [ReducerState, Dispatch];
+type ReducerStateOf<R> = R extends React.Reducer<infer S, any> ? S : never
+type ReducerActionOf<R> = R extends React.Reducer<any, infer A> ? A : never
 
-const context = createContext<Value>([INITIAL_STATE, () => {}]);
+export type ReducerState = ReducerStateOf<typeof reducer>
+export type Dispatch = React.Dispatch<ReducerActionOf<typeof reducer>>
+export type Value = [ReducerState, Dispatch]
 
-export default context;
+const context = createContext<Value>([INITIAL_STATE as ReducerState, (() => {}) as Dispatch])
+
+export default context

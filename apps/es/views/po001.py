@@ -10,15 +10,15 @@ from django.db.models import Q
 
 import core.ui.ui as ikui
 from core.core.http import *
-from core.user import userManager
-from core.utils import templateManager
-from core.utils.langUtils import isNotNullBlank, isNullBlank
-from core.view.screenView import _OPEN_SCREEN_PARAM_KEY_NAME
+from core.user import user_manager
+from core.utils import template_utils
+from core.utils.lang_utils import isNotNullBlank, isNullBlank
+from core.view.screen_view import _OPEN_SCREEN_PARAM_KEY_NAME
 
-from ..core import ESFile, approver, const
+from ..core import approver, const, es_file
 from ..core import po as po_manager
 from ..models import CashAdvancement, Expense, Po, PoQuotation
-from ..views.es_base_views import ESAPIView
+from .es_base import ESAPIView
 
 logger = logging.getLogger('ikyo')
 
@@ -34,12 +34,11 @@ class PO001(ESAPIView):
 
     def __init__(self) -> None:
         super().__init__()
-        self._addStaticResource('es/css/po-v1.css')
+        self._addStaticResource(self.get_last_static_revision_file('po.css', 'es/css'))
 
         def beforeDisplayAdapter(screen: ikui.Screen):
-            if screen.subScreenName == 'pdfScreen':
-                return
             user = self.getCurrentUser()
+            is_admin = self.isAdministrator()
             po_rc = self.__getCurrentPoRc()
             is_new = self.getSessionParameter(self.SESSION_KEY_IS_NEW) if isNotNullBlank(self.getSessionParameter(self.SESSION_KEY_IS_NEW)) else False
 
@@ -52,27 +51,24 @@ class PO001(ESAPIView):
             if isNotNullBlank(po_rc):
                 status = po_rc.status
                 assigned_approver = po_rc.assigned_approver
-                submitter_id = po_rc.submitter_id
-                po_file_id = po_rc.file_id
-                office = po_rc.office
 
                 form_editable = status == Po.SAVED_STATUS or (status == Po.SUBMITTED_STATUS and (
-                    self.isAdministrator() or assigned_approver.id == user.id)) or status == Po.REJECTED_STATUS
+                    is_admin or assigned_approver.id == user.id)) or status == Po.REJECTED_STATUS
                 screen.setFieldGroupsEnable(fieldGroupNames=('poDtlFg', 'quotationListFg', 'poDtl2Fg'),
                                             isEditable=form_editable, isInsertable=form_editable, isDeletable=form_editable)
 
-                screen.setFieldsVisible(fieldGroupName='toolbar', fieldNames='bttSave', visible=po_manager.is_saveable(user, po_rc, self.isAdministrator()))
-                screen.setFieldsEditable(fieldGroupName='toolbar', fieldNames='bttSave', editable=po_manager.is_saveable(user, po_rc, self.isAdministrator()))
+                screen.setFieldsVisible(fieldGroupName='toolbar', fieldNames='bttSave', visible=po_manager.is_saveable(user, po_rc, is_admin))
+                screen.setFieldsEditable(fieldGroupName='toolbar', fieldNames='bttSave', editable=po_manager.is_saveable(user, po_rc, is_admin))
 
                 screen.setFieldsVisible(fieldGroupName='toolbar', fieldNames='bttSubmit', visible=po_manager.is_submittable(user, po_rc))
                 screen.setFieldsEditable(fieldGroupName='toolbar', fieldNames='bttSubmit', editable=po_manager.is_submittable(user, po_rc))
 
-                screen.setFieldsVisible(fieldGroupName='toolbar', fieldNames='bttApprove', visible=po_manager.is_approvable(user, po_rc, self.isAdministrator()))
-                screen.setFieldsEditable(fieldGroupName='toolbar', fieldNames='bttApprove', editable=po_manager.is_approvable(user, po_rc, self.isAdministrator()))
+                screen.setFieldsVisible(fieldGroupName='toolbar', fieldNames='bttApprove', visible=po_manager.is_approvable(user, po_rc, is_admin))
+                screen.setFieldsEditable(fieldGroupName='toolbar', fieldNames='bttApprove', editable=po_manager.is_approvable(user, po_rc, is_admin))
 
-                screen.setFieldsVisible(fieldGroupName='toolbar', fieldNames='bttReject', visible=po_manager.is_rejectable(user, po_rc, self.isAdministrator()))
-                screen.setFieldsEditable(fieldGroupName='toolbar', fieldNames='bttReject', editable=po_manager.is_rejectable(user, po_rc, self.isAdministrator()))
-                screen.setFieldsEditable(fieldGroupName='poDtl2Fg', fieldNames='rmkField', editable=po_manager.is_rejectable(user, po_rc, self.isAdministrator()))
+                screen.setFieldsVisible(fieldGroupName='toolbar', fieldNames='bttReject', visible=po_manager.is_rejectable(user, po_rc, is_admin))
+                screen.setFieldsEditable(fieldGroupName='toolbar', fieldNames='bttReject', editable=po_manager.is_rejectable(user, po_rc, is_admin))
+                screen.setFieldsEditable(fieldGroupName='poDtl2Fg', fieldNames='rmkField', editable=po_manager.is_rejectable(user, po_rc, is_admin))
 
                 screen.setFieldsVisible(fieldGroupName='toolbar', fieldNames='bttDelete', visible=po_manager.is_deletable(user, po_rc))
                 screen.setFieldsEditable(fieldGroupName='toolbar', fieldNames='bttDelete', editable=po_manager.is_deletable(user, po_rc))
@@ -121,7 +117,7 @@ class PO001(ESAPIView):
         return self.setSessionParameters({'sch_item': sch_item})
 
     def getHtmlLegend(self):
-        html = templateManager.loadTemplateFile('po001/legend.html')
+        html = template_utils.loadTemplateFile('po001/legend.html')
         return IkSccJsonResponse(data=html)
 
     def getPoRcs(self):
@@ -175,13 +171,13 @@ class PO001(ESAPIView):
                     r['__CRR_'] = True
 
                 if r['status'] == Po.APPROVED_STATUS:
-                    r['operator.usr_nm'] = userManager.getUserName(r['approver_id'])
+                    r['operator.usr_nm'] = user_manager.getUserName(r['approver_id'])
                     r['operate_dt'] = r['approve_dt']
                 elif r['status'] == Po.REJECTED_STATUS:
-                    r['operator.usr_nm'] = userManager.getUserName(r['rejecter_id'])
+                    r['operator.usr_nm'] = user_manager.getUserName(r['rejecter_id'])
                     r['operate_dt'] = r['reject_dt']
                 else:
-                    r['operator.usr_nm'] = userManager.getUserName(r['assigned_approver_id'])
+                    r['operator.usr_nm'] = user_manager.getUserName(r['assigned_approver_id'])
                 r['show_file'] = True if isNotNullBlank(r['file_id']) else False
 
                 style.append({"row": r['id'], "class": "row_" + r['status']})
@@ -400,11 +396,11 @@ class PO001(ESAPIView):
         """
         file_id = self.getSessionParameter(self.SESSION_KEY_FILE_ID)
         if isNotNullBlank(file_id):
-            ef = ESFile.getESFile(file_id)
+            ef = es_file.getESFile(file_id)
             if isNotNullBlank(ef):
                 if os.path.isfile(ef.file):
                     return responseFile(filePath=ef.file, filename=ef.filename)
-        filePath = ESFile.get_not_exist_file_template()
+        filePath = es_file.get_not_exist_file_template()
         return responseFile(filePath)
 
     def __getCurrentPoID(self) -> int:

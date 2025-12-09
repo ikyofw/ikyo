@@ -1,4 +1,6 @@
-export declare function setup(props: SetupProps): JSX.Element
+import React from 'react';
+
+export declare function setup(props: SetupProps): React.ReactElement;
 
 export interface SetupProps {
   inputField?: string | undefined

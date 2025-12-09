@@ -17,7 +17,7 @@ from openpyxl.worksheet.worksheet import Worksheet
 
 from core.core.exception import IkValidateException
 from core.core.lang import Boolean2
-from core.utils.langUtils import isNullBlank
+from core.utils.lang_utils import isNotNullBlank, isNullBlank
 
 logger = logging.getLogger('ikyo')
 
@@ -61,7 +61,7 @@ DATA_START_COLUMN_INDEX = 3  # column index starts from 1. "3" = "C"
     Screen definition.
     Please reference to View-v14.xlsx
     Usage example:
-        file=r'var\ikyo\screen\office.xlsx'                  
+        file=r'var/ikyo/screen/office.xlsx'                  
         sp = SpreadsheetParser(file)
         print(sp.data)
 '''
@@ -77,7 +77,7 @@ class SpreadsheetParser:
         END of Component
     '''
 
-    def __init__(self, excelFile, ignoreBlankLines=True, tableNames=None):
+    def __init__(self, excelFile, ignoreBlankLines=True, tableNames=None, ignore_output_data=True) -> None:
         self.__firstDataColumnIndex = DATA_START_COLUMN_INDEX - 1  # starts from 0 . the value is (3-1)=2
         # If the line is blank, then igmore it if set to True
         self.__ignoreBlankLines = ignoreBlankLines
@@ -111,7 +111,9 @@ class SpreadsheetParser:
                     if prmName is not None and len(prmName) > 0:
                         if prmName.upper() == self.END_FLAG:
                             break
-                        elif prmName[0] != '>':  # ignore output parameters. e.g. ">projectName"
+                        if ignore_output_data and prmName[0] == '>':  # ignore output parameters. e.g. ">projectName"
+                            continue
+                        else:
                             v = self.__readPrm(prmName, data, i)
                             self.__inputs[prmName] = v
 
@@ -215,7 +217,7 @@ class SpreadsheetParser:
 
 
 class SpreadsheetWriter:
-    def __init__(self, parameters, templateFile, outputFile) -> None:
+    def __init__(self, parameters, templateFile, outputFile, check_table_column_amount: bool = True) -> None:
         if not isinstance(templateFile, djangoUploadedfile.UploadedFile):
             if templateFile is None or not os.path.isfile(templateFile):
                 logger.error('Template file [%s] is not found.', templateFile)
@@ -229,12 +231,17 @@ class SpreadsheetWriter:
         self.__parameters = {} if parameters is None else parameters
         self.__templateFile = templateFile
         self.__outputFile = outputFile
+        self.__check_table_column_amount = check_table_column_amount
 
     def write(self) -> Boolean2:
+        # 2025-11-26: TODO: images missing issue
         wb = None
         try:
             try:
-                wb = load_workbook(self.__templateFile)
+                if self.__templateFile.suffix.lower() == '.xlsm':
+                    wb = load_workbook(self.__templateFile, keep_vba=True)
+                else:
+                    wb = load_workbook(self.__templateFile)
             except InvalidFileException as e:
                 raise IkValidateException(f"Template file format error: {self._templateFile}\n{e}")
             if len(self.__parameters) > 0:
@@ -284,6 +291,9 @@ class SpreadsheetWriter:
             if name not in nameSheetDict.keys():
                 print('Parameter [%s] is not found in the template file [%s]' % (name, self.__templateFile))
             sheet_objects = nameSheetDict.get(name, None)
+            if sheet_objects is None:
+                logger.error('Parameter [%s] is not found in the template file [%s]', name, self.__templateFile)
+                continue
             for st in sheet_objects:
                 data = value
                 sheetName = None
@@ -364,7 +374,7 @@ class SpreadsheetWriter:
     def __writeTableValue(self, st, name, values, columnIndex=DATA_START_COLUMN_INDEX, rowIndex=None, is_last_area=False):
         if values is None or len(values) == 0:
             return
-        v2 = [(v if type(v) == list else [v]) for v in values]
+        v2 = [(v if (type(v) == list or type(v) == tuple) else [v]) for v in values]
 
         lastTitleRow = rowIndex - 1 if rowIndex is not None else self.__getNameRowIndex(st, name)
 
@@ -382,7 +392,7 @@ class SpreadsheetWriter:
             cell = st[columnIndex2Name(col_idx) + str(lastTitleRow)]
             if self.__is_merged_but_not_top_left(st, cell):
                 new_cell = self.__find_next_writable_cell(st, lastTitleRow, col_idx)
-                if new_cell:
+                if new_cell and isNotNullBlank(new_cell.value):
                     tableColumnTitles.append(new_cell.value)
                     firstRowCells.append(st[columnIndex2Name(new_cell.column) + str(lastTitleRow + 1)])
                     merged_cell_num += new_cell.column - cell.column
@@ -420,7 +430,7 @@ class SpreadsheetWriter:
 
         for i in range(len(v2)):
             rowData = v2[i]
-            if len(rowData) != len(tableColumnTitles):
+            if self.__check_table_column_amount and len(rowData) != len(tableColumnTitles):
                 logger.error("Table %s Row %s data length [%s] does not match table column length [%s]." % (name, i + 1, len(rowData), len(tableColumnTitles)))
                 raise IkValidateException("Table %s Row %s data length does not match table column length." % (name, i + 1))
             if i > 0:   # template table has a blank row
@@ -435,11 +445,15 @@ class SpreadsheetWriter:
                     totalEmptyRows -= 1
 
             for j, first_row_cell in enumerate(firstRowCells):
+                if j >= len(rowData):
+                    break
                 cell_data = rowData[j]
                 cell = st.cell(row=rowIndex, column=first_row_cell.column)
                 cell.value = cell_data
             if i > 0:    # update the cell styles (starts from the 2nd row)
                 for j, first_row_cell in enumerate(firstRowCells):
+                    if j >= len(rowData):
+                        break
                     cellName = columnIndex2Name(first_row_cell.column) + str(rowIndex)
                     copyCellStyle(st[cellName], first_row_cell)
 

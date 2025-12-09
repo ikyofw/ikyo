@@ -35,6 +35,7 @@ const pyiLocalStorage = {
 
     // field type
     FIELD_TYPE_LABEL: "label",
+    FIELD_TYPE_LINK: "link",
     FIELD_TYPE_TEXT_BOX:'textbox',
     FIELD_TYPE_TEXTAREA:'textarea',
     FIELD_TYPE_PASSWORD:'password',
@@ -49,6 +50,7 @@ const pyiLocalStorage = {
     FIELD_TYPE_FILE: "file",
     FIELD_TYPE_PLUGIN: "plugin",
     FIELD_TYPE_HTML: "html",
+    FIELD_TYPE_INLINE_RADIO_GROUP: "inlineradiogroup",
 
     // dialog type
     DIALOG_TYPE_NORMAL: "normal",

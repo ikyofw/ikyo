@@ -34,6 +34,7 @@ export const Cell: React.FC<Types.CellComponentProps> = ({
   buttonBoxPrams,
   advancedSelectionBoxPrams,
   htmlCols,
+  linkCols,
   checkBoxPrams,
   tableHeight,
 }): React.ReactElement => {
@@ -57,7 +58,7 @@ export const Cell: React.FC<Types.CellComponentProps> = ({
         }
       }
     },
-    [mode, setCellDimensions, point, tableName, select, activate] // LHH.ikyo 2022-05-05
+    [mode, setCellDimensions, point, tableName, select, activate] // LHH 2022-05-05
   )
 
   const handleMouseOver = React.useCallback(
@@ -120,7 +121,8 @@ export const Cell: React.FC<Types.CellComponentProps> = ({
         advancedSelectionBoxPrams={advancedSelectionBoxPrams}
         initialData={initialData}
         htmlCols={htmlCols}
-        checkBoxPrams={checkBoxPrams} // LHH.ikyo 2022-04-29
+        linkCols={linkCols}
+        checkBoxPrams={checkBoxPrams} // LHH 2022-04-29
       />
     </td>
   )

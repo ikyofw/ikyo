@@ -6,5 +6,8 @@ export const DialogContext = React.createContext({
   screenID: "",
   closeDialog: () => {},
   openDialog: (params) => {},
-  createEventData: (params) => {return {}},
+  createEventData: (params) => {
+    return {}
+  },
+  setShowPdfViewer: (params) => {},
 })

@@ -102,10 +102,7 @@ export default function CustomDialog(props: CustomDialogProps) {
         params = (params ? params + "&" : "?") + pyiGlobal.SUB_SCREEN_KEY_NAME + "=" + dialogName
       }
       await HttpGet("/api/" + dialogPrams.screenID + "/initScreen" + params)
-        .then((response) => {
-          if (response.ok) return response.json()
-          throw response
-        })
+        .then((response) => response.json())
         .then((result) => {
           let screenDfn = getResponseData(result)
           if (!screenDfn) {
@@ -139,28 +136,34 @@ export default function CustomDialog(props: CustomDialogProps) {
 
         {/* Upload Dialog  */}
         {dialogPrams.dialogType === pyiGlobal.DIALOG_TYPE_UPLOAD ? (
-          <>
-            <br />
-            <FileUpload
-              key={"dialog"}
-              ref={uploadRef}
-              fileBoxLabel={dialogPrams.uploadTip ? dialogPrams.uploadTip : dialogPrams.multiple ? "Select File(s)" : "Select File"}
-              name={"uploadField"}
-              widgetParameter={{ multiple: dialogPrams.multiple ? dialogPrams.multiple : false }}
-              editable={true}
-            />
-            <br />
-            <div
-              style={{
-                paddingLeft: "4px",
-                whiteSpace: "pre-wrap",
-                fontSize: "9pt",
-                color: "red",
-              }}
-            >
-              {uploadMsg}
-            </div>
-          </>
+          <table className="property_field">
+            <tbody>
+              <tr style={{height: "4px"}}></tr>
+              <tr>
+                <FileUpload
+                  key={"dialog"}
+                  ref={uploadRef}
+                  fileBoxLabel={dialogPrams.uploadTip ? dialogPrams.uploadTip : dialogPrams.multiple ? "Select File(s)" : "Select File"}
+                  name={"uploadField"}
+                  widgetParameter={{ multiple: dialogPrams.multiple ? dialogPrams.multiple : false }}
+                  editable={true}
+                />
+              </tr>
+              <tr>
+                <td colSpan={2}
+                  style={{
+                    paddingLeft: "4px",
+                    paddingTop: "4px",
+                    whiteSpace: "pre-wrap",
+                    fontSize: "9pt",
+                    color: "red",
+                  }}
+                >
+                  {uploadMsg}
+                </td>
+              </tr>
+            </tbody>
+          </table>
         ) : null}
 
         {fgNames.length !== 0 ? <Screen ref={screenRef} subScreenNm={dialogName} fgNames={fgNames} screenID={dialogPrams.screenID} /> : null}

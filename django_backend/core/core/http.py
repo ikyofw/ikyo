@@ -6,13 +6,10 @@ import logging
 import os
 from enum import Enum
 from pathlib import Path
-from urllib.parse import quote
+from typing import Optional
+from urllib.parse import quote, splitport
 
-import core.db.model as ikDbModels
-import core.utils.modelUtils as modelUtils
 import django.core.files.uploadedfile as djangoUploadedfile
-from core.utils import datetimeUtils
-from core.utils.langUtils import isNotNullBlank, isNullBlank
 from django.core.exceptions import FieldDoesNotExist
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db import models
@@ -21,13 +18,18 @@ from django.http import HttpRequest, HttpResponse
 from django.http.response import JsonResponse, StreamingHttpResponse
 from django.templatetags.static import static
 
+import core.db.model as ikDbModels
+import core.utils.model_utils as model_utils
+from core.utils import date_utils
+from core.utils.lang_utils import isNotNullBlank, isNullBlank
+
 from .code import IkCode, MessageType
 from .exception import IkMessageException, IkValidateException
 
 logger = logging.getLogger('ikyo')
 
 
-def isSupportSession(request) -> bool:
+def is_support_session(request) -> bool:
     '''
         return False if request from "http://localhost:3000"
     '''
@@ -38,13 +40,48 @@ def isSupportSession(request) -> bool:
     return not isReactDev
 
 
-def getClientIP(request):
+def get_ip(request) -> str:
     x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')  # Use proxy?
     if x_forwarded_for:
-        ip = x_forwarded_for.split(',')[0]  # get IP from proxy
+        ip = x_forwarded_for.split(',')[0].strip()  # get IP from proxy
     else:
         ip = request.META.get('REMOTE_ADDR')  # get IP directly
     return ip
+
+
+def get_host(request) -> str:
+    return request.get_host()
+
+
+def get_host_name(request) -> str:
+    """Pure domain name, without ports."""
+    host, _ = splitport(get_host(request))
+    return host
+
+
+def get_host_port(request) -> Optional[str]:
+    """Port number; If there is no port in the URL, return None."""
+    _, port = splitport(get_host(request))
+    return port
+
+
+def get_scheme(request) -> str:
+    """'http' or 'https'."""
+    return request.scheme
+
+
+def get_full_url(request) -> str:
+    """Complete absolute URL."""
+    return request.build_absolute_uri()
+
+
+def get_remote_user(request) -> str:
+    return (
+        request.META.get("HTTP_X_REMOTE_USER")
+        or request.META.get("REMOTE_USER")
+        or request.META.get("LOGON_USER")
+        or request.environ.get("USERNAME")
+    )
 
 
 class RECORD_SET(Enum):
@@ -203,7 +240,7 @@ class IkJsonResponse(JsonResponse):
         # YL.ikyo, 2023-03-29 - end
         d = r.toJson()
         # add property values
-        propertValues = modelUtils.getModelPropertyValues(r)
+        propertValues = model_utils.getModelPropertyValues(r)
         for prpKey, prpValue in propertValues.items():
             d.update({prpKey: self.__object2Str(prpValue)})
         if r._meta.pk is not None and r._meta.pk.name is not None:
@@ -341,6 +378,12 @@ class IkRequestData(dict):
 
     def getRequest(self) -> HttpRequest:
         return self.__request
+
+    def getQueryParam(self, name: str, default=None):
+        try:
+            return self.__request.query_params.get(name, default)
+        except Exception:
+            return default
 
     def get2(self, name, default=None, dataTypes=None, recordToList=False, recordToListIgnoreFields=None) -> list:
         '''
@@ -503,7 +546,7 @@ def GetRequestData(request, parameterModelMap={}, screen=None, initDataFromDatab
                         rows.append(rc)
                     data[key] = rows
                 else:
-                    modelClass = modelUtils.get_model_class_1(screen.appName, modelClassName)
+                    modelClass = model_utils.get_model_class_1(screen.appName, modelClassName)
                     primaryKey = modelClass._meta.pk.name
                     dbFieldNamesAttrs = attr[2:]
                     for r in tableData:
@@ -545,6 +588,9 @@ def GetRequestData(request, parameterModelMap={}, screen=None, initDataFromDatab
                             classMembers = inspect.getmembers(modelClass, lambda a: not (inspect.isroutine(a)))
                             classMemberFields = [member[0] for member in classMembers if not member[0].startswith('__')]
                             for cmf in classMemberFields:
+                                # Exclude the "property" attribute (non-writable)
+                                if isinstance(getattr(modelClass, cmf, None), property):  # YL, 2025-08-04 bugfix.
+                                    continue
                                 if cmf in dbFieldNamesAttrs:
                                     if hasattr(modelInstance, cmf):
                                         setattr(modelInstance, cmf, rowValuesDict[cmf])
@@ -597,7 +643,7 @@ def __GetRequestData_oneRecord(screen, parameterModelMap, name, values, initData
     if screenFieldGroup is None:
         return screenFieldGroup
 
-    modelClass = modelUtils.get_model_class_1(screen.appName, modelClassName)
+    modelClass = model_utils.get_model_class_1(screen.appName, modelClassName)
     # XH 2023-04-21  Data from tables using DummyModel is not processed and directly returns the original data passed from the front end.
     if issubclass(modelClass, ikDbModels.DummyModel):
         return values
@@ -622,7 +668,8 @@ def __GetRequestData_oneRecord(screen, parameterModelMap, name, values, initData
     hasIDField = False
     for field in screenFieldGroup.fields:
         # if field.dataField is not None and field.visible and field.editable and field.widget.lower() in ('textbox', 'combobox', 'checkBox'.lower(), 'datebox', 'textarea'): # TODO: get from somewhere
-        if field.dataField is not None and field.visible and field.widget.lower() in ('label', 'textbox', 'combobox', 'AdvancedSelection'.lower(), 'checkBox'.lower(), 'datebox', 'textarea', 'password'):
+        if field.dataField is not None and field.visible and field.widget.lower() in ('label', 'textbox', 'combobox', 'AdvancedComboBox'.lower(), 'AdvancedSelection'.lower(),
+                                                                                      'InlineRadioGroup'.lower(), 'checkBox'.lower(), 'datebox', 'textarea', 'password'):
             if field.dataField.startswith(ikDbModels.MODEL_PROPERTY_ATTRIBUTE_NAME_PREFIX):  # read only fields. E.g. _cre_usr_nm, _mod_usr_nm
                 continue  # ignore
             elif ikDbModels.FOREIGN_KEY_VALUE_FLAG in field.dataField:  # foreign key fields. E.g. foreign key field user. access to user.name: user.usr_nm
@@ -677,13 +724,13 @@ def __GetRequestData_oneRecord(screen, parameterModelMap, name, values, initData
                         elif '.' in newValue:
                             newValue = datetime.datetime.strptime(newValue, "%Y-%m-%d %H:%M:%S.%f")
                         else:
-                            newValue = datetimeUtils.parse_datetime_flex(newValue)
+                            newValue = date_utils.parse_datetime_flex(newValue)
                 elif fieldDataType == 'DateField':
                     if newValue is not None and not isinstance(newValue, datetime.date):
-                        newValue = datetimeUtils.parse_date_flex(newValue)
+                        newValue = date_utils.parse_date_flex(newValue)
                 elif fieldDataType == 'TimeField':
                     if newValue is not None and not isinstance(newValue, datetime.time):
-                        newValue = datetimeUtils.parse_time_flex(newValue)
+                        newValue = date_utils.parse_time_flex(newValue)
 
                 # simple validation # TODO: max value checking, min value checking, string length checking
                 if not isDBNullable and isNullBlank(newValue) and field.dataField != 'cre_dt' and field.dataField != 'cre_usr_id':
@@ -709,7 +756,7 @@ def __GetRequestData_oneRecord(screen, parameterModelMap, name, values, initData
                         newValue = False
 
                 if not isNewModelRecord:
-                    if str(newValue) != str(originalFieldValue):
+                    if __is_field_value_changed(originalFieldValue, newValue):  # YL, 2025-8-04 bugfix for datetime has microsecond
                         # value changed
                         setattr(modelInstance, field.dataField, newValue)
                         if isinstance(modelInstance, ikDbModels.Model):
@@ -740,6 +787,22 @@ def __GetRequestData_oneRecord(screen, parameterModelMap, name, values, initData
         id = values.get(primaryKeyName, None)
         setattr(modelInstance, primaryKeyName, int(id) if id is not None else None)
     return modelInstance
+
+
+def __normalize_value(value):
+    if isinstance(value, datetime.datetime):
+        # Remove the microsecond part
+        return value.replace(microsecond=0)
+    elif isinstance(value, datetime.date):
+        return value
+    elif value is None:
+        return None
+    else:
+        return str(value).strip()
+
+
+def __is_field_value_changed(old_value, new_value):
+    return __normalize_value(old_value) != __normalize_value(new_value)
 
 
 def __float2(s):

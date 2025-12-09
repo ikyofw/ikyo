@@ -1,16 +1,10 @@
-'''
-Description: Menu Management
-version:
-Author: YL
-Date: 2024-06-21 14:55:50
-'''
 import logging
 
 import core.models as ikModels
 from core.core.lang import Boolean2
 from core.db.transaction import IkTransaction
-from core.menu.menuManager import MenuManager
-from core.utils.langUtils import isNotNullBlank, isNullBlank
+from core.menu.menu_manager import MenuManager
+from core.utils.lang_utils import isNotNullBlank, isNullBlank
 
 logger = logging.getLogger('ikyo')
 
@@ -24,7 +18,7 @@ def get_parent_menu() -> list:
         parent_order_no = i.order_no
         menu_level_index = 0
         # Get parent menu caption and parent order_no, eg: Top Menu >> Level 1 Menu >> Level 2 Menu
-        while isNotNullBlank(parent_menu_id) and menu_level_index < 2:
+        while isNotNullBlank(parent_menu_id) and menu_level_index < 3:
             parent_menu = ikModels.Menu.objects.filter(id=parent_menu_id).first()
             if parent_menu:
                 parent_menu_caption = parent_menu.menu_caption + " -> " + parent_menu_caption
@@ -34,7 +28,7 @@ def get_parent_menu() -> list:
             else:
                 break
 
-        if menu_level_index <= 2 and isNullBlank(parent_menu_id):  # It's Top Menu if parent_menu_id is null
+        if menu_level_index <= 3 and isNullBlank(parent_menu_id):  # It's Top Menu if parent_menu_id is null
             data.append({
                 'parent_menu_id': i.id,
                 'parent_menu': parent_menu_caption,
@@ -47,7 +41,7 @@ def get_parent_menu() -> list:
     return data
 
 
-def get_menu_tree() -> list:
+def get_menu_tree(sch_items: dict = None) -> list:
     qs = ikModels.Menu.objects.all().order_by("parent_menu_id", "order_no", "menu_nm")
     data = []
     # build a dictionary to store the mapping relationship between menu_id and menu_caption
@@ -69,7 +63,7 @@ def get_menu_tree() -> list:
                     data.append({
                         'id': menu.id,
                         'parent_menu_id': menu.parent_menu_id if isNotNullBlank(menu.parent_menu_id) else 0,
-                        'parent_menu': parent_caption,
+                        'parent_menu': parent_caption if isNotNullBlank(menu.parent_menu_id) else '--Top Menu--',
                         'menu_nm': menu.menu_nm,
                         'menu_caption': menu.menu_caption,
                         'screen_nm': menu.screen_nm,
@@ -82,7 +76,7 @@ def get_menu_tree() -> list:
                     data.append({
                         'id': menu.id,
                         'parent_menu_id': menu.parent_menu_id if isNotNullBlank(menu.parent_menu_id) else 0,
-                        'parent_menu': parent_caption,
+                        'parent_menu': parent_caption if isNotNullBlank(menu.parent_menu_id) else '--Top Menu--',
                         'menu_nm': menu.menu_nm,
                         'menu_caption': menu.menu_caption,
                         'screen_nm': menu.screen_nm,
@@ -94,12 +88,26 @@ def get_menu_tree() -> list:
     # top menu start
     top_level_menus = menu_tree.get(0, [])
     add_to_data(top_level_menus)
+
+    if isNotNullBlank(sch_items):
+        sch_key = sch_items.get('schKey', '').lower()
+        sch_children_menu = sch_items.get('schChildrenMenu', '') == 'true'
+        if isNotNullBlank(sch_key):
+            data = [
+                d for d in data
+                if sch_key in (d.get('parent_menu') or '').lower()
+                or sch_key in (d.get('menu_nm') or '').lower()
+                or sch_key in (d.get('menu_caption') or '').lower()
+                or sch_key in (d.get('screen_nm') or '').lower()
+            ]
+        if sch_children_menu:
+            data = [d for d in data if d.get('parent_menu_id') != 0]
     return data
 
 
 def save_menus(user_id: int, menu_fg: list[ikModels.Menu]) -> Boolean2:
     data = []
-    for i in menu_fg:
+    for index, i in enumerate(menu_fg, start=1):
         if i.ik_is_status_retrieve():
             continue
         else:
@@ -112,6 +120,8 @@ def save_menus(user_id: int, menu_fg: list[ikModels.Menu]) -> Boolean2:
                     sub_menu.ik_set_status_modified()
                     data.append(sub_menu)
             else:
+                if not __isNumber(i.order_no):
+                    return Boolean2(False, "[Order No] must be numeric in row %s." % index)
                 if i.ik_is_status_new():  # new
                     if ikModels.Menu.objects.filter(menu_nm=i.menu_nm).count() > 0:
                         return Boolean2(False, "The menu name: [%s] already exists, please change it." % i.menu_nm)
@@ -141,3 +151,11 @@ def save_menus(user_id: int, menu_fg: list[ikModels.Menu]) -> Boolean2:
     if not b.value:
         return b
     return Boolean2(True, "Saved")
+
+
+def __isNumber(s):
+    try:
+        float(s)
+        return True
+    except ValueError:
+        return False

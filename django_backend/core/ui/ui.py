@@ -12,20 +12,18 @@ from django.db.models.query import QuerySet
 
 import core.core.http as ikhttp
 import core.db.model as ikDbModels
-from core.log.logger import logger
 import core.models as ikModels
-import core.utils.djangoUtils as ikDjangoUtils
-import core.utils.httpUtils as ikHttpUtils
-import core.utils.modelUtils as modelUtils
+import core.utils.django_utils as ikDjangoUtils
+import core.utils.http_utils as ikHttpUtils
+import core.utils.model_utils as model_utils
 from core.core.exception import IkValidateException
-from core.models import ScreenFgType, ScreenFieldWidget
-from core.utils.langUtils import convertStr2Json, isNotNullBlank, isNullBlank
+from core.log.logger import logger
+from core.utils.lang_utils import convertStr2Json, isNotNullBlank, isNullBlank
 from django_backend.settings import BASE_DIR
 from iktools import IkConfig
 
-from . import uiCache as ikuiCache
-from . import uidb as ikuidb
-
+from . import ui_cache as ikuiCache
+from . import ui_db as ikuidb
 
 SCREEN_FIELD_TYPE_TREE = 'tree'
 SCREEN_FIELD_TYPE_TABLE = 'table'
@@ -44,6 +42,7 @@ SCREEN_FIELD_NORMAL_GROUP_TYPES = (SCREEN_FIELD_TYPE_TREE, SCREEN_FIELD_TYPE_TAB
                                    SCREEN_FIELD_TYPE_HTML, SCREEN_FIELD_TYPE_IFRAME, SCREEN_FIELD_TYPE_UDF_VIEWER)
 
 SCREEN_FIELD_WIDGET_LABEL = 'Label'
+SCREEN_FIELD_WIDGET_LINK = 'Link'
 SCREEN_FIELD_WIDGET_TEXT_BOX = 'TextBox'
 SCREEN_FIELD_WIDGET_TEXT_AREA = 'TextArea'
 SCREEN_FIELD_WIDGET_PASSWORD = 'Password'
@@ -58,12 +57,14 @@ SCREEN_FIELD_WIDGET_ICON_AND_TEXT = 'IconAndText'
 SCREEN_FIELD_WIDGET_FILE = 'File'
 SCREEN_FIELD_WIDGET_PLUGIN = 'Plugin'
 SCREEN_FIELD_WIDGET_HTML = 'Html'
+SCREEN_FIELD_WIDGET_INLINE_RADIO_GROUP = 'InlineRadioGroup'
 
-SCREEN_FIELD_SELECT_WIDGETS = (SCREEN_FIELD_WIDGET_COMBO_BOX, SCREEN_FIELD_WIDGET_LIST_BOX, SCREEN_FIELD_WIDGET_ADVANCED_COMBOBOX, SCREEN_FIELD_WIDGET_ADVANCED_SELECTION)
-SCREEN_FIELD_NORMAL_WIDGETS = (SCREEN_FIELD_WIDGET_LABEL, SCREEN_FIELD_WIDGET_TEXT_BOX, SCREEN_FIELD_WIDGET_TEXT_AREA, SCREEN_FIELD_WIDGET_PASSWORD, SCREEN_FIELD_WIDGET_DATE_BOX,
-                               SCREEN_FIELD_WIDGET_COMBO_BOX, SCREEN_FIELD_WIDGET_LIST_BOX, SCREEN_FIELD_WIDGET_ADVANCED_COMBOBOX, SCREEN_FIELD_WIDGET_ADVANCED_SELECTION,
-                               SCREEN_FIELD_WIDGET_CHECK_BOX, SCREEN_FIELD_WIDGET_BUTTON, SCREEN_FIELD_WIDGET_ICON_AND_TEXT, SCREEN_FIELD_WIDGET_FILE, SCREEN_FIELD_WIDGET_PLUGIN,
-                               SCREEN_FIELD_WIDGET_HTML)
+SCREEN_FIELD_SELECT_WIDGETS = (SCREEN_FIELD_WIDGET_COMBO_BOX, SCREEN_FIELD_WIDGET_LIST_BOX, SCREEN_FIELD_WIDGET_ADVANCED_COMBOBOX, SCREEN_FIELD_WIDGET_ADVANCED_SELECTION,
+                               SCREEN_FIELD_WIDGET_INLINE_RADIO_GROUP)
+SCREEN_FIELD_NORMAL_WIDGETS = (SCREEN_FIELD_WIDGET_LABEL, SCREEN_FIELD_WIDGET_LINK, SCREEN_FIELD_WIDGET_TEXT_BOX, SCREEN_FIELD_WIDGET_TEXT_AREA, SCREEN_FIELD_WIDGET_PASSWORD, 
+                               SCREEN_FIELD_WIDGET_DATE_BOX, SCREEN_FIELD_WIDGET_COMBO_BOX, SCREEN_FIELD_WIDGET_LIST_BOX, SCREEN_FIELD_WIDGET_ADVANCED_COMBOBOX, 
+                               SCREEN_FIELD_WIDGET_ADVANCED_SELECTION, SCREEN_FIELD_WIDGET_CHECK_BOX, SCREEN_FIELD_WIDGET_BUTTON, SCREEN_FIELD_WIDGET_ICON_AND_TEXT, 
+                               SCREEN_FIELD_WIDGET_FILE, SCREEN_FIELD_WIDGET_PLUGIN, SCREEN_FIELD_WIDGET_HTML, SCREEN_FIELD_WIDGET_INLINE_RADIO_GROUP)
 
 SCREEN_FIELD_GROUP_SELECTION_MODE_SINGLE = 'single'
 SCREEN_FIELD_GROUP_SELECTION_MODE_MULTIPLE = 'multiple'
@@ -462,6 +463,7 @@ class ScreenFieldGroup:
             jFg = {'name': self.name,
                    'type': self.groupType,
                    'caption': self.caption,
+                   'editable': editable,
                    'data': self.data,
                    'dataUrl': self.__dataUrl
                    }
@@ -1239,7 +1241,7 @@ class __ScreenManager:
                     field.widget = SCREEN_FIELD_WIDGET_ICON_AND_TEXT
                 # TODO:
         for sfg in screen.fieldGroups:
-            if sfg.groupType == SCREEN_FIELD_TYPE_RESULT_TABLE and sfg.editable:
+            if sfg.groupType == SCREEN_FIELD_TYPE_RESULT_TABLE: # delete (and sfg.editable), editabel can set at view's beforedisplay, so need remove at react if disable. YL, 2025-07-28
                 # result table add edit field
                 sfg.fields.append(self.__getResultTableEditButtonField(sfg))
 
@@ -1660,13 +1662,13 @@ class __ScreenManager:
                         comboxData2 = []
                         if isinstance(comboxData, QuerySet):
                             for rc in comboxData:
-                                comboxData2.append({'value': modelUtils.getModelAttr(rc, valueField), 'display': modelUtils.getModelAttr(rc, displayField)})
+                                comboxData2.append({'value': model_utils.getModelAttr(rc, valueField), 'display': model_utils.getModelAttr(rc, displayField), 'description': model_utils.getModelAttr(rc, 'description')})
                         else:
                             for rc in comboxData:
                                 if isinstance(comboxData[0], models.Model):
-                                    comboxData2.append({'value': modelUtils.getModelAttr(rc, valueField), 'display': modelUtils.getModelAttr(rc, displayField)})
+                                    comboxData2.append({'value': model_utils.getModelAttr(rc, valueField), 'display': model_utils.getModelAttr(rc, displayField), 'description': model_utils.getModelAttr(rc, 'description')})
                                 else:
-                                    comboxData2.append({'value': rc.get(valueField, None), 'display': rc.get(displayField, None)})
+                                    comboxData2.append({'value': rc.get(valueField, None), 'display': rc.get(displayField, None), 'description': rc.get('description', None)})
                         comboxData = comboxData2
                     else:
                         # combox data is a list. E.g. ['aa', 'bb']
@@ -1778,12 +1780,14 @@ class __ScreenManager:
     def _getRecordSetData(self, fieldGroup, field, recordsetName) -> dict:
         screen = fieldGroup.parent
         recordset = screen.getRecordSet(recordsetName)
+        if "." not in recordset.modelNames:
+            recordset.modelNames = "%s.models.%s" % (screen.appName , recordset.modelNames)
         # YL.ikyo, 2023-04-23 no use in database - start
         # pageType = SCREEN_FIELD_GROUP_PAGE_TYPE_SERVER if (field is not None or isNullBlank(fieldGroup.pageType)) else fieldGroup.pageType
         # pageSize = None if pageType != SCREEN_FIELD_GROUP_PAGE_TYPE_SERVER else fieldGroup.pageSize
         # if not pageSize:
         #     pageSize = recordset.queryPageSize
-        return modelUtils.queryModel(modelNames=recordset.modelNames,
+        return model_utils.queryModel(modelNames=recordset.modelNames,
                                      distinct=recordset.distinct,
                                      queryFields=None if (isNullBlank(recordset.queryFields)
                                                           or recordset.queryFields == '*') else recordset.queryFields,

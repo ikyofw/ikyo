@@ -1,5 +1,6 @@
 from enum import Enum
 
+import core.user.user_manager as UserManager2
 from django.db import connection
 
 
@@ -9,11 +10,9 @@ class IkSession(Enum):
 
 
 class UserManager:
-    SYSTEM_USER_ID = -1
-    GUEST_USER_ID = -3
 
     def GetCurrentUserId():
-        return UserManager.GUEST_USER_ID
+        return UserManager2.GUEST_USER_ID
 
     def GetUserId(request):  # TODO
         return UserManager.GetCurrentUserId()

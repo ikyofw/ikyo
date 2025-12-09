@@ -1,11 +1,12 @@
-from django.test import RequestFactory
 from unittest.mock import MagicMock
 
+from django.test import RequestFactory
+
 from core.core.http import IkJsonResponse
-from es.views.es002_views import ES002
+from core.models import Office
+from es.views.es002 import ES002
+
 from .test_es_base import ESTestCase
-from core.models import Office, UserOffice
-from ..models import UserWorkOffice
 
 
 class ES002TestCase(ESTestCase):

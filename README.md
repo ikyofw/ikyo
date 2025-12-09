@@ -21,7 +21,7 @@ The main objective of this framework is to minimize development effort for typic
 
 # Notes
 1. Python 3.10 or above.
-2. Django 4.x.
+2. Django 5.2.6 or above.
 3. React.
 4. Django Rest Framework ([Official Website](https://www.django-rest-framework.org)).
 5. Database: Postgresql.
@@ -30,6 +30,7 @@ The main objective of this framework is to minimize development effort for typic
 | Version | Date       | Author | Description    |
 | ------- | ---------- | ------ | -------------- |
 | 2.000   | 2023-12-13 | ikyo   | Initial release |
+| 3.000   | 2025-12-09 | ikyo   | Upgrade django to 5.2.6. |
 
 # Folder Structure
 1. **django_backend**: Python Django backend folder.
@@ -61,7 +62,7 @@ To set up your Python environment, follow these steps:
 ## Python Modules
 | #  | Name                | Version | Description                                           |
 | -- | ------------------- | ------- | ----------------------------------------------------- |
-| 1  | django              | 4.x     |                                                       |
+| 1  | django              | 5.2.6   |                                                       |
 | 2  | django-cors-headers |         |                                                       |
 | 3  | djangorestframework |         |                                                       |
 | 4  | markdown            |         | Markdown support for the browsable API.               |

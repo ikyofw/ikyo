@@ -1,11 +1,12 @@
-from django.test import RequestFactory
 from unittest.mock import MagicMock
 
+from django.test import RequestFactory
+
 from core.core.http import IkJsonResponse
-from es.views.es003_views import ES003
+from es.views.es003 import ES003
+
+from ..models import PaymentMethod
 from .test_es_base import ESTestCase
-from core.models import UserOffice
-from ..models import UserWorkOffice, PaymentMethod
 
 
 class ES003TestCase(ESTestCase):

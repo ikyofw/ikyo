@@ -10,7 +10,7 @@ import pyiLocalStorage from "./pyiLocalStorage"
  */
 
 const global = pyiLocalStorage.globalParams
-export function parseTableData(data: string[], fields: string[]) {
+export function parseTableData(data: any[], fieldsParams: any[], fields: string[]) {
   const dataArr = []
 
   data &&
@@ -47,9 +47,25 @@ export function parseTableData(data: string[], fields: string[]) {
             value: item[element] && item[element] !== null ? "true" : "",
           })
         } else {
-          dataItemArr.push({
-            value: (item[element] && item[element] !== null) || item[element] === 0 || item[element] === false ? String(item[element]) : "",
-          })
+          if (index > 1 && fieldsParams[index - 2].widget?.trim().toLocaleLowerCase() === global.FIELD_TYPE_LINK) {
+            let valueDisplay = fieldsParams[index - 2].widgetParameter.values
+            if (valueDisplay) {
+              valueDisplay = valueDisplay.replace(/'/g, '"')
+              valueDisplay = JSON.parse(valueDisplay)
+            } else {
+              valueDisplay = { value: "value", display: "display" }
+            }
+            const value = item[valueDisplay["value"]]
+            const display = item[valueDisplay["display"]]
+            dataItemArr.push({
+              value: (value && value !== null) || value === 0 || value === false ? String(value) : "",
+              display: (display && display !== null) || display === 0 || display === false ? String(display) : "",
+            })
+          } else {
+            dataItemArr.push({
+              value: (item[element] && item[element] !== null) || item[element] === 0 || item[element] === false ? String(item[element]) : "",
+            })
+          }
         }
       }
       dataArr.push(dataItemArr)
@@ -367,6 +383,21 @@ export function getTableDateBoxColsInfo(table: any) {
   return tableFgDateBoxColInfoArr
 }
 
+export function getTableLinkColsNos(table: any) {
+  const tableFgLinkColNosArr = []
+  if (table.fields) {
+    for (let index = 0; index < table.fields.length; index++) {
+      const field = table.fields[index]
+      const widget = field.widget?.trim().toLocaleLowerCase()
+      if (widget === global.FIELD_TYPE_LINK) {
+        tableFgLinkColNosArr.push(index + 2)
+      }
+    }
+  }
+  // console.log("tableFgDisableColNosArr", tableFgDisableColNosArr)
+  return tableFgLinkColNosArr
+}
+
 /**
  * get table disable columns
  * @param table
@@ -380,6 +411,7 @@ export function getTableDisableColNos(table: any) {
       const widget = field.widget?.trim().toLocaleLowerCase()
       if (
         widget === global.FIELD_TYPE_LABEL ||
+        widget === global.FIELD_TYPE_LINK ||
         widget === global.FIELD_TYPE_CHECK_BOX ||
         widget === global.FIELD_TYPE_BUTTON ||
         widget === global.FIELD_TYPE_HTML ||

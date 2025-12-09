@@ -1,15 +1,16 @@
 import logging
+
 from django.db import connection
 from django.urls import URLPattern, path, re_path
-from core.core.exception import IkException
+
 import core.utils.db as dbUtils
-import core.utils.modelUtils as modelUtils
-import core.utils.djangoUtils as ikDjangoUtils
-from core.auth.index import AuthView
-from core.menu.views import Menu, MenuBarView
-from core.utils.langUtils import isNullBlank
+import core.utils.django_utils as ikDjangoUtils
+import core.utils.model_utils as model_utils
 from core import views
+from core.auth.index import AuthView
 from core.help import ScreenHelpView
+from core.menu.menu_view import Menu, MenuBarView
+from core.utils.lang_utils import isNullBlank
 
 logger = logging.getLogger('ikyo')
 
@@ -75,7 +76,7 @@ def getScreenUrlFromDatabase() -> list[URLPattern]:
             screen_class_nm = screen.get('class_nm', None)
             api_url = screen.get('api_url', None)
 
-            view_class = modelUtils.get_model_class_2(screen_app_name, screen_sn, screen_class_nm)
+            view_class = model_utils.get_model_class_2(screen_app_name, screen_sn, screen_class_nm)
             if view_class is not None:
                 url = apiScreenUrl(view_class, None if isNullBlank(api_url) else api_url.lower())
                 urlpatterns.append(url)

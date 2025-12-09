@@ -1,7 +1,6 @@
 // XH 2022-07-05 start
 import classNames from "classnames"
 import transform from "css-to-react-native"
-import { columnIndexToLabel } from "hot-formula-parser"
 import moment from "moment"
 import * as React from "react"
 import ReactDOM from "react-dom"
@@ -13,6 +12,8 @@ import * as Selection from "./selection"
 import * as Types from "./types"
 import useDispatch from "./use-dispatch"
 import useSelector from "./use-selector"
+
+const { columnIndexToLabel }: any = require('hot-formula-parser');
 
 // YL, 2023-05-06 Add tooltip - start
 const pyiGlobal = pyiLocalStorage.globalParams

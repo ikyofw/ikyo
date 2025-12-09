@@ -13,7 +13,7 @@ interface IFileUpload {
   tip?: string
 }
 const FileUpload: React.FC<IFileUpload> = forwardRef((props, ref: Ref<any>) => {
-  const [tooltip, setTooltip] = React.useState(String)
+  const [tooltip, setTooltip] = React.useState('')
   const [fileKey, setFileKey] = React.useState<number>(0)
   const multiple = props.widgetParameter.multiple
 
@@ -32,9 +32,9 @@ const FileUpload: React.FC<IFileUpload> = forwardRef((props, ref: Ref<any>) => {
         setTooltip(props.tip)
       }
     } else {
-      setTooltip('')
+      setTooltip("")
     }
-  }, [props])
+  }, [props.name, props.widgetParameter?.multiple, props.tip])
 
   const { cellStyle, cellClass } = simpleFg.formatCss(props.style)
 

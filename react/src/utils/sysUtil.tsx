@@ -1,7 +1,7 @@
 import moment from "moment"
 import React from "react"
 import cookie from "react-cookies"
-import ReactDOM from "react-dom"
+import { createRoot, Root } from "react-dom/client"
 import { Tooltip } from "react-tooltip"
 import * as Loading from "../components/Loading"
 import SysMsgBox from "../components/SysMsgBox"
@@ -28,10 +28,31 @@ const dateTimeStringFormat = "YYYY-MM-DD HH:mm:ss"
 const timeStringFormat = "HH:mm:ss"
 const defaultFormat = dateStringFormat
 
-export function clearMessage() {
-  if (document.getElementById("sysScreenTitleCenter")) {
-    ReactDOM.unmountComponentAtNode(document.getElementById("sysScreenTitleCenter"))
+const ROOT_KEY = "__react_root__" as const
+
+function getOrCreateRoot(el: Element): Root {
+  const anyEl = el as any
+  if (!anyEl[ROOT_KEY]) {
+    anyEl[ROOT_KEY] = createRoot(el)
   }
+  return anyEl[ROOT_KEY] as Root
+}
+
+function unmountRoot(el: Element | null | undefined) {
+  if (!el) return
+  const anyEl = el as any
+  const root: Root | undefined = anyEl[ROOT_KEY]
+  if (root) {
+    root.unmount()
+    anyEl[ROOT_KEY] = undefined
+  }
+  ;(el as HTMLElement).innerHTML = ""
+}
+
+export function clearMessage() {
+  const center = document.getElementById("sysScreenTitleCenter")
+  unmountRoot(center)
+
   const topScreenHeight = document.getElementById("top_screen")?.offsetHeight
   const style = document.getElementById("top_screen_title")?.style
   if (topScreenHeight && style) {
@@ -79,56 +100,54 @@ export function showMessage(messages: Array<Object>, refresh: boolean = true) {
       }
     })
   }
-  if (messageArr && messageArr.length > 0 && document.getElementById("sysScreenTitleCenter")) {
-    const existingContent = document.getElementById("sysScreenTitleCenter").innerHTML
+  if (messageArr && messageArr.length > 0) {
+    const el = document.getElementById("sysScreenTitleCenter")
+    if (!el) return
 
-    let msgComponent = (
+    const MsgList = (
       <div id="msg_box" onDoubleClick={() => clearMessage()} className="msg_box">
-        {messageArr.map((msgObj, index) => {
-          return (
-            <SysMsgBox
-              key={index}
-              ref={(input) => {
-                if (input != null) {
-                  input.focus({
-                    cursor: "end",
-                  })
-                }
-              }}
-              label={msgObj["type"]}
-              name={"msgBox"}
-              editable={true}
-              value={msgObj["message"]}
-            />
-          )
-        })}
-        {!existingContent && (
-          <a href="#" id="sysClearMsg" title="Clear Message" style={{ position: "absolute", top: "8px", right: "5px" }}>
-            <img
-              id="sysClearMsgImg"
-              src={closeImg}
-              alt="set top title fixed or unfixed"
-              onClick={() => clearMessage()}
-              style={{ verticalAlign: "top", borderStyle: "none", padding: "0 8px 0 3px" }}
-            />
-          </a>
-        )}
-      </div>
-    )
-
-    const newContent = (
-      <div>
-        <div dangerouslySetInnerHTML={{ __html: existingContent }}></div>
-        {msgComponent}
+        {messageArr.map((msgObj, index) => (
+          <SysMsgBox
+            key={index}
+            ref={(input) => {
+              if (input != null) {
+                input.focus({ cursor: "end" })
+              }
+            }}
+            label={msgObj["type"]}
+            name={"msgBox"}
+            editable={true}
+            value={msgObj["message"]}
+          />
+        ))}
+        <a
+          href="#"
+          id="sysClearMsg"
+          title="Clear Message"
+          style={{ position: "absolute", top: "8px", right: "5px" }}
+          onClick={(e) => {
+            e.preventDefault()
+            clearMessage()
+          }}
+        >
+          <img
+            id="sysClearMsgImg"
+            src={closeImg}
+            alt="set top title fixed or unfixed"
+            style={{ verticalAlign: "top", borderStyle: "none", padding: "0 8px 0 3px" }}
+          />
+        </a>
       </div>
     )
 
     document.body.scrollTop = 0
     document.documentElement.scrollTop = 0
-    ReactDOM.render(newContent, document.getElementById("sysScreenTitleCenter"))
+
+    const root = getOrCreateRoot(el)
+    root.render(MsgList)
 
     const topTitle = document.getElementById("top_screen_title")
-    const topScreenHeight = document.getElementById("top_screen").offsetHeight
+    const topScreenHeight = document.getElementById("top_screen")?.offsetHeight ?? 0
     if (topTitle) {
       const topTitleStyle = topTitle.style
       topTitleStyle.top = topScreenHeight + "px"
@@ -177,10 +196,7 @@ export function showScreenTitle(title: string) {
     const refreshMenu = async () => {
       try {
         await HttpGet("/api/menu/getBackMenus")
-          .then((response) => {
-            if (response.ok) return response.json()
-            throw response
-          })
+          .then((response) => response.json())
           .then((result) => {
             if (validateResponse(result, true)) {
               setBackMenus(result.data)
@@ -226,11 +242,11 @@ export function showScreenTitle(title: string) {
     )
   }
 
-  if (document.getElementById("sysScreenTitleLeft")) {
-    ReactDOM.unmountComponentAtNode(document.getElementById("sysScreenTitleLeft"))
-  }
+  const el = document.getElementById("sysScreenTitleLeft")
+  if (!el) return
 
-  ReactDOM.render(<TooltipComponent />, document.getElementById("sysScreenTitleLeft"))
+  const root = getOrCreateRoot(el)
+  root.render(<TooltipComponent />)
 }
 
 export function getScreenDfn(responseJson: any) {

@@ -71,7 +71,7 @@ const CheckBox: React.FC<ICheckBox> = forwardRef((props, ref: Ref<any>) => {
     } else {
       setTooltip('')
     }
-  }, [props, value])
+  }, [value, tip, name, widgetParameter.stateNumber])
 
   React.useEffect(() => {
     mRef.current.src = getIcon(checkBoxValue)

@@ -84,7 +84,7 @@ const Label: React.FC<ILabel> = forwardRef((props, ref: Ref<any>) => {
     } else {
       setTooltip('')
     }
-  }, [props])
+  }, [props.labelValue, props.tip, props.widgetParameter])
 
   const { cellStyle, cellClass } = simpleFg.formatCss(props.style);
 

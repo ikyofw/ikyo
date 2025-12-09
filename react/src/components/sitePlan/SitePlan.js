@@ -217,6 +217,7 @@ export function SitePlan(props) {
 
   const saveCutline = () => {
     try {
+      Loading.show()
       const cutline = document.getElementById("spCutlineNameInput").value
       const bandwidth = document.getElementById("spCutlineBandwidthInput").value
       const samplingDistance = document.getElementById("spSamplingDistanceInput").value
@@ -242,6 +243,7 @@ export function SitePlan(props) {
   }
   const deleteCutline = () => {
     try {
+      Loading.show()
       const data = { cutline: selectCutline }
       HttpPost("/api/" + props.screenID + "/deleteCutline", JSON.stringify(data))
         .then((response) => response.json())
@@ -283,6 +285,7 @@ export function SitePlan(props) {
 
   const importCutline = (dialogData) => {
     try {
+      Loading.show()
       HttpPostNoHeader("/api/" + props.screenID + "/importCutline", dialogData).then((response) => {
         response.blob().then((blob) => {
           try {
@@ -309,6 +312,7 @@ export function SitePlan(props) {
   }
   const exportCutline = () => {
     try {
+      Loading.show()
       let eventHandler = "/api/" + props.screenID + "/exportCutline"
       HttpDownload(eventHandler).then((response) => {
         try {
@@ -337,6 +341,7 @@ export function SitePlan(props) {
   }
   const exportInferredSection = () => {
     try {
+      Loading.show()
       const data = { cutline: selectCutline }
       let eventHandler = "/api/" + props.screenID + "/exportInferredSection"
       HttpDownload(eventHandler, data).then((response) => {
@@ -710,7 +715,7 @@ export function SitePlan(props) {
             var reader = new FileReader()
             reader.onload = (e) => {
               let data = JSON.parse(e.target.result)
-              sysUtil.showMessage(data.messages)
+              sysUtil.showMessage(data.messages, false)
             }
             reader.readAsText(response.data)
           } else {
@@ -1040,26 +1045,24 @@ export function SitePlan(props) {
       </div>
 
       <div style={{ gridArea: "1 / 2 / 2 / 3" }}>
-        {props.editable ? (
-          <div style={{ paddingTop: "40px" }}>
-            <table style={{ borderSpacing: "0px", paddingTop: "40px" }}>
-              <tbody>
-                {props.scatterData.GetLayerColorSets.map((lynm) => (
-                  <tr style={{ height: "25px", paddingTop: "0px" }} key={lynm.nm}>
-                    <td
-                      style={{ width: "60px", border: "1px solid black", background: lynm.color, cursor: "pointer" }}
-                      title="click to show this layer contour line"
-                      onClick={() => getContourPathPoints(lynm)}
-                      onMouseEnter={focusLayer}
-                      onMouseLeave={leaveLayer}
-                    ></td>
-                    <td style={{ paddingLeft: "5px" }}>{lynm.nm}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : null}
+        <div style={{ paddingTop: "40px" }}>
+          <table style={{ borderSpacing: "0px", paddingTop: "40px" }}>
+            <tbody>
+              {props.scatterData.GetLayerColorSets.map((lynm) => (
+                <tr style={{ height: "25px", paddingTop: "0px" }} key={lynm.nm}>
+                  <td
+                    style={{ width: "60px", border: "1px solid black", background: lynm.color, cursor: "pointer" }}
+                    title="click to show this layer contour line"
+                    onClick={() => getContourPathPoints(lynm)}
+                    onMouseEnter={focusLayer}
+                    onMouseLeave={leaveLayer}
+                  ></td>
+                  <td style={{ paddingLeft: "5px" }}>{lynm.nm}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
 
         <div style={{ paddingTop: "20px" }}>
           <button style={{ width: "80px", textAlign: "center" }} onClick={zoomReset}>

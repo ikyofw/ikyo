@@ -6,14 +6,16 @@ const pyiGlobal = pyiLocalStorage.globalParams
 const img_zoom_in = pyiGlobal.PUBLIC_URL + "images/icons8-zoom-in-32.png"
 const img_zoom_out = pyiGlobal.PUBLIC_URL + "images/icons8-zoom-out-32.png"
 const img_viewer_expand = pyiGlobal.PUBLIC_URL + "images/icons8-expand-32.png"
+const img_viewer_close = pyiGlobal.PUBLIC_URL + "images/icons8-close-32.png"
 interface IImgViewer {
   fileUrl: string
   //px
   disWidth?: number
   disHeight?: number
+  onClose: () => void
 }
 
-const ImgViewer: React.FC<IImgViewer> = ({ fileUrl, disWidth, disHeight }) => {
+const ImgViewer: React.FC<IImgViewer> = ({ fileUrl, disWidth, disHeight, onClose }) => {
   const [scale, setScale] = useState(1)
   const [divHeight, setDivHeight] = useState(disHeight ? disHeight : 500)
   const [divWidth, setDivWidth] = useState(disWidth ? disWidth : 700)
@@ -21,7 +23,7 @@ const ImgViewer: React.FC<IImgViewer> = ({ fileUrl, disWidth, disHeight }) => {
   const [imgOWidth, setImgOWidth] = useState<number>(1)
   const [imgOHeight, setImgOHeight] = useState<number>(1)
 
-  const [visible, setVisible] = React.useState(false)
+  const [viewerVisible, setViewerVisible] = React.useState(false)
 
   // var fileUrl=require( '../images/testImg.jpg')
 
@@ -68,13 +70,12 @@ const ImgViewer: React.FC<IImgViewer> = ({ fileUrl, disWidth, disHeight }) => {
   let scaleDis = String(Math.round(scale * 100)).concat("%")
 
   return (
-    <div style={{ width: "100%", height: "90vh" }}>
+    <div className="viewerWrapper" style={{ width: "100%", height: "90vh", position: "relative" }}>
       <div
         style={{
           textAlign: "center",
           background: "rgb(241, 238, 238)",
           border: "1px solid rgb(209, 204, 204)",
-          height: "30px",
         }}
       >
         <img src={img_zoom_out} alt="" onClick={zoomOut} width="20px" style={{ marginTop: "5px", marginBottom: "5px" }}></img>
@@ -113,13 +114,22 @@ const ImgViewer: React.FC<IImgViewer> = ({ fileUrl, disWidth, disHeight }) => {
 
         <img
           src={img_viewer_expand}
-          alt="" 
+          alt=""
           onClick={() => {
-            setVisible(true)
+            setViewerVisible(true)
           }}
           width="16px"
-          style={{ marginLeft: "100px" }}
+          style={{ marginLeft: "100px", cursor: "pointer" }}
         ></img>
+        {onClose && (
+          <img
+            src={img_viewer_close}
+            title="Close"
+            onClick={onClose}
+            width="20px"
+            style={{ cursor: "pointer", position: "absolute", top: "5px", right: "10px" }}
+          ></img>
+        )}
       </div>
       <div
         style={{
@@ -130,22 +140,23 @@ const ImgViewer: React.FC<IImgViewer> = ({ fileUrl, disWidth, disHeight }) => {
           flexDirection: "column",
           overflow: "scroll",
           height: "90vh",
+          background: "#fff",
         }}
       >
         <img
           onLoad={loadImgFile}
           style={{ width: String(imgWidth).concat("px") }}
           src={fileUrl}
-          alt="" 
+          alt=""
           onClick={() => {
-            setVisible(true)
+            setViewerVisible(true)
           }}
         ></img>
       </div>
       <Viewer
-        visible={visible}
+        visible={viewerVisible}
         onClose={() => {
-          setVisible(false)
+          setViewerVisible(false)
         }}
         images={[{ src: fileUrl, alt: "" }]}
       />

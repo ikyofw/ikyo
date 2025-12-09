@@ -1,4 +1,4 @@
-import { TreeItem, TreeView } from "@material-ui/lab"
+import { SimpleTreeView, TreeItem } from '@mui/x-tree-view';
 import { Checkbox } from "@mui/material"
 import { Button, Input, Space } from "antd"
 import React, { useRef, useState, forwardRef, Ref, useImperativeHandle } from "react"
@@ -137,38 +137,41 @@ const RecursiveTreeItem: React.FC<{
   ({ node, selectedNodes, expandedNodes, handleToggle, handleExpand }) => {
     return (
       <TreeItem
-        nodeId={node.id.toString()}
+        itemId={node.id.toString()}
+        slots={{ endIcon: () => <img src={pageIcon} alt="base icon" /> }}
         label={
-          <div style={{ display: "flex", alignItems: "center" }}>
+          <div
+            style={{ display: "flex", alignItems: "center" }}
+            onClick={(e) => {
+              e.stopPropagation()
+              handleExpand(node)
+            }}
+          >
             {handleToggle && (
               <Checkbox
                 checked={selectedNodes.includes(node.id)}
-                onClick={(event) => {
-                  event.stopPropagation()
+                onClick={(e) => {
+                  e.stopPropagation()
                   handleToggle(node)
                 }}
                 style={{ padding: 0, transform: "scale(0.8)" }}
               />
             )}
-            <div style={{ marginLeft: "4px" }}>{node.title}</div>
+            <div style={{ marginLeft: 4 }}>{node.title}</div>
           </div>
         }
-        onIconClick={() => handleExpand(node)}
-        onLabelClick={() => handleExpand(node)}
-        icon={node.icon && <img src={node.icon} alt="node icon" />}
       >
-        {Array.isArray(node.subMenus)
-          ? node.subMenus.map((subNode) => (
-              <RecursiveTreeItem
-                key={subNode.id}
-                node={subNode}
-                selectedNodes={selectedNodes}
-                expandedNodes={expandedNodes}
-                handleToggle={handleToggle}
-                handleExpand={handleExpand}
-              />
-            ))
-          : null}
+        {Array.isArray(node.subMenus) &&
+          node.subMenus.map((sub) => (
+            <RecursiveTreeItem
+              key={sub.id}
+              node={sub}
+              selectedNodes={selectedNodes}
+              expandedNodes={expandedNodes}
+              handleToggle={handleToggle}
+              handleExpand={handleExpand}
+            />
+          ))}
       </TreeItem>
     )
   },
@@ -318,11 +321,13 @@ const Tree: React.FC<ITree> = forwardRef(({ selectable, data, initNodeIDs, onFil
           </Space>
         </div>
         <div className="scroll-content" style={{ maxHeight: treeMaxHeight }}>
-          <TreeView
-            defaultCollapseIcon={<img src={folderOpenIcon} alt="folder open icon" />}
-            defaultExpandIcon={<img src={folderIcon} alt="folder icon" />}
-            defaultEndIcon={<img src={pageIcon} alt="base icon" />}
-            expanded={expandedNodes}
+          <SimpleTreeView
+            expandedItems={expandedNodes.map(String)}
+            onExpandedItemsChange={(_, ids) => setExpandedNodes(ids as string[])}
+            slots={{
+              collapseIcon: () => <img src={folderOpenIcon} alt="folder open icon" />,
+              expandIcon: () => <img src={folderIcon} alt="folder icon" />,
+            }}
           >
             {filteredData.map((node) => (
               <RecursiveTreeItem
@@ -334,7 +339,7 @@ const Tree: React.FC<ITree> = forwardRef(({ selectable, data, initNodeIDs, onFil
                 handleExpand={handleExpand}
               />
             ))}
-          </TreeView>
+          </SimpleTreeView>
         </div>
       </div>
     )

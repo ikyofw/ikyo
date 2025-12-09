@@ -4,10 +4,9 @@ import { useHttp } from "../utils/http"
 import pyiLogger from "../utils/log"
 import pyiLocalStorage from "../utils/pyiLocalStorage"
 import { getResponseData } from "../utils/sysUtil"
-import Screen from "./Screen"
 import { suuidContext } from "./ConText"
+import Screen from "./Screen"
 
-const pyiGlobal = pyiLocalStorage.globalParams
 const ScreenRender = (props) => {
   const HttpGet = useHttp(pyiLocalStorage.globalParams.HTTP_TYPE_GET)
   const HttpPost = useHttp(pyiLocalStorage.globalParams.HTTP_TYPE_POST)
@@ -64,16 +63,18 @@ const ScreenRender = (props) => {
 
   const refreshList = async () => {
     try {
-      let params = ''
-      if (sessionStorage.getItem("SUUID")) {
-        const oldSUUID = sessionStorage.getItem("SUUID")
-        params = "?SUUID=" + oldSUUID
+      let params = location.search || ""
+      const oldSUUID = sessionStorage.getItem("SUUID")
+      if (oldSUUID) {
+        if (params) {
+          params += `&SUUID=${encodeURIComponent(oldSUUID)}`
+        } else {
+          params = `?SUUID=${encodeURIComponent(oldSUUID)}`
+        }
       }
+
       await HttpGet("/api/" + props.screenID + "/initScreen" + params)
-        .then((response) => {
-          if (response.ok) return response.json()
-          throw response
-        })
+        .then((response) => response.json())
         .then((result) => {
           let screenDfn = getResponseData(result)
           if (!screenDfn) {

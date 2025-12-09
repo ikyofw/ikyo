@@ -1,0 +1,33 @@
+.inline-radio-group__table {
+  border-collapse: separate;
+  border: none;
+  border-spacing:2px;
+  table-layout: fixed;
+}
+
+.inline-radio-group__table td {
+  padding: 4px;
+  vertical-align: top;
+  border: 2px solid transparent;
+}
+
+.inline-radio-option__label {
+  font-weight: 500;
+}
+
+.inline-radio-option__description {
+  font-size: 12px;
+  color: #666;
+  line-height: 1.4;
+  margin-left: 6px;
+}
+
+.inline-radio-option--selected {
+  background-color: #f0f8ff;
+}
+
+.inline-radio-option--disabled {
+  opacity: 0.6;
+  background-color: #f5f5f5;
+  cursor: not-allowed;
+}

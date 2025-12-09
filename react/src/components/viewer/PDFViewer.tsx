@@ -9,10 +9,11 @@ import "@react-pdf-viewer/default-layout/lib/styles/index.css"
 
 interface SwitchScrollModeInFullScreenModeExampleProps {
   fileUrl: string
-  isOperate?: boolean // download & print
+  isOperate: boolean // download & print
   //px
   disWidth?: Number
   disHeight?: Number
+  onClose?: () => void
 }
 
 const SwitchScrollModeInFullScreenModeExample: React.FC<SwitchScrollModeInFullScreenModeExampleProps> = ({
@@ -20,16 +21,44 @@ const SwitchScrollModeInFullScreenModeExample: React.FC<SwitchScrollModeInFullSc
   isOperate,
   disWidth,
   disHeight,
+  onClose,
 }) => {
   const toolbarPluginInstance = toolbarPlugin()
-  const transform: TransformToolbarSlot = (slot: ToolbarSlot) => ({
+  const transformToolbar: TransformToolbarSlot = (slot: ToolbarSlot) => ({
     ...slot,
     Download: () => (isOperate ? <slot.Download></slot.Download> : <></>),
     Print: () => (isOperate ? <slot.Print></slot.Print> : <></>),
   })
 
-  const renderToolbar = (Toolbar: (props: ToolbarProps) => React.ReactElement) => <Toolbar>{renderDefaultToolbar(transform)}</Toolbar>
+  const renderToolbar = (Toolbar: (props: ToolbarProps) => React.ReactElement) => (
+    <Toolbar>
+      {(slots) => (
+        <>
+          {renderDefaultToolbar(transformToolbar)(slots)}
+          {onClose && (
+            <div style={{ marginLeft: "auto", paddingRight: "8px" }}>
+              <button
+                onClick={onClose}
+                title="Close"
+                style={{
+                  backgroundColor: "transparent",
+                  color: "#666",
+                  border: "none",
+                  fontSize: "18px",
+                  cursor: "pointer",
+                  padding: "1px 8px",
+                }}
+              >
+                ✖
+              </button>
+            </div>
+          )}
+        </>
+      )}
+    </Toolbar>
+  )
   const defaultLayoutPluginInstance = defaultLayoutPlugin({
+    // sidebarTabs: (defaultTabs) => [], // hidden left toolbar
     renderToolbar,
   })
   const { renderDefaultToolbar } = defaultLayoutPluginInstance.toolbarPluginInstance
@@ -39,43 +68,12 @@ const SwitchScrollModeInFullScreenModeExample: React.FC<SwitchScrollModeInFullSc
 
   const pdfContainerRef = React.useRef<HTMLDivElement | null>(null)
 
-  // disable mouse right click.
-  const handleContextMenu = (event: MouseEvent) => {
-    event.preventDefault()
-  }
-
-  // disable system hot keys.
-  const handleKeyDown = (event: KeyboardEvent) => {
-    if (
-      event.ctrlKey &&
-      (event.key === "p" || event.key === "s" || event.key === "c" || event.key === "x" || event.key === "v" || event.key === "a")
-    ) {
-      event.preventDefault()
-    }
-    if (event.key === "F12" || (event.ctrlKey && event.shiftKey && event.key === "I")) {
-      event.preventDefault()
-    }
-  }
-
-  // Add event listeners only to the PDF container.
-  React.useEffect(() => {
-    if (pdfContainerRef.current && !isOperate) {
-      const container = pdfContainerRef.current
-
-      container.addEventListener("contextmenu", handleContextMenu)
-      container.addEventListener("keydown", handleKeyDown)
-
-      return () => {
-        container.removeEventListener("contextmenu", handleContextMenu)
-        container.removeEventListener("keydown", handleKeyDown)
-      }
-    }
-  }, [isOperate])
-
   return (
     <div
+      // className="rpv-core__viewer rpv-core__viewer--dark" // black theme
+      className="viewerWrapper"
       ref={pdfContainerRef}
-      tabIndex={0} // 使 div 可聚焦，以便捕获键盘事件
+      tabIndex={0} // Make the div focusable so as to capture keyboard events
       style={{
         border: "1px solid rgba(0, 0, 0, 0.3)",
         display: "flex",

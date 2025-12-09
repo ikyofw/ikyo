@@ -1,9 +1,3 @@
-'''
-Description: 
-version: 
-Author: YL
-Date: 2025-01-08 09:49:26
-'''
 import json
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -12,14 +6,11 @@ from django.test import RequestFactory
 
 from core.core.exception import IkValidateException
 from core.core.lang import Boolean2
-from core.models import Office, User
-from core.utils.langUtils import isNotNullBlank
-from core.view.screenView import _OPEN_SCREEN_KEY_NAME
-from es.core.CA import submit_cash_advancement
+from core.models import User
 from es.core.status import Status
 from es.models import *
 
-from ..views.es006_views import ES006
+from ..views.es006 import ES006
 from .test_es_base import ESTestCase
 
 

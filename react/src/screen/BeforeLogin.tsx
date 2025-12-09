@@ -1,5 +1,6 @@
 import { useEffect } from "react"
 import pyiLocalStorage from "../utils/pyiLocalStorage"
+
 const BeforeLogin = () => {
   useEffect(() => {
     if (pyiLocalStorage.getCurrentUser()) {

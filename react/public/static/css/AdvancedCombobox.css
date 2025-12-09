@@ -1,0 +1,149 @@
+.flex_centered {
+  position: relative;
+  padding-left: 5px;
+  padding-right: 5px;
+  display: flex;
+  align-items: center;
+  height: 100%;
+}
+
+.advanced_select {
+  position: relative;
+  border: 1px solid black;
+  border-radius: 4px;
+  background: #fff;
+  opacity: 1;
+  width: 150px;
+}
+
+.advanced_select.disabled {
+  background: #f5f5f5;
+  opacity: 0.6;
+}
+
+.dropdown-container {
+  padding-left: 2px;
+  padding-top: 4px;
+  padding-right: 22px;
+  cursor: pointer;
+  color: #999;
+  min-height: 20px;
+}
+
+/* 禁用状态样式 */
+.dropdown-container.disabled {
+  cursor: not-allowed;
+}
+
+.dropdown-container.selected {
+  color: inherit;
+}
+
+.close-button {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: bold;
+  line-height: 1;
+  padding: 0;
+}
+
+.dropdown-panel {
+  position: absolute;
+  top: 100%;
+  z-index: 10;
+  background-color: #fff;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 4px;
+  width: calc(100% - 20px);
+  max-height: 200px;
+  overflow-y: auto;
+  overflow-x: auto;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.input-box {
+  width: 95%;
+  margin-bottom: 8px;
+  padding: 5px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  opacity: 1;
+}
+
+.input-box.disabled {
+  opacity: 0.6;
+}
+
+.option-item {
+  display: flex;
+  align-items: center;
+  margin-bottom: 2px;
+  white-space: nowrap;
+  cursor: pointer;
+  padding: 2px;
+  border-radius: 2px;
+  opacity: 1;
+  background-color: transparent;
+}
+.option-item:hover {
+  background: #f5f5f5;
+}
+
+.option-item.disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+  background-color: #f8f8f8;
+}
+.option-item.disabled:hover {
+  background: transparent;
+  cursor: not-allowed;
+}
+
+.action-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #eee;
+}
+
+.page-button {
+  padding: 4px 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  cursor: pointer;
+  opacity: 1;
+}
+
+.page-button.disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.page-button {
+  padding: 4px 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  cursor: pointer;
+  opacity: 1;
+}
+
+.page-button.disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}

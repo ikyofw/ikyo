@@ -42,7 +42,7 @@ const ComboBox: React.FC<IComboBox> = forwardRef((props, ref: Ref<any>) => {
         setTooltip(props.tip)
       }
     } else {
-      setTooltip('')
+      setTooltip("")
     }
   }, [props.value, props.tip])
 
@@ -146,14 +146,15 @@ const ComboBox: React.FC<IComboBox> = forwardRef((props, ref: Ref<any>) => {
             {valueAndDisplay &&
               valueAndDisplay.length > 0 &&
               valueAndDisplay.map((item: any, index) => (
-                <option key={index} value={item["value"]} title={String(item["display"]).length < 50 ? null : item["display"]}>
-                  {String(item["display"]).length < 50
-                    ? String(item["display"]).trim() == ""
-                      ? String(item["display"]).replace(/\s/g, "\u00a0")
-                      : String(item["display"])
-                    : (String(item["display"]).trim() == ""
-                        ? String(item["display"]).slice(0, 50).replace(/\s/g, "\u00a0")
-                        : String(item["display"]).slice(0, 50)) + "..."}
+                // <option key={index} value={item["value"]} title={String(item["display"]).length < 50 ? null : item["display"]}>
+                //   {String(item["display"]).length < 50
+                //     ? String(item["display"]).trim() == ""
+                //       ? String(item["display"]).replace(/\s/g, "\u00a0")
+                //       : String(item["display"])
+                //     : String(item["display"]).slice(0, 50) + "..."}
+                // </option>
+                <option key={index} value={item["value"]}>
+                  {String(item["display"]).trim() == "" ? String(item["display"]).replace(/\s/g, "\u00a0") : String(item["display"])}
                 </option>
               ))}
           </select>

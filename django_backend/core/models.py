@@ -1,13 +1,14 @@
 from datetime import datetime
+from django.utils import timezone
 
-from core.db.model import IDModel, addModelHistoryFilter
 from django.conf import settings
 from django.db import models
 from django.db.models.signals import pre_save
 from django.dispatch import receiver
-from django.utils import timezone
 
-TABLE_NAME_PREFIX = 'ik_'
+from core.db.model import IDModel, addModelHistoryFilter
+
+from .const import TABLE_NAME_PREFIX
 
 
 class Menu(IDModel):
@@ -35,7 +36,7 @@ class User(IDModel):
     psw = models.CharField(max_length=255, verbose_name='User Password')
     email = models.CharField(max_length=255, blank=True, null=True, verbose_name='User Email')
     active = models.BooleanField(default=True, verbose_name='User Active')
-    rmk = models.CharField(max_length=255, blank=True, null=True, verbose_name='User Remark')
+    rmk = models.TextField(blank=True, null=True, verbose_name='User Remark')
 
     class Meta:
         db_table = '%susr' % TABLE_NAME_PREFIX
@@ -43,6 +44,20 @@ class User(IDModel):
 
     def __str__(self):
         return str(self.id) + '=' + self.usr_nm
+
+    @property
+    def groups_list(self):
+        """
+            eg. ['group1', 'group2']
+        """
+        return [ug.grp.grp_nm for ug in self.usergroup_set.select_related('grp').all().order_by('id')]
+
+    @property
+    def groups_str(self):
+        """
+            eg. '1. group1\n2. group2'
+        """
+        return '\n'.join(f"{i+1}. {ug.grp.grp_nm}" for i, ug in enumerate(self.usergroup_set.select_related('grp').all().order_by('id')))
 
 
 class TimestampMixin(models.Model):
@@ -63,7 +78,7 @@ class TimestampMixin(models.Model):
 @receiver(pre_save)
 def updateModelTimestamps(sender, instance, **kwargs):
     if issubclass(sender, TimestampMixin):
-        from core.core.requestMiddleware import getCurrentUser
+        from core.core.request_middleware import getCurrentUser
         userRc = getCurrentUser()
         instance.mod_dt = timezone.now() if settings.USE_TZ else datetime.now()
         instance.mod_usr = userRc
@@ -100,8 +115,7 @@ class UserGroup(IDModel):
 class GroupMenu(IDModel):
     grp = models.ForeignKey(Group, models.CASCADE, verbose_name='Group')
     menu = models.ForeignKey(Menu, models.CASCADE, verbose_name='Menu')
-    acl = models.CharField(max_length=1, default='D',
-                           verbose_name='Access Rights')
+    acl = models.CharField(max_length=1, default='D', verbose_name='Access Rights')
 
     class Meta:
         db_table = '%sgrp_menu' % TABLE_NAME_PREFIX
@@ -111,8 +125,7 @@ class GroupMenu(IDModel):
 
 class UsrToken(IDModel):
     usr = models.ForeignKey(User, models.CASCADE, verbose_name='Iky User')
-    token = models.CharField(unique=True, max_length=32,
-                             verbose_name='Token Str')
+    token = models.CharField(unique=True, max_length=32, verbose_name='Token Str')
 
     class Meta:
         db_table = '%susr_token' % TABLE_NAME_PREFIX
@@ -326,14 +339,15 @@ class ScreenDfn(IDModel):
 class IkInbox(IDModel):
     STATUS_NEW = 'new'
     STATUS_READ = 'read'
+    STATUS_COMPLETED = 'completed'
     STATUS_DELETED = 'deleted'
-    STATUS_CHOOSES = ((STATUS_NEW, STATUS_NEW), (STATUS_READ, STATUS_READ), (STATUS_DELETED, STATUS_DELETED))
+    STATUS_CHOOSES = ((STATUS_NEW, STATUS_NEW), (STATUS_READ, STATUS_READ), (STATUS_COMPLETED, STATUS_COMPLETED), (STATUS_DELETED, STATUS_DELETED))
 
     owner = models.ForeignKey(User, models.CASCADE, related_name="owner_user", verbose_name='Owner ID')
     sender = models.ForeignKey(User, models.DO_NOTHING, related_name="sender_user", verbose_name='Sender ID')
     send_dt = models.DateTimeField(verbose_name='Send Time')
     module = models.CharField(max_length=255, verbose_name='Send From')
-    sts = models.CharField(max_length=10, verbose_name='Status', choices=STATUS_CHOOSES, default=STATUS_NEW)
+    sts = models.CharField(max_length=10, choices=STATUS_CHOOSES, default=STATUS_NEW, verbose_name='Status')
     summary = models.TextField(verbose_name='Summary')
     usr_rmk = models.TextField(blank=True, null=True, verbose_name='User Remark')
 
@@ -349,8 +363,8 @@ class IkInboxPrm(IDModel):
 
     class Meta:
         db_table = '%sinbox_prm' % TABLE_NAME_PREFIX
-        verbose_name = 'Inbox Parameters'
         unique_together = (('inbox', 'k'), )
+        verbose_name = 'Inbox Parameters'
 
 
 class Currency(IDModel):
@@ -378,6 +392,13 @@ class Office(IDModel):
 
     class Meta:
         db_table = '%soffice' % TABLE_NAME_PREFIX
+
+    def __str__(self):
+        return self.code
+
+    @property
+    def fullname(self):
+        return f"{self.code} - {self.name}"
 
 
 class UserOffice(IDModel):
@@ -438,7 +459,9 @@ class Mail(IDModel):
     STATUS_IN_PROGRESS = 'in_progress'
     STATUS_COMPLETE = 'complete'
     STATUS_ERROR = 'error'
-    STATUS_CHOOSES = ((STATUS_PENDING, STATUS_PENDING), (STATUS_IN_PROGRESS, STATUS_IN_PROGRESS), (STATUS_COMPLETE, STATUS_COMPLETE), (STATUS_ERROR, STATUS_ERROR))
+    STATUS_CANCELLED = 'cancelled'
+    STATUS_CHOOSES = ((STATUS_PENDING, STATUS_PENDING), (STATUS_IN_PROGRESS, STATUS_IN_PROGRESS),
+                      (STATUS_COMPLETE, STATUS_COMPLETE), (STATUS_ERROR, STATUS_ERROR), (STATUS_CANCELLED, STATUS_CANCELLED))
 
     MAIL_TYPE_TEXT = 'text'
     MAIL_TYPE_HTML = 'html'
@@ -493,8 +516,61 @@ class MailAttch(IDModel):
         verbose_name = 'Mail Attachment'
 
 
-def accessLogHistoryFilter(sender, instance, **kwargs) -> bool:
-    return not isinstance(instance, AccessLog)
+class PermissionControl(IDModel):
+    name = models.CharField(max_length=100, unique=True, verbose_name='Name')
+    rmk = models.TextField(blank=True, null=True, verbose_name='Remarks')
+
+    class Meta:
+        managed = True
+        db_table = '%spermission_control' % TABLE_NAME_PREFIX
+        verbose_name = "Permission Control"
+
+    def __str__(self):
+        return self.name
+
+    @property
+    def user_list(self):
+        # users
+        direct_users = [pcu.user for pcu in self.permission_control_users.all() if pcu.user]
+        # group users
+        group_users = []
+        for pcu in self.permission_control_users.all():
+            if pcu.group:
+                group_users.extend(
+                    [ug.usr for ug in pcu.group.usergroup_set.select_related('usr').all()]
+                )
+        # distinct
+        all_users = {user.id: user for user in (direct_users + group_users) if user}.values()
+        return ", ".join([user.usr_nm for user in all_users])
 
 
-addModelHistoryFilter(accessLogHistoryFilter)
+class PermissionControlUser(IDModel):
+    permission_control = models.ForeignKey(PermissionControl, on_delete=models.CASCADE, related_name='permission_control_users')
+    user = models.ForeignKey(User, null=True, blank=True, on_delete=models.CASCADE, related_name='user_permission_controls')
+    group = models.ForeignKey(Group, null=True, blank=True, on_delete=models.CASCADE, related_name='group_permission_controls')
+
+    class Meta:
+        managed = True
+        db_table = '%spermission_control_user' % TABLE_NAME_PREFIX
+        verbose_name = "Permission Control User"
+        constraints = [
+            models.UniqueConstraint(
+                fields=['permission_control', 'user'],
+                name='unique_permission_control_user'
+            ),
+            models.UniqueConstraint(
+                fields=['permission_control', 'group'],
+                name='unique_permission_control_group'
+            ),
+            models.CheckConstraint(
+                check=~(models.Q(user__isnull=True) & models.Q(group__isnull=True)),
+                name='user_or_group_not_null'
+            )
+        ]
+
+
+def coreHistoryFilter(sender, instance, **kwargs) -> bool:
+    return not isinstance(instance, AccessLog) and not isinstance(instance, UsrToken)
+
+
+addModelHistoryFilter(coreHistoryFilter)

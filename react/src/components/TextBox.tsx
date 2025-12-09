@@ -37,7 +37,7 @@ const TextBox: React.FC<ITextbox> = forwardRef((props, ref: Ref<any>) => {
     } else {
       setTooltip('')
     }
-  }, [props, props.textBoxValue])
+  }, [props.textBoxValue, props.tip])
 
   let { cellStyle, cellClass } = simpleFg.formatCss(props.style)
   const additionalStyles: StyleTuple[] = [

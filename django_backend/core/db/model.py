@@ -1,27 +1,30 @@
 import copy
+import json
 import logging
 import random
 import time
-import json
+import uuid
 from collections import OrderedDict
 from datetime import datetime
 from enum import Enum
+
+from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
+from django.core.serializers import serialize
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db import models, transaction
-from django.forms.models import model_to_dict
-from django.db.models.signals import pre_save, post_save, post_delete
+from django.db.models.signals import post_delete, post_save, pre_save
 from django.dispatch import receiver
-from django_backend.settings import DATABASES
-from django.contrib.contenttypes.models import ContentType
-from django.contrib.contenttypes.fields import GenericForeignKey
-from django.core.serializers import serialize
-import core.utils.db as dbUtils
-from core.core.exception import IkException, IkValidateException
-from core.utils.langUtils import isNotNullBlank
-import core.utils.djangoUtils as ikDjangoUtils
-from iktools import IkConfig
+from django.forms.models import model_to_dict
 
+import core.utils.db as dbUtils
+import core.utils.django_utils as ikDjangoUtils
+from core.const import TABLE_NAME_PREFIX
+from core.core.exception import IkException, IkValidateException
+from core.utils.lang_utils import isNotNullBlank
+from django_backend.settings import DATABASES
+from iktools import IkConfig
 
 logger = logging.getLogger('ikyo')
 
@@ -88,6 +91,8 @@ def toRecordJson(dictValues, fields=None, addRowStatus=True) -> dict:
             continue  # _state: django fields
         if type(value) == datetime:
             j[key] = value.strftime('%Y-%m-%d %H:%M:%S')
+        elif isinstance(value, uuid.UUID):  # YL, 2025-04-07 for models.UUIDField
+            j[key] = str(value)
         else:
             j[key] = value
     if fields is None:
@@ -176,7 +181,23 @@ class Model(models.Model):
         '''
             all records in this transaction
         '''
-        self.full_clean(exclude=exclude, validate_unique=(validate_unique))
+        try:
+            self.full_clean(exclude=exclude, validate_unique=(validate_unique))
+        except Exception as e:
+            from django.core.exceptions import ValidationError
+            bad = []
+            for f in self._meta.get_fields():
+                if not hasattr(f, "attname"):
+                    continue
+                raw_value = getattr(self, f.attname, None)
+                try:
+                    _ = (f.blank and (raw_value in getattr(f, "empty_values", (None, ""))))
+                except Exception as ee:
+                    bad.append((f.name, type(raw_value).__name__, raw_value, repr(ee)))
+            if bad:
+                for name, typ, val, err in bad:
+                    logger.error(f"model.full_clean error. field={name}, type={typ}, value={val!r}, error={err}")
+            raise
 
     def full_clean(self, exclude=None, validate_unique=True):
         try:
@@ -251,7 +272,7 @@ class Model(models.Model):
             randomStr = 'BACKEND'
             strLen -= len(randomStr)
 
-        baseStr = '!@#$%^&*()_+{}[];"|;\<>?,./`~'
+        baseStr = r'!@#$%^&*()_+{}[];"|;\<>?,./`~'
         length = len(baseStr) - 1
         for i in range(strLen):
             randomStr += baseStr[random.randint(0, length)]
@@ -354,7 +375,8 @@ class Model(models.Model):
         Exception:
             Raise core.core.exception.IkException if save failed.
         """
-        from core.db.transaction import IkTransaction  # fix circular import problem
+        # fix circular import problem
+        from core.db.transaction import IkTransaction
         trn = IkTransaction()
         trn.add(self)
         b = trn.save()
@@ -369,7 +391,8 @@ class Model(models.Model):
         """
         if self.ik_is_status_new():
             return
-        from core.db.transaction import IkTransaction  # fix circular import problem
+        # fix circular import problem
+        from core.db.transaction import IkTransaction
         trn = IkTransaction()
         trn.delete(self)
         b = trn.save()
@@ -580,7 +603,7 @@ class ModelHistory(Model):
     diff = models.TextField(null=True, blank=True, verbose_name="Different")
 
     class Meta:
-        db_table = 'ik_data_hist'
+        db_table = '%sdata_hist' % TABLE_NAME_PREFIX
 
 
 ENABLE_MODEL_HISTORY = str(IkConfig.get(
@@ -723,7 +746,7 @@ def postSaveModelSignalHandler(sender, instance, created, **kwargs):
                 logger.error("Process filter [%s] failed: %s" % (
                     str(filter), str(e)), e, exc_info=True)
 
-    from core.core.requestMiddleware import getCurrentUser
+    from core.core.request_middleware import getCurrentUser
     from core.models import User
     userRc = getCurrentUser()
     userID = None
@@ -803,7 +826,7 @@ def postDeleteModelSignalHandler(sender, instance, **kwargs):
                 logger.error("Process filter [%s] failed: %s" % (
                     str(filter), str(e)), e, exc_info=True)
 
-    from core.core.requestMiddleware import getCurrentUser
+    from core.core.request_middleware import getCurrentUser
     from core.models import User
     userRc = getCurrentUser()
     userID = None

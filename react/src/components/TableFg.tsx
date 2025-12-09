@@ -2,7 +2,8 @@ import classNames from "classnames"
 import moment from "moment"
 import React, { forwardRef, Ref, useEffect, useImperativeHandle, useState } from "react"
 import ReactDOM from "react-dom"
-import ReactHTMLTableToExcel from "react-html-table-to-excel"
+import * as XLSX from "xlsx"
+import { saveAs } from "file-saver"
 import { Tooltip } from "react-tooltip"
 import * as Loading from "./Loading"
 import * as Actions from "./tableFg/actions"
@@ -52,7 +53,8 @@ const img_nextButton = pyiGlobal.PUBLIC_URL + "images/next_button.gif"
 const img_previousButton = pyiGlobal.PUBLIC_URL + "images/previous_button.gif"
 const img_refreshButton = pyiGlobal.PUBLIC_URL + "images/refresh_button.gif"
 const img_showAllButton = pyiGlobal.PUBLIC_URL + "images/config.gif"
-const img_excel = pyiGlobal.PUBLIC_URL + "images/excel_icon.png" // XH 2022-07-05
+const img_excel = pyiGlobal.PUBLIC_URL + "images/xls.png" // XH 2022-07-05
+const img_csv = pyiGlobal.PUBLIC_URL + "images/csv.png"
 const img_filter = pyiGlobal.PUBLIC_URL + "images/search_button.gif"
 const img_cancel = pyiGlobal.PUBLIC_URL + "images/cancel_button.gif"
 const img_reset = pyiGlobal.PUBLIC_URL + "images/refresh_button.gif"
@@ -244,6 +246,7 @@ const TableFg = forwardRef(<CellType extends Types.CellBase>(props: Props<CellTy
 
   const fields = tableUtil.parseTableDataField(tableParams, selectionMode)
   const comboPrams = tableUtil.getTableComboBoxPrams(tableParams)
+  const linkCols = tableUtil.getTableLinkColsNos(tableParams)
   const dateBoxCols = tableUtil.getTableDateBoxColsInfo(tableParams)
   const disableCols = tableUtil.getTableDisableColNos(tableParams)
   const inVisibleCols = tableUtil.getTableInVisibleColNos(tableParams)
@@ -260,57 +263,30 @@ const TableFg = forwardRef(<CellType extends Types.CellBase>(props: Props<CellTy
   const footerPrams = tableUtil.getTableFooterPrams(tableParams)
 
   // gat table data
-  const HttpGet = useHttp(pyiLocalStorage.globalParams.HTTP_TYPE_GET)
+  // const HttpGet = useHttp(pyiLocalStorage.globalParams.HTTP_TYPE_GET)
   const HttpPost = useHttp(pyiLocalStorage.globalParams.HTTP_TYPE_POST)
-  const fetchData = async () => {
-    if (!tableParams.dataUrl) {
-      showErrorMessage("DataUrl not found, please check.")
-      pyiLogger.error("DataUrl not found", true)
-      return
-    }
-    await HttpGet(tableParams.dataUrl)
-      .then((response) => response.json())
-      .then((result) => {
-        if (validateResponse(result, true)) {
-          let data = result.data
-          if (data) {
-            if (pageType !== pyiGlobal.SERVER_PAGING) {
-              setTableParamsData(data)
-              setTbodyStylePrams(tableUtil.getTableBodyStylePrams(name, tableParams.fields, data, tableParams.style))
-              setPluginActiveRows(tableUtil.getTablePluginActiveRows(data, fields, pluginParams))
-              let pageData = tableUtil.parseTableData(data, fields)
-              if (pageData.length > pyiGlobal.PAGE_MAX_ROWS) {
-                showInfoMessage("Display up to 1000 rows in a table.")
-                pageData = pageData.slice(0, 1000)
-              }
-              setTableData(pageData)
-              setData(pageData, headerPrams.headerLabels)
-              const dataLength = pageData.length
-              setTotalPageNm(Math.ceil(dataLength / pageSize))
-            }
-          }
-        }
-      })
-  }
+
   useEffect(() => {
+    if (tableParams.data == null) {
+      tableParams.data = []
+    }
     if (tableParams.data) {
       if (pageType !== pyiGlobal.SERVER_PAGING) {
         setTableParamsData(tableParams.data)
         setTbodyStylePrams(tableUtil.getTableBodyStylePrams(name, tableParams.fields, tableParams.data, tableParams.style))
         setPluginActiveRows(tableUtil.getTablePluginActiveRows(tableParams.data, fields, pluginParams))
-        let pageData = tableUtil.parseTableData(tableParams.data, fields)
+        let pageData = tableUtil.parseTableData(tableParams.data, tableParams.fields, fields)
         if (pageData.length > pyiGlobal.PAGE_MAX_ROWS) {
           showInfoMessage("Display up to 1000 rows in a table.")
           pageData = pageData.slice(0, 1000)
         }
         setTableData(pageData)
         setData(pageData, headerPrams.headerLabels)
+        setPageNation(1)
 
         const dataLength = pageData.length
         setTotalPageNm(Math.ceil(dataLength / pageSize))
       }
-    } else if (pageType !== pyiGlobal.SERVER_PAGING) {
-      fetchData()
     }
   }, [tableParams.data, tableParams.dataUrl])
 
@@ -666,7 +642,7 @@ const TableFg = forwardRef(<CellType extends Types.CellBase>(props: Props<CellTy
 
               setTableParamsData(serverPageData)
               setPluginActiveRows(tableUtil.getTablePluginActiveRows(serverPageData, fields, pluginParams))
-              let pageData = tableUtil.parseTableData(serverPageData, fields)
+              let pageData = tableUtil.parseTableData(serverPageData, tableParams.fields, fields)
               if (pageData.length > pyiGlobal.PAGE_MAX_ROWS) {
                 showInfoMessage("Display up to 1000 rows in a table.")
                 pageData = pageData.slice(0, 1000)
@@ -1269,6 +1245,7 @@ const TableFg = forwardRef(<CellType extends Types.CellBase>(props: Props<CellTy
                             buttonBoxPrams={buttonPrams}
                             advancedSelectionBoxPrams={advancedSelectionPrams}
                             htmlCols={htmlCols}
+                            linkCols={linkCols}
                             checkBoxPrams={checkBoxPrams}
                             columnStatus={state.columnStatus[columnNumber]} // XH 2022-07-04 column sort
                             scrollTimes={scrollTimes}
@@ -1309,6 +1286,7 @@ const TableFg = forwardRef(<CellType extends Types.CellBase>(props: Props<CellTy
                             buttonBoxPrams={buttonPrams}
                             advancedSelectionBoxPrams={advancedSelectionPrams}
                             htmlCols={htmlCols}
+                            linkCols={linkCols}
                             checkBoxPrams={checkBoxPrams}
                             columnStatus={state.columnStatus[columnNumber]} // XH 2022-07-04 column sort
                             scrollTimes={scrollTimes}
@@ -1466,6 +1444,36 @@ const TableFg = forwardRef(<CellType extends Types.CellBase>(props: Props<CellTy
     if (head) {
       headerHeight = filter ? head.getBoundingClientRect().height - 16.8 : head.getBoundingClientRect().height
     }
+    function exportTableById(tableId: string, fileBaseName: string) {
+      const table = document.getElementById(tableId) as HTMLTableElement | null
+      if (!table) {
+        console.warn("Table not found:", tableId)
+        return
+      }
+      const wb = XLSX.utils.table_to_book(table, { sheet: "Sheet1" })
+      const out = XLSX.write(wb, { bookType: "xlsx", type: "array" })
+      const filename = `${fileBaseName}-${moment().format("YYYYMMDDHHmmss")}.xlsx`
+      saveAs(new Blob([out], { type: "application/octet-stream" }), filename)
+    }
+    function exportTableAsCSVById(tableId: string, fileBaseName: string) {
+      const table = document.getElementById(tableId) as HTMLTableElement | null
+      if (!table) {
+        console.warn("Table not found:", tableId)
+        return
+      }
+
+      const ws = XLSX.utils.table_to_sheet(table, { raw: true })
+
+      const FS = "," // field separator (delimiter)
+      const RS = "\r\n" // row separator (Windows-friendly)
+      const csv = XLSX.utils.sheet_to_csv(ws, { FS, RS })
+
+      const bom = "\uFEFF"
+      const filename = `${fileBaseName}-${moment().format("YYYYMMDDHHmmss")}.csv`
+      const blob = new Blob([bom + csv], { type: "text/csv;charset=utf-8;" })
+      saveAs(blob, filename)
+    }
+
     return (
       <div className="topIcons">
         <div className="headerColumn" style={{ height: String(headerHeight) + "px" }}>
@@ -1481,21 +1489,25 @@ const TableFg = forwardRef(<CellType extends Types.CellBase>(props: Props<CellTy
           ) : null}
           {showTopIcon ? (
             <>
-              <img src={img_filter} alt="show filter row" onClick={showFilterRow} title="Filter" className="outOfTableIcon"></img>
               <img
                 src={img_excel}
                 alt="export"
                 title="Export"
                 className="outOfTableIcon"
-                onClick={() => document.getElementById("table-xls-button").click()}
+                onClick={() =>
+                  exportTableById("table " + name, (caption ? caption.replace(/\s/g, "_") : name) + "-" + moment().format("YYYYMMDDHHmmss"))
+                }
               ></img>
-              <ReactHTMLTableToExcel
-                id="table-xls-button"
-                className="download-table-xls-button"
-                table={"table " + name}
-                filename={(caption ? caption.replace(/\ /g, "_") : name) + "-" + moment().format("YYYYMMDDHHmmss")}
-                sheet="Sheet1"
-              />
+              <img
+                src={img_csv}
+                alt="export csv"
+                title="Export CSV"
+                className="outOfTableIcon"
+                onClick={() =>
+                  exportTableAsCSVById("table " + name, (caption ? caption.replace(/\s/g, "_") : name) + "-" + moment().format("YYYYMMDDHHmmss"))
+                }
+              ></img>
+              <img src={img_filter} alt="show filter row" onClick={showFilterRow} title="Filter" className="outOfTableIcon"></img>
               {scrollPrams.tableHeight ? (
                 <img src={img_cancel} alt="exit scrolling mode" onClick={exitScrollingMode} title="Exit Scroll Mode" className="outOfTableIcon"></img>
               ) : (

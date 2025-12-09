@@ -1,4 +1,5 @@
 import * as React from "react"
+import { Link, useLocation } from "react-router-dom"
 import * as Types from "./types"
 import { getComputedValue } from "./util"
 import ButtonCell from "./ButtonCell"
@@ -21,9 +22,12 @@ const DataViewer = <Cell extends Types.CellBase<Value>, Value>(
     advancedSelectionBoxPrams,
     initialData,
     htmlCols,
+    linkCols,
     checkBoxPrams,
-  }: Types.DataViewerProps<Cell> // LHH.ikyo 2022-04-29
+  }: Types.DataViewerProps<Cell> // LHH 2022-04-29
 ): React.ReactElement => {
+  const location = useLocation()
+
   const value = getComputedValue<Cell, Value>({ cell })
   const dialogCols = dialogPrams.columns
   const dialogIndex = dialogCols.indexOf(column)
@@ -71,6 +75,11 @@ const DataViewer = <Cell extends Types.CellBase<Value>, Value>(
         initialData={initialData}
       ></HtmlCell>
     )
+  } else if (linkCols.indexOf(column) !== -1) {
+    const currentPath = location.pathname
+    const basePath = currentPath.substring(0, currentPath.lastIndexOf("/"))
+    const newPath = `${basePath}/${cell["value"]}`
+    return <a href={newPath}>{cell["display"]}</a>
   } else if (stateNumber && stateNumber !== 0) {
     return (
       <CheckCell
@@ -82,7 +91,7 @@ const DataViewer = <Cell extends Types.CellBase<Value>, Value>(
       />
     )
   } else {
-    return <span className="Spreadsheet__data-viewer">{value}</span>
+    return <span className="Spreadsheet__data-viewer">{String(value)}</span>
   }
 }
 

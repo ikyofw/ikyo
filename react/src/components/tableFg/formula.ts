@@ -1,5 +1,6 @@
 import * as Point from "./point";
-import { extractLabel } from "hot-formula-parser";
+
+const { extractLabel }: any = require('hot-formula-parser');
 
 export const FORMULA_VALUE_PREFIX = "=";
 const FORMULA_REFERENCES = /\$?[A-Z]+\$?[0-9]+/g;

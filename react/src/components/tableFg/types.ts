@@ -135,6 +135,7 @@ export type CellComponentProps<Cell extends CellBase = CellBase> = {
   }
   /** The column number of the html */
   htmlCols?: number[]
+  linkCols?: number[]
   checkBoxPrams?: any[]
   tableHeight?: number
 }
@@ -168,6 +169,7 @@ type DataComponentProps<Cell extends CellBase> = {
   /** Save the initial data of the table  */
   initialData?: any[]
   htmlCols?: number[]
+  linkCols?: number[]
   checkBoxPrams?: any[]
 } & Point
 
@@ -208,7 +210,7 @@ export type TableProps = React.PropsWithChildren<{
   hideColumnIndicators?: boolean | null
   /** Name of the table */
   tableName: string
-  /** Pramaters of scrolling */
+  /** Parameters of scrolling */
   scrollPrams?: { [key: string]: any };
 }>
 

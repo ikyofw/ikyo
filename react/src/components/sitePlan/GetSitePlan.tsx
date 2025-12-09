@@ -31,20 +31,20 @@ const GetSitePlan: React.FC<GetSitePlanProps> = (props) => {
     Loading.show()
     try {
       pyiLogger.debug(props.screenID)
-      await HttpGet("/api/" + props.screenID + "/getScreen")
-        .then((response) => response.json())
-        .then((result) => {
-          sysUtil.showMessage(result.messages)
-          if (Number(result.code) === 100001) {
-            pyiLocalStorage.clearStore()
-            window.location.href = "/login"
-          } else if (result.code === 1) {
-            if (result.data) {
-              sysUtil.showScreenTitle(result.data.viewID + " - " + result.data.viewTitle)
-            }
-            setHelpUrl(result.data["helpUrl"])
-          }
-        })
+      // await HttpGet("/api/" + props.screenID + "/getScreen")
+      //   .then((response) => response.json())
+      //   .then((result) => {
+      //     sysUtil.showMessage(result.messages)
+      //     if (Number(result.code) === 100001) {
+      //       pyiLocalStorage.clearStore()
+      //       window.location.href = "/login"
+      //     } else if (result.code === 1) {
+      //       if (result.data) {
+      //         sysUtil.showScreenTitle(result.data.viewID + " - " + result.data.viewTitle)
+      //       }
+      //       setHelpUrl(result.data["helpUrl"])
+      //     }
+      //   })
 
       let GetHoleData: any
       let GetPierData: any

@@ -36,7 +36,7 @@ const TextArea: React.FC<ITextArea> = forwardRef((props, ref: Ref<any>) => {
     } else {
       setTooltip('')
     }
-  }, [props])
+  }, [props.textAreaValue, props.tip])
 
   const changeTextareaValue = (e: ChangeEvent<HTMLTextAreaElement>) => {
     setValue(e.target.value)

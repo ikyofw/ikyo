@@ -1,25 +1,18 @@
 '''
-Description: 
-version: 
-Author: YL
-Date: 2024-01-30 14:33:38
-'''
-'''
     Help Controller
 '''
 import os
 from pathlib import Path
 
-from django.db.models import Q
 from django.http.response import HttpResponse
 
 import core.core.fs as ikfs
 from core.log.logger import logger
-from core.menu.menuManager import ACL_DENY, MenuManager
+from core.menu.menu_manager import ACL_DENY, MenuManager
 from core.models import *
 from core.ui import ui
-from core.utils.langUtils import isNullBlank
-from core.view.authView import AuthAPIView
+from core.utils.lang_utils import isNullBlank
+from core.view.auth_view import AuthAPIView
 
 
 class ScreenHelpView(AuthAPIView):

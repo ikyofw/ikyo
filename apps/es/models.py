@@ -8,7 +8,7 @@ from django.db.models.functions import Coalesce, Round
 from core.db.model import IDModel
 from core.models import Currency, Group, IdDateModel, Office, User
 
-from .core import ESTools
+from .core import es_tools
 
 
 class UserWorkOffice(IdDateModel):
@@ -315,7 +315,7 @@ class ExpenseDetail(IdDateModel):
     @property
     def ex_amt(self):
         if self.ex_rate is not None:
-            return float(ESTools.round2(ESTools.mul(self.amt, self.ex_rate)))
+            return float(es_tools.round2(es_tools.mul(self.amt, self.ex_rate)))
         else:
             return self.amt
 
@@ -401,7 +401,7 @@ class ForeignExchange(IdDateModel):
     ca = models.ForeignKey(CashAdvancement, models.CASCADE)
     submit_dt = models.DateTimeField(verbose_name='Submit time')
     amt = models.FloatField()
-    fx_ccy = models.ForeignKey(Currency, models.CASCADE, verbose_name='Fx CCY')
+    fx_ccy = models.ForeignKey(Currency, models.DO_NOTHING, verbose_name='Fx CCY')
     fx_amt = models.FloatField()
     fx_rate = models.FloatField()
     fx_receipt_file = models.ForeignKey(File, models.CASCADE)

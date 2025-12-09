@@ -1,12 +1,13 @@
-from django.test import RequestFactory
 from unittest.mock import MagicMock
 
+from django.test import RequestFactory
+
 from core.core.http import IkJsonResponse
-from core.view.screenView import _OPEN_SCREEN_PARAM_KEY_NAME
-from es.views.es004_views import ES004
+from es.views.es004 import ES004
+
+from ..models import (DraftFile, Expense, ExpenseCategory, ExpenseDetail, File,
+                      Payee)
 from .test_es_base import ESTestCase
-from core.models import UserOffice, Currency
-from ..models import ExpenseDetail, Expense, ExpenseCategory, DraftFile, File, Payee
 
 
 class ES004TestCase(ESTestCase):
@@ -22,7 +23,7 @@ class ES004TestCase(ESTestCase):
         mock_screen.fieldGroups = [mock_fg]
         self.view._screen = mock_screen
         self.view.request = MagicMock()
-        
+
         self.payee = Payee.objects.create(id=1, office=self.office_a, payee='test payee', bank_info='test info', rmk='test rmk')
 
         self.ec1 = ExpenseCategory.objects.create(id=1, cat='test category 1', dsc='test remark 2')
@@ -71,7 +72,7 @@ class ES004TestCase(ESTestCase):
         response = self.view.saveExpense()
         self.assertIsInstance(response, IkJsonResponse)
         self.assertEqual(response.messages, [{'type': 'info', 'message': 'Saved.'}])
-        
+
         payment_data = {
             "id": "",
             "sts": "",

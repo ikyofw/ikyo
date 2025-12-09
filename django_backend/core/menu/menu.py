@@ -1,10 +1,10 @@
 from django.db.models import QuerySet
 
 import core.models as ikModels
-from core.menu.menuManager import MenuManager
+from core.menu.menu_manager import MenuManager
 from core.session.user import UserManager
-from core.sys.accessLog import getLatestAccessLog
-from core.utils.langUtils import isNotNullBlank, isNullBlank
+from core.sys.access_log import getLatestAccessLog
+from core.utils.lang_utils import isNotNullBlank, isNullBlank
 
 
 class Menu:

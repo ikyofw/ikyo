@@ -32,10 +32,7 @@ const MenuBar = () => {
   const refreshMenu = async () => {
     try {
       await HttpGet("/api/menubar/getMenubar?currentPath=" + path)
-        .then((response) => {
-          if (response.ok) return response.json()
-          throw response
-        })
+        .then((response) => response.json())
         .then((result) => {
           if (sysUtil.validateResponse(result, false)) {
             let menu0s: any[] = []

@@ -1,5 +1,6 @@
 import transform from "css-to-react-native"
 import React, { Ref, forwardRef, useImperativeHandle, useState } from "react"
+import { useLocation } from "react-router-dom"
 
 import { createIconColumn } from "../components/TableFg"
 import { useHttp } from "../utils/http"
@@ -23,7 +24,7 @@ const pyiGlobal = pyiLocalStorage.globalParams
 
 interface IScreenBox {
   ref: any
-  fgNames: String[]
+  fgNames: string[]
   screenID: any
   subScreenNm?: string
 }
@@ -69,8 +70,8 @@ const Screen: React.FC<IScreenBox> = forwardRef((props, ref: Ref<any>) => {
 
   const [screenEditable, setScreenEditable] = useState(Boolean)
 
-  const [helpUrl, setHelpUrl] = useState(String)
-  const [helpDocTp, setHelpDocTp] = useState(String)
+  const [helpUrl, setHelpUrl] = useState("")
+  const [helpDocTp, setHelpDocTp] = useState("")
 
   const [pageRefreshFlag, setPageRefreshFlag] = useState(() => {
     const initialFlags = {}
@@ -174,15 +175,21 @@ const Screen: React.FC<IScreenBox> = forwardRef((props, ref: Ref<any>) => {
     Loading.show()
     // get table data
     try {
-      let params = ""
+      // let params = ""
+      // if (props.subScreenNm) {
+      //   params = "?" + pyiGlobal.SUB_SCREEN_KEY_NAME + "=" + props.subScreenNm
+      // }
+
+      let params = window.location.search || ""
       if (props.subScreenNm) {
-        params = "?" + pyiGlobal.SUB_SCREEN_KEY_NAME + "=" + props.subScreenNm
+        if (params) {
+          params += "&" + pyiGlobal.SUB_SCREEN_KEY_NAME + "=" + props.subScreenNm
+        } else {
+          params = "?" + pyiGlobal.SUB_SCREEN_KEY_NAME + "=" + props.subScreenNm
+        }
       }
       await HttpGet("/api/" + props.screenID + "/getScreen" + params)
-        .then((response) => {
-          if (response.ok) return response.json()
-          throw response
-        })
+        .then((response) => response.json())
         .then((result) => {
           // YL, 2022-12-27 load static files.
           let screenDfn_0 = getScreenDfn(result)
@@ -203,6 +210,20 @@ const Screen: React.FC<IScreenBox> = forwardRef((props, ref: Ref<any>) => {
               const pluginParams = getPluginParams(screenDfn_0[fgName])
               screenPlugin[fgName] = pluginParams
               screenDfn_0[fgName]["pluginParams"] = pluginParams
+              // if fg fields has plugin field, but fg plugin is null
+              if (
+                Array.isArray(pluginParams) &&
+                pluginParams.length === 0 &&
+                screenDfn_0[fgName]?.type === pyiGlobal.TABLE_TYPE_RESULT &&
+                (screenDfn_0[fgName]?.editable === false || screenDfn_0[fgName]?.editable === "false") &&
+                Array.isArray(screenDfn_0[fgName]?.fields) &&
+                screenDfn_0[fgName].fields.length > 0
+              ) {
+                const lastField = screenDfn_0[fgName].fields[screenDfn_0[fgName].fields.length - 1]
+                if (lastField?.name?.endsWith("_EditIndexField")) {
+                  screenDfn_0[fgName].fields.pop()
+                }
+              }
             }
             screenDfnDic[fgName] = screenDfn_0[fgName]
             if (screenDfn_0[fgName] && screenDfn_0[fgName].type === pyiGlobal.HTML) {
@@ -304,10 +325,7 @@ const Screen: React.FC<IScreenBox> = forwardRef((props, ref: Ref<any>) => {
     }
     try {
       await HttpPost(eventHandler + "?COMBOX_CHANGE_EVENT=true", JSON.stringify(data))
-        .then((response) => {
-          if (response.ok) return response.json()
-          throw response
-        })
+        .then((response) => response.json())
         .then((result) => {
           if (fieldGroups.length === 0) {
             saveMessage(result.messages)
@@ -364,28 +382,26 @@ const Screen: React.FC<IScreenBox> = forwardRef((props, ref: Ref<any>) => {
     // }
     try {
       await HttpPost(eventHandler, JSON.stringify(data))
-        .then((response) => {
-          if (response.ok) return response.json()
-          throw response
-        })
+        .then((response) => response.json())
         .then((result) => {
-          if (refreshPrams.length === 0) {
-            saveMessage(result.messages)
-            refreshList()
-            removeLoadingDiv = false
-          } else if (validateResponse(result, false)) {
-            refreshPrams.map((fgName) => {
+          if (validateResponse(result, false)) {
+            if (result.data === null || result.data.length === 0) {
+              saveMessage(result.messages)
+              refreshList()
+              removeLoadingDiv = false
+            } else {
               const fgNames = Object.keys(result.data)
-              if (fgNames.indexOf(fgName) !== -1) {
+              fgNames.map((fgName) => {
                 const fgData = result.data[fgName][pyiGlobal.SCREEN_FIELD_GROUP_DATA]
                 const fgDataStyle = result.data[fgName][pyiGlobal.SCREEN_FIELD_GROUP_DATA_STYLE]
                 pageRefreshFlag[fgName] += 1
                 screenJson[fgName].data = fgData // reset table data'
                 screenJson[fgName].style = fgDataStyle // reset table style'
-              }
-            })
-            // Turn the string and then back to the object to change the object to change his memory address, so that you can listen to the dynamic change of pageRefreshFlag
-            setPageRefreshFlag(JSON.parse(JSON.stringify(pageRefreshFlag)))
+              })
+
+              // Turn the string and then back to the object to change the object to change his memory address, so that you can listen to the dynamic change of pageRefreshFlag
+              setPageRefreshFlag(JSON.parse(JSON.stringify(pageRefreshFlag)))
+            }
           }
         })
     } catch (error) {
@@ -457,6 +473,7 @@ const Screen: React.FC<IScreenBox> = forwardRef((props, ref: Ref<any>) => {
   const onClickEvent = async (btnType, eventHandler, data) => {
     let removeLoadingDiv = true
     Loading.show()
+    setShowPdfViewer(false)
     try {
       if (btnType === pyiGlobal.BTN_TYPE_NORMAL) {
         await HttpPost(eventHandler, JSON.stringify(data)).then((response) => {
@@ -502,6 +519,16 @@ const Screen: React.FC<IScreenBox> = forwardRef((props, ref: Ref<any>) => {
                   }
                 }
                 reader.readAsText(blob)
+              } else if (blob.type.trim().toLocaleLowerCase() === "text/html") {
+                refreshList()
+                if (response.status !== "200") {
+                  saveMessage([
+                    {
+                      type: "error",
+                      message: "Upload failed, please ask administrator to check. Code: " + response.status + ", statusText: " + response.statusText,
+                    },
+                  ])
+                }
               } else {
                 let fileName = response.headers.get("Content-Disposition")?.split("filename=")[1]
                 domDownload(fileName, blob, eventHandler)
@@ -518,6 +545,10 @@ const Screen: React.FC<IScreenBox> = forwardRef((props, ref: Ref<any>) => {
         // download button event
         await HttpDownload(eventHandler, data).then((response) => {
           try {
+            const blob = new Blob([response.data])
+            let fileName = response?.headers?.["content-disposition"]?.split("filename=")[1]
+            domDownload(fileName, blob, eventHandler)
+
             let respType = response.headers?.["content-type"]
             if (respType.trim().toLocaleLowerCase() === "application/json") {
               var reader = new FileReader()
@@ -528,17 +559,19 @@ const Screen: React.FC<IScreenBox> = forwardRef((props, ref: Ref<any>) => {
                 }
               }
               reader.readAsText(response.data)
-            } else {
-              const blob = new Blob([response.data])
-              let fileName = response?.headers?.["content-disposition"]?.split("filename=")[1]
-              domDownload(fileName, blob, eventHandler)
-              if (data.constructor === Object && Object.keys(data).length > 0) {
-                saveMessage([{ type: "info", message: "Downloaded." }])
-                refreshList()
-              } else {
-                showInfoMessage("Downloaded.")
-              }
-            }
+              setShowPdfViewer(true)
+            } 
+            // else {
+            //   const blob = new Blob([response.data])
+            //   let fileName = response?.headers?.["content-disposition"]?.split("filename=")[1]
+            //   domDownload(fileName, blob, eventHandler)
+            //   if (data.constructor === Object && Object.keys(data).length > 0) {
+            //     saveMessage([{ type: "info", message: "Downloaded." }])
+            //     refreshList()
+            //   } else {
+            //     showInfoMessage("Downloaded.")
+            //   }
+            // }
           } finally {
             Loading.remove()
           }
@@ -692,6 +725,14 @@ const Screen: React.FC<IScreenBox> = forwardRef((props, ref: Ref<any>) => {
     setScreenPluginLists(screenPluginLists)
   }, [screenPlugin])
 
+  // get viewer field group if have
+  const [showPdfViewer, setShowPdfViewer] = useState(false) // clicked pdf button
+  let pdfViewerFgName = null
+  const floatingViewers = props.fgNames.filter((fgName) => screenJson[fgName]?.type === pyiGlobal.VIEWER && !screenJson[fgName]?.outerLayoutParams)
+  if (floatingViewers.length > 0) {
+    pdfViewerFgName = floatingViewers[0]
+  }
+
   const mainScreenNode = React.useMemo(() => {
     return (
       <div style={screenLayoutParams.length > 0 ? transform(screenLayoutParams) : null}>
@@ -736,6 +777,7 @@ const Screen: React.FC<IScreenBox> = forwardRef((props, ref: Ref<any>) => {
                         closeDialog: closeDialog,
                         openDialog: (params) => openDialog(params),
                         createEventData: (params) => createEventData(params),
+                        setShowPdfViewer: (params) => setShowPdfViewer(params),
                       }}
                     >
                       <SimpleFg
@@ -758,6 +800,7 @@ const Screen: React.FC<IScreenBox> = forwardRef((props, ref: Ref<any>) => {
                         closeDialog: closeDialog,
                         openDialog: (params) => openDialog(params),
                         createEventData: (params) => createEventData(params),
+                        setShowPdfViewer: (params) => setShowPdfViewer(params),
                       }}
                     >
                       <TableFg
@@ -784,8 +827,14 @@ const Screen: React.FC<IScreenBox> = forwardRef((props, ref: Ref<any>) => {
 
                   {String(screenJson[fgName].type) === pyiGlobal.HTML ? <Html key={index} resources={resources} params={screenJson[fgName]} /> : null}
 
-                  {String(screenJson[fgName].type) === pyiGlobal.VIEWER ? (
-                    <FileViewer key={index} params={screenJson[fgName]} screenID={props.screenID} />
+                  {String(screenJson[fgName].type) === pyiGlobal.VIEWER && screenJson[fgName].outerLayoutParams ? (
+                    <FileViewer
+                      key={index}
+                      params={screenJson[fgName]}
+                      screenID={props.screenID}
+                      isOperate={screenEditable && screenJson[fgName].editable}
+                      fixed={true}
+                    />
                   ) : null}
 
                   {String(screenJson[fgName].type) === pyiGlobal.SITE_PLAN ? (
@@ -817,6 +866,24 @@ const Screen: React.FC<IScreenBox> = forwardRef((props, ref: Ref<any>) => {
     <>
       {mainScreenNode}
       {subScreenNode}
+      {showPdfViewer && pdfViewerFgName && (
+        <div
+          style={{
+            position: "absolute", // import
+            top: 0,
+            left: 0,
+            right: 0,
+            zIndex: 5, // less than top screen
+            backgroundColor: "#fff",
+          }}
+        >
+          <FileViewer
+            params={screenJson[pdfViewerFgName]}
+            screenID={props.screenID}
+            isOperate={screenEditable && screenJson[pdfViewerFgName].editable}
+          />
+        </div>
+      )}
     </>
   )
 })
@@ -826,10 +893,13 @@ export default Screen
 export function getPluginParams(screenDfn: any) {
   const fields = screenDfn.fields
   let pluginParams = []
-  for (let i = fields.length - 1; i >= 0; i--) {
-    if (fields[i].widget.trim().toLowerCase() === pyiGlobal.FIELD_TYPE_PLUGIN) {
-      const field = fields.pop()
-      pluginParams.push(field)
+  // table plugin &&  result table with editable=true
+  if (screenDfn.type === pyiGlobal.TABLE_TYPE || (screenDfn.type === pyiGlobal.TABLE_TYPE_RESULT && screenDfn.editable)) {
+    for (let i = fields.length - 1; i >= 0; i--) {
+      if (fields[i].widget.trim().toLowerCase() === pyiGlobal.FIELD_TYPE_PLUGIN) {
+        const field = fields.pop()
+        pluginParams.push(field)
+      }
     }
   }
   pluginParams.reverse()

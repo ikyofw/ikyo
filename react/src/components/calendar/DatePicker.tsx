@@ -68,47 +68,6 @@ export const Calendar: React.FC<Props> = forwardRef((props, ref: Ref<any>) => {
 
   const [dtErrorMsg, setDtErrorMsg] = useState("")
 
-  const loadInFlat = (flatId: string) => {
-    {
-      calendar.setup({
-        flat: flatId,
-        flatCallback: "",
-        ifFormat: dateFormat,
-        timeFormat: "24",
-        showsTime: false,
-        weekNumbers: false,
-        displayStatusBars: false,
-      })
-    }
-  }
-
-  const loadInDisplayArea = (displayAreaId: string) => {
-    {
-      calendar.setup({
-        displayArea: displayAreaId,
-        ifFormat: dateFormat,
-        timeFormat: "24",
-        showsTime: false,
-        weekNumbers: false,
-        displayStatusBars: false,
-      })
-    }
-  }
-
-  const loadInButton = (buttonId: string, divId: string) => {
-    {
-      calendar.setup({
-        button: buttonId,
-        displayArea: divId,
-        ifFormat: dateFormat,
-        timeFormat: "24",
-        showsTime: false,
-        weekNumbers: false,
-        displayStatusBars: false,
-      })
-    }
-  }
-
   const loadInputIn = (inputId: string, buttonId: string) => {
     {
       calendar.setup({
@@ -173,89 +132,64 @@ export const Calendar: React.FC<Props> = forwardRef((props, ref: Ref<any>) => {
   }
   // LHH 2022-04-26 end
 
-  if (calType.trim().toLocaleLowerCase() === "flat") {
-    var divId = cid === undefined ? "div".concat(generateCalWidgetId()) : cid
-    return (
-      <div id={divId} onLoad={() => loadInFlat(divId)} className="calendar_div1">
-        <img src={img_cal} alt="calendar" className="calendar_img_hide"></img>
-      </div>
-    )
-  } else if (calType.trim().toLocaleLowerCase() === "displayArea") {
-    var divId = cid === undefined ? "div".concat(generateCalWidgetId()) : cid
-    return (
-      <div id={divId} onLoad={() => loadInDisplayArea(divId)} className="calendar_div1" ref={ref}>
-        {dtValue}
-        <img src={img_cal} alt="calendar" className="calendar_img_hide"></img>
-      </div>
-    )
-  } else if (calType.trim().toLocaleLowerCase() === "button") {
-    var divId = cid === undefined ? "div".concat(generateCalWidgetId()) : cid
-    var buttonId = cid === undefined ? "button".concat(generateCalWidgetId()) : "button".concat(cid)
-    return (
-      <div className="calendar_div1">
-        <div id={divId} ref={ref}>
-          {dtValue}
-        </div>
-        <a id={buttonId}>
-          <img src={img_cal} alt="calendar" onLoad={() => loadInButton(buttonId, divId)}></img>
-        </a>
-      </div>
-    )
-  } else if (calType.trim().toLocaleLowerCase() === "input") {
-    var inputId = cid === undefined ? "input_".concat(generateCalWidgetId()) : cid
-    var buttonId = cid === undefined ? "button".concat(generateCalWidgetId()) : "button".concat(cid)
-    // LHH 2022-04-26 start
-    const { cellStyle: inputStyle, cellClass: inputClass } = simpleFg.formatCss(props.style)
+  var inputId = cid === undefined ? "input_".concat(generateCalWidgetId()) : cid
+  var buttonId = cid === undefined ? "button".concat(generateCalWidgetId()) : "button".concat(cid)
 
-    var cellStyle = {}
-    const inCell = props?.inCell ?? false
-    if (inCell) {
-      cellStyle = { position: "absolute", right: "0px", width: "auto", bottom: "0px", top: "0px" }
+  useEffect(() => {
+    if (props.editable) {
+      loadInputIn(inputId, buttonId)
     }
-    // LHH 2022-04-26 end
+  }, [props.editable, inputId, buttonId])
 
-    return (
-      <>
-        <span style={{ position: "relative", width: "100%", height: "100%" }} onClick={() => setSpanClass("span_s")}>
-          <input
-            type="text"
-            id={inputId}
-            className={classnames(inputClass, spanClass)}
-            defaultValue={dtValue} // LHH 2022-04-26
-            value={props.inCell ? null : dtValue} // YL, 2023-04-17 for simpleFg can set '' date and tableFg can select date.
-            onChange={setDateValue}
-            ref={(e: HTMLInputElement) => {
-              if (e) {
-                mRef.current = e
-              }
-            }}
-            disabled={!props.editable}
-            onFocus={handleFocus}
-            onBlur={handleBlur} // LHH 2022-04-26
-            style={inputStyle.length > 0 ? transform(inputStyle) : null}
-          />
-          {stringFormat == defaultFormat ? ( // LHH 2022-05-09
-            <a
-              id={buttonId}
-              className={spanClass}
-              style={cellStyle} // LHH 2022-04-26
-            >
-              <img
-                className="calendar_img"
-                onClick={() => setDate(dtValue)}
-                onLoad={props.editable ? () => loadInputIn(inputId, buttonId) : null}
-                src={img_cal}
-                alt="calendar"
-              />
-            </a>
-          ) : null}
-        </span>
-        <span style={{ paddingLeft: "2px", color: "red" }}>{dtErrorMsg}</span>
-      </>
-    )
+  // LHH 2022-04-26 start
+  const { cellStyle: inputStyle, cellClass: inputClass } = simpleFg.formatCss(props.style)
+
+  var cellStyle = {}
+  const inCell = props?.inCell ?? false
+  if (inCell) {
+    cellStyle = { position: "absolute", right: "0px", width: "auto", bottom: "0px", top: "0px" }
   }
+  // LHH 2022-04-26 end
 
-  return <div></div>
+  return (
+    <>
+      <span style={{ position: "relative", width: "100%", height: "100%" }} onClick={() => setSpanClass("span_s")}>
+        <input
+          type="text"
+          id={inputId}
+          className={classnames(inputClass, spanClass)}
+          defaultValue={dtValue} // LHH 2022-04-26
+          value={props.inCell ? null : dtValue} // YL, 2023-04-17 for simpleFg can set '' date and tableFg can select date.
+          onChange={setDateValue}
+          ref={(e: HTMLInputElement) => {
+            if (e) {
+              mRef.current = e
+            }
+          }}
+          disabled={!props.editable}
+          onFocus={handleFocus}
+          onBlur={handleBlur} // LHH 2022-04-26
+          style={inputStyle.length > 0 ? transform(inputStyle) : null}
+        />
+        {stringFormat == defaultFormat ? ( // LHH 2022-05-09
+          <a
+            id={buttonId}
+            className={spanClass}
+            style={cellStyle} // LHH 2022-04-26
+          >
+            <img
+              className="calendar_img"
+              onClick={() => setDate(dtValue)}
+              onLoad={props.editable ? () => loadInputIn(inputId, buttonId) : null}
+              src={img_cal}
+              alt="calendar"
+            />
+          </a>
+        ) : null}
+      </span>
+      <span style={{ paddingLeft: "2px", color: "red" }}>{dtErrorMsg}</span>
+    </>
+  )
 })
 
 function generateCalWidgetId() {

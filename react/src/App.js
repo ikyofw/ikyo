@@ -66,9 +66,9 @@ function App() {
   const [paths, setPaths] = useState([])
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(async () => {
+  useEffect(() => {
     try {
-      await HttpGet("/api/getRouters")
+      HttpGet("/api/getRouters")
         .then((response) => response.json())
         .then((result) => {
           if (validateResponse(result, false)) {

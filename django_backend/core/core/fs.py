@@ -7,14 +7,14 @@ import zipfile
 from pathlib import Path
 
 from core.core.lang import Boolean2
-from core.utils.langUtils import isNotNullBlank, isNullBlank
-
+from core.utils.lang_utils import isNullBlank
 from django_backend.settings import BASE_DIR
 
 logger = logging.getLogger('ikyo')
 
 VAR_FOLDER_NAME = 'var'
-FILE_PATH = VAR_FOLDER_NAME + '/file'  # used for iky_file table (var/file)
+VAR_FILE_PATH = VAR_FOLDER_NAME + '/file'  # used for iky_file table (var/file)
+FILE_FOLDER = 'file' 
 IS_WINDOWS_OS = 'windows' in platform.system().lower()
 
 
@@ -239,10 +239,10 @@ def getFilePath(fileID, fileName=None) -> tuple:
     p = number2Path(fileID)
     rp = None
     if fileName is None:
-        rp = os.path.join(FILE_PATH, p)
+        rp = os.path.join(VAR_FILE_PATH, p)
     else:
         idName = str(fileID) + Path(fileName).suffix
-        rp = os.path.join(FILE_PATH, p, idName)
+        rp = os.path.join(VAR_FILE_PATH, p, idName)
     ap = os.path.join(getRootFolder(), rp)
     return rp.replace('\\', '/'), ap.replace('\\', '/')
 
@@ -265,9 +265,8 @@ def deleteEmptyFolderAndParentFolder(p):
         if len(os.listdir(folders)) == 0:  # empty folder
             os.removedirs(folders)
         else:  # not empty folder
-            tmpFolder = os.path.abspath(os.path.dirname(folders))
-            deleteFolder(folders)  # delete folder and sub files & folders
-            folders = tmpFolder
+            deleteFolder(folders)  # delete current folder and sub files & sub folders
+            return
     # up loop to delete empty folders
     if folders is not None and len(os.listdir(folders)) == 0:
         os.removedirs(folders)
@@ -326,6 +325,13 @@ def zip(sourceFileList, outputFilePath) -> Boolean2:
 
 def getFileStorageVarFolder(app_nm: str) -> str:
     return getFileStorageFolder(app_nm + "/resources", None)
+
+
+def get_upload_file_folder(app_nm: str) -> Path:
+    '''
+        [app_nm]/resources/file
+    '''
+    return Path(getFileStorageVarFolder(app_nm), FILE_FOLDER)
 
 
 def getFileStorageFolder(path, defaultPath) -> str:

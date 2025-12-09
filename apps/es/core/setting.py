@@ -1,6 +1,6 @@
 from threading import Lock
 
-import core.user.userManager as UserManager
+import core.user.user_manager as UserManager
 from core.db.transaction import IkTransaction
 from core.log.logger import logger
 from core.models import Setting

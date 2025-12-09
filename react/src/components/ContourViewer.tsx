@@ -15,6 +15,9 @@ const ContourViewer: React.FC<IContourViewer> = ({ fileUrl, disWidth, disHeight 
         fileUrl={fileUrl}
         disWidth={disWidth ? disWidth : window.innerWidth * 0.4}
         disHeight={disHeight ? disHeight : window.innerHeight * 0.8}
+        onClose={function (): void {
+          throw new Error("Function not implemented.")
+        }}
       />
     </div>
   )

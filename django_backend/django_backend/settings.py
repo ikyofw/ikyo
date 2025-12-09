@@ -57,9 +57,10 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'core.log.logMiddleware.RequestLogMiddleware',
-    'core.core.requestMiddleware.IkRequestMiddleware',
-    'core.core.requestMiddleware.RequestMiddleware',
+    'core.log.log_middleware.RequestLogMiddleware',
+    'core.core.request_middleware.IkRequestMiddleware',
+    'core.core.request_middleware.RequestMiddleware',
+    'core.session.middleware.SessionSanitizerMiddleware',
 ]
 
 # CORS_ALLOW_ALL_ORIGINS = True
@@ -75,7 +76,7 @@ for dirItem in IkConfig.get('System', 'templateDirs').split(','):
             __TEMPLATES_DIRS.append(dirItem)
         elif dirItem != TEMPLATE_FOLDER:
             __TEMPLATES_DIRS.append(os.path.join(BASE_DIR, dirItem))
-            
+
 for app in INSTALLED_APPS:
     try:
         # Dynamically concatenate template paths for each app
@@ -86,7 +87,7 @@ for app in INSTALLED_APPS:
                 __TEMPLATES_DIRS.append(app_path)
     except Exception as e:
         print(f"Error loading templates for app {app}: {e}")
-        
+
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
@@ -189,7 +190,7 @@ SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 
 REST_FRAMEWORK = {
     # global authenticate class.
-    "DEFAULT_PERMISSON_CLASSES":    ['backend.authentication.index.UserPermission'],
+    "DEFAULT_PERMISSON_CLASSES": ['backend.authentication.index.UserPermission'],
 }
 
 
@@ -243,7 +244,7 @@ LOGGING = {
             'fields': {
             },
         },
-        'request_info': {'()': 'core.log.logMiddleware.RequestLogFilter'}
+        'request_info': {'()': 'core.log.log_middleware.RequestLogFilter'}
     },
     'handlers': {
         'console': {

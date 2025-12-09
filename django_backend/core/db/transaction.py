@@ -205,6 +205,9 @@ class IkTransaction():
                         transaction.savepoint_rollback(savePoint)
                         if afterRollback is not None:
                             afterRollback(self, transaction)
+                        logger.error(e, exc_info=True)
+                        stack_str = "".join(traceback.format_stack()) 
+                        logger.error(stack_str)
                     raise e
             except ValidationError as ve:
                 logger.error(ve, exc_info=True)
@@ -325,7 +328,23 @@ class IkTransaction():
             rc.full_clean2(rcs=rcs, exclude=ikTransactionModel.validateExclude,
                            validate_unique=(ikTransactionModel.validateUnique and validateUnique))
         else:
-            rc.full_clean(exclude=ikTransactionModel.validateExclude, validate_unique=(ikTransactionModel.validateUnique and validateUnique))
+            try:
+                rc.full_clean(exclude=ikTransactionModel.validateExclude, validate_unique=(ikTransactionModel.validateUnique and validateUnique))
+            except Exception as e:
+                from django.core.exceptions import ValidationError
+                bad = []
+                for f in rc._meta.get_fields():
+                    if not hasattr(f, "attname"):
+                        continue
+                    raw_value = getattr(rc, f.attname, None)
+                    try:
+                        _ = (f.blank and (raw_value in getattr(f, "empty_values", (None, ""))))
+                    except Exception as ee:
+                        bad.append((f.name, type(raw_value).__name__, raw_value, repr(ee)))
+                if bad:
+                    for name, typ, val, err in bad:
+                        logger.error(f"model.full_clean error. field={name}, type={typ}, value={val!r}, error={err}")
+                raise
         if isinstance(rc, IDModel) and rc.ik_is_status_modified():
             rc.concurrencyCheck(beforeUpdate=True)
 
@@ -463,7 +482,7 @@ class IkTransaction():
                                         modelField = mf
                                         break
                             if modelField is None:
-                                raise IkException('Field [%s] does not exist in [%s]. Plesae check the unique keys: %s' %
+                                raise IkException('Field [%s] does not exist in [%s]. Please check the unique keys: %s' %
                                                   (uniqueFiledNames[j], nextRc._meta.label, str(uniqueFiledNames)))
                             sql += modelField.column
                         sql += ' FROM ' + dbTable + ' WHERE id=' + dbUtils.toSqlField(nextRc.id)
@@ -547,7 +566,7 @@ class IkTransaction():
                                 errorMsg2 += str(rcUniqueValues[i])
                         tableVerboseName = rc._meta.verbose_name
                         logger.error("Unique Validate Failed: Key (%s) already exists. Please check %s." % (errorMsg2, tableVerboseName))
-                        raise IkException("Unique Validate Failed: Key (%s) already exists. Plesae check %s." % (errorMsg1, tableVerboseName))
+                        raise IkException("Unique Validate Failed: Key (%s) already exists. Please check %s." % (errorMsg1, tableVerboseName))
                 uniqueValueList.append(rcUniqueValues)
         # validate from database
         for r in newRcs:
