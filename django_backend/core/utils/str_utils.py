@@ -1,4 +1,5 @@
-import string, re
+import re
+import string
 from datetime import datetime
 from random import randint
 
@@ -13,6 +14,15 @@ def getTimestamp(timestamp=None, format='%Y%m%d%H%M%S%f') -> str:
 
 
 def isEmpty(s) -> bool:
+    # Deprecated: This method is no longer recommended. It will be removed in a future version.
+    if s is None or type(s) == str and s == '':
+        return True
+    return False
+
+
+def is_null_or_empty(s, trim_whitespace=True) -> bool:
+    if trim_whitespace and isinstance(s, str):
+        s = s.strip()
     if s is None or type(s) == str and s == '':
         return True
     return False

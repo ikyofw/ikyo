@@ -497,6 +497,7 @@ def GetRequestData(request, parameterModelMap={}, screen=None, initDataFromDatab
             modelRecords = []
             tableDataIndex = -1
             selectedDataIndexes = []
+            selectedDataIds = []
             for r in tableData:
                 tableDataIndex += 1
                 # status column
@@ -505,6 +506,7 @@ def GetRequestData(request, parameterModelMap={}, screen=None, initDataFromDatab
                 elif r[0] == RECORD_SET.SELECTED.value:
                     r[0] = True  # checkbox
                     selectedDataIndexes.append(tableDataIndex)
+                    selectedDataIds.append(int(r[1]))  # YL, 2025-02-21 Bugfix: for get table selected id.
                 # id column
                 if r[1] == '':
                     r[1] = None
@@ -618,7 +620,7 @@ def GetRequestData(request, parameterModelMap={}, screen=None, initDataFromDatab
                                                                   (screenGroupField.caption, value))
                                     uniqueValues.append(value)
                     data[key] = modelRecords
-                    dataAdditions['__%s_selected_indexes' % key] = selectedDataIndexes
+            dataAdditions['__%s_selected_indexes' % key] = selectedDataIds
             selectedRcs = []
             if len(selectedDataIndexes) > 0:
                 rowList = data[key]
@@ -644,6 +646,8 @@ def __GetRequestData_oneRecord(screen, parameterModelMap, name, values, initData
         return screenFieldGroup
 
     modelClass = model_utils.get_model_class_1(screen.appName, modelClassName)
+    if modelClass is None:
+        return values
     # XH 2023-04-21  Data from tables using DummyModel is not processed and directly returns the original data passed from the front end.
     if issubclass(modelClass, ikDbModels.DummyModel):
         return values
@@ -736,7 +740,7 @@ def __GetRequestData_oneRecord(screen, parameterModelMap, name, values, initData
                 if not isDBNullable and isNullBlank(newValue) and field.dataField != 'cre_dt' and field.dataField != 'cre_usr_id':
                     raise IkValidateException('%s [%s] is mandatory.'
                                               % ('Column' if isTable else 'Field', field.caption))
-                elif modelField.max_length is not None and newValue is not None and len(newValue) > modelField.max_length:
+                elif modelField.max_length is not None and newValue is not None and type(newValue) == str and len(newValue) > modelField.max_length:
                     raise IkValidateException('%s [%s] max length is %s. Please check.'
                                               % ('Column' if isTable else 'Field', field.caption, modelField.max_length))
                 originalFieldValue = getattr(modelInstance, field.dataField)
@@ -802,21 +806,29 @@ def __normalize_value(value):
 
 
 def __is_field_value_changed(old_value, new_value):
-    return __normalize_value(old_value) != __normalize_value(new_value)
+    return old_value != __normalize_value(new_value)
 
 
 def __float2(s):
     if s is None or type(s) != str:
         return s
     s = s.strip()
-    return float(s) if s != '' else None
+    try:
+        return float(s) if s != '' else None
+    except:
+        logging.debug('ERROR __float2: %s', s)
+        return None
 
 
 def __int2(s):
     if s is None or type(s) != str:
         return s
     s = s.strip()
-    return int(s) if s != '' else None
+    try:
+        return int(s) if s != '' else None
+    except:
+        logging.debug('ERROR __int2: %s', s)
+        return None
 
 
 def __BigInteger2(s):
@@ -825,7 +837,11 @@ def __BigInteger2(s):
     s = s.strip()
     # return BigInteger(s) if s != '' else None
     # TODO: BigInteger field
-    return int(s) if s != '' else None
+    try:
+        return int(s) if s != '' else None
+    except:
+        logging.debug('ERROR __BigInteger2: %s', s)
+        return None
 
 
 def responseFile(filePath, filename: str = None, params: dict = None) -> StreamingHttpResponse:

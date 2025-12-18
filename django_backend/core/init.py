@@ -1,13 +1,13 @@
-import logging
 import os
-from core.db.db import executeSqlFiles
-from core.ui.ui import IkUI
-
-logger = logging.getLogger('ikyo')
+from .db.db import executeSqlFiles
+from .ui.ui import IkUI
+from .log.logger import logger
+from .cron.cron_manager import get_manager; cron_mgr = get_manager()
+from iktools import IK_CONFIG
 
 __hasInit = False
 
-def initIk():
+def init_ik():
     global __hasInit
     if __hasInit:
         return
@@ -26,3 +26,11 @@ def initIk():
     logger.info('Initialize UI ...')
     IkUI.refresh()
     logger.info('Initialized UI.')
+
+    # start cron task
+    if IK_CONFIG.getSystem(name='enableCron', defaultValue='false').lower() == 'true':
+        logger.info('Init cron tasks ...')
+        cron_mgr.start()
+        logger.info('Init cron tasks completed')
+    else:
+        logger.info('Cron disabled.')

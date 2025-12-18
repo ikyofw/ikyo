@@ -569,6 +569,31 @@ class PermissionControlUser(IDModel):
         ]
 
 
+class CronJob(IdDateModel):
+    second = models.CharField(max_length=255, blank=True, null=True, verbose_name='(int|str) - second (0-59)')
+    minute = models.CharField(max_length=255, blank=True, null=True, verbose_name='(int|str) - minute (0-59)')
+    hour = models.CharField(max_length=255, blank=True, null=True, verbose_name='(int|str) - hour (0-23)')
+    day = models.CharField(max_length=255, blank=True, null=True, verbose_name='(int|str) - day of month (1-31)')
+    week = models.CharField(max_length=255, blank=True, null=True, verbose_name='(int|str) - ISO week (1-53)')
+    day_of_week = models.CharField(max_length=255, blank=True, null=True,
+                                   verbose_name='(int|str) - number or name of weekday (0-6 or mon,tue,wed,thu,fri,sat,sun)')
+    month = models.CharField(max_length=255, blank=True, null=True, verbose_name='(int|str) - month (1-12)')
+    year = models.CharField(max_length=255, blank=True, null=True, verbose_name='(int|str) - 4-digit year')
+    start_date = models.CharField(max_length=255, blank=True, null=True,
+                                  verbose_name='(datetime|str) - earliest possible date/time to trigger on (inclusive)')
+    end_date = models.CharField(max_length=255, blank=True, null=True,
+                                verbose_name='(datetime|str) - latest possible date/time to trigger on (inclusive)')
+    jitter = models.IntegerField(blank=True, null=True, verbose_name='(int|None) - delay the job execution by jitter seconds at most')
+    task = models.CharField(max_length=255, blank=True, null=True, verbose_name='Tasks')
+    args = models.TextField(blank=True, null=True, verbose_name='Arguments')
+    enable = models.BooleanField(blank=True, null=True, verbose_name='Enable')
+    dsc = models.CharField(max_length=255, blank=True, null=True, verbose_name='Description')
+
+    class Meta:
+        db_table = '%scron_job' % TABLE_NAME_PREFIX
+        verbose_name = "Cron Job"
+
+
 def coreHistoryFilter(sender, instance, **kwargs) -> bool:
     return not isinstance(instance, AccessLog) and not isinstance(instance, UsrToken)
 
