@@ -763,7 +763,7 @@ def submitExpense(claimer_rc: User, office_rc: Office, expense_id: int, payeeID:
         hdr_rc.office = office_rc
         hdr_rc.claimer = claimer_rc
         hdr_rc.submit_dt = now
-        hdr_rc.claim_amt = totalExpenseClaimAmount
+        hdr_rc.claim_amt = float(round_currency(totalExpenseClaimAmount))
         hdr_rc.pay_amt = thisPayAmount
         hdr_rc.payee = payeeRc
         hdr_rc.approver = approver_rc

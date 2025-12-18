@@ -118,10 +118,11 @@ class ES004(ESAPIView):
                     fileRc.ik_set_cursor(True)
                     break
         for fileRc in fileRcs:
-            fileRc.amount = ExpenseDetail.objects.filter(file=fileRc).aggregate(total=Sum(Case(
-                When(ex_rate__isnull=False, ex_rate__gt=0, then=F('amt') * F('ex_rate')),
-                default=F('amt')
-            )))['total']
+            total_amount = ExpenseDetail.objects.filter(file=fileRc).aggregate(total=Sum(Case(
+                    When(ex_rate__isnull=False, ex_rate__gt=0, then=F('amt') * F('ex_rate')),
+                    default=F('amt'))
+                ))['total']
+            fileRc.amount = float(round_currency(total_amount))
         tableRowStyles = self._getFileStyle(fileRcs, currentFileID)
         return self.getSccJsonResponse(data=fileRcs, cssStyle=tableRowStyles)
 

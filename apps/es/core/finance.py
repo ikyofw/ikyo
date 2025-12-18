@@ -14,7 +14,6 @@ def round_currency(number: any) -> Decimal:
     Returns:
         Round(number, 2)
     """
-    # TODO: use roundCurrency to replace round2
     return round2(number)
 
 
