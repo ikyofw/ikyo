@@ -74,6 +74,10 @@ def getDjangoAppConfigs() -> list:
             except Exception as e:
                 print('ERROR get app [%s] config failed: %s' % (appName, str(e)))
     appConfigs.sort()
+    # always put the core app at the first
+    if 'core.apps.CoreConfig' in appConfigs:
+        appConfigs.remove('core.apps.CoreConfig')
+        appConfigs.insert(0, 'core.apps.CoreConfig')
     return appConfigs
 
 
@@ -157,3 +161,4 @@ class __IkConfig():
 
 
 IkConfig = __IkConfig()
+IK_CONFIG = IkConfig # use IK_CONFIG to replace IkConfig

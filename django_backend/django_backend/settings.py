@@ -64,9 +64,19 @@ MIDDLEWARE = [
 ]
 
 # CORS_ALLOW_ALL_ORIGINS = True
+ALLOWED_HOSTS = ['*']
 CORS_ALLOWED_ORIGINS = ['http://localhost:3000']
 
 ROOT_URLCONF = 'django_backend.urls'
+
+# fix for ajax request
+# #Refused to display 'http://localhost:8000/' in a frame because it set 'X-Frame-Options' to 'deny'.
+X_FRAME_OPTIONS = 'ALLOWALL'
+
+# fix TooManyFieldsSent of GET/POST parameters
+DATA_UPLOAD_MAX_NUMBER_FIELDS = None
+
+SECURE_CROSS_ORIGIN_OPENER_POLICY = None
 
 __TEMPLATES_DIRS = [os.path.join(BASE_DIR, TEMPLATE_FOLDER)]
 for dirItem in IkConfig.get('System', 'templateDirs').split(','):
@@ -214,21 +224,31 @@ class DjangoLogFilter(logging.Filter):
         record.path = getattr(local, 'path', "?")
         record.username = getattr(local, 'username', "system")
         if record.funcName == 'debug_sql' and record.levelname == 'DEBUG':
-            pass
+            if 'ik_screen_field_widget' in record.sql:
+                print(record.sql)
         return True
 
 
+# Fallback filter to avoid KeyError when username is missing (e.g., outside request context)
+class ContextFallbackFilter(logging.Filter):
+    def filter(self, record):
+        if not hasattr(record, "username"):
+            record.username = "-"   # Default username when not available
+        return True
+
 LOGS_DIR = os.path.join(BASE_DIR, 'var', 'logs')
 Path(LOGS_DIR).mkdir(parents=True, exist_ok=True)
+
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
+
     'formatters': {
         'standard': {
-            'format': '%(username)s %(asctime)s %(threadName)s:%(thread)d task_id:%(name)s %(filename)s:%(lineno)d %(levelname)s %(message)s'
+            'format': '%(username)s %(asctime)s %(threadName)s:%(thread)d %(name)s %(filename)s:%(lineno)d %(levelname)s %(message)s'
         },
         'verbose': {
-            'format': '%(asctime)s %(threadName)s:%(thread)d task_id:%(name)s %(filename)s:%(lineno)d %(levelname)s %(message)s',
+            'format': '%(asctime)s %(threadName)s:%(thread)d %(name)s %(filename)s:%(lineno)d %(levelname)s %(message)s',
             'datefmt': "%Y-%m-%d %H:%M:%S"
         },
         'simple': {
@@ -236,63 +256,76 @@ LOGGING = {
         },
     },
     'filters': {
-        'require_debug_true': {
-            '()': 'django.utils.log.RequireDebugTrue',
-        },
+        'require_debug_true': {'()': 'django.utils.log.RequireDebugTrue'},
+        # Your custom Django filter (may inject username or other fields)
         'django_filter': {
             '()': 'django_backend.settings.DjangoLogFilter',
-            'fields': {
-            },
+            'fields': {},
         },
-        'request_info': {'()': 'core.log.log_middleware.RequestLogFilter'}
+        # Request information filter (may inject username)
+        'request_info': {'()': 'core.log.log_middleware.RequestLogFilter'},
+
+        # Fallback filter to ensure username always exists
+        'fallback_ctx': {'()': f'{__name__}.ContextFallbackFilter'},
     },
+
     'handlers': {
         'console': {
             'level': 'DEBUG',
             'class': 'logging.StreamHandler',
             'formatter': 'simple',
-            'filters': ['django_filter', 'request_info'],
+            'filters': ['fallback_ctx', 'django_filter', 'request_info'],
         },
-        'djangoFile': {
-            'level': 'DEBUG',   # INFO
+        'django_file': {
+            'level': 'DEBUG',  # Use INFO in production
             'class': 'logging.handlers.RotatingFileHandler',
             'filename': os.path.join(LOGS_DIR, 'django.log'),
-            'maxBytes': 1024 * 1024 * 10,
+            'maxBytes': 10 * 1024 * 1024,
             'backupCount': 50,
             'delay': True,
             'formatter': 'verbose',
             'encoding': 'utf-8',
-            'filters': ['django_filter'],
+            'filters': ['fallback_ctx', 'django_filter'],
         },
-        'ikFile': {
-            'level': 'DEBUG',   # INFO
+        'ik_file': {
+            'level': 'DEBUG',  # Use INFO in production
             'class': 'logging.handlers.RotatingFileHandler',
             'filename': os.path.join(LOGS_DIR, 'django_backend.log'),
-            'maxBytes': 1024 * 1024 * 10,
+            'maxBytes': 10 * 1024 * 1024,
             'backupCount': 50,
             'delay': True,
             'formatter': 'verbose',
             'encoding': 'utf-8',
+            'filters': ['fallback_ctx'],
         },
         'email': {
             'level': 'ERROR',
             'class': 'django.utils.log.AdminEmailHandler',
             'include_html': True,
-        }
+        },
     },
+
+    # Root logger configuration:
+    # Any file that calls logging.debug(...) without specifying a named logger
+    # will use this handler (console + ik_file).
+    'root': {
+        'level': 'DEBUG' if IkConfig.isDebug else 'INFO',
+        'handlers': ['console', 'ik_file'],
+    },
+
     'loggers': {
         'django': {
-            'handlers': ['console', 'djangoFile'],
+            'handlers': ['console', 'django_file'],
             'level': 'DEBUG' if IkConfig.isDebug else 'INFO',
-            'propagate': True,
+            'propagate': True,   # Continue propagating to root
         },
         'django.db.backends': {
-            'handlers': ['ikFile'],
-            'propagate': True,
-            'level': 'DEBUG' if IkConfig.isDebug else 'INFO',
+            'handlers': ['ik_file'],
+            'level': 'INFO' if not IkConfig.isDebug else 'DEBUG',  # Avoid heavy SQL logs in production
+            'propagate': False,  # Prevent duplicate SQL logs
         },
         DEFAULT_LOGGER_NAME: {
-            'handlers': ['console', 'ikFile'],
+            'handlers': ['console', 'ik_file'],
             'level': 'DEBUG' if IkConfig.isDebug else 'INFO',
             'propagate': True,
         },
