@@ -252,6 +252,11 @@ class ScreenAPIView(AuthAPIView):
     #     idStr = self.getRequestData().get(ikui.RESULT_TABLE_EDIT_COLUMN_PARAMETER_NAME)
     #     return None if isNullBlank(idStr) else int(idStr)
 
+    def get_request_id(self) -> int:
+        v = self.getRequestData().get(ikui.RESULT_TABLE_EDIT_FIELD_RECORD_SET_FIELD_NAME, None)
+        return None if isNullBlank(v) else int(v)
+
+
     def _getTableSelectedValue(self, fieldGroupName: str = None) -> any:
         return self._getEditIndexField(fieldGroupName)
 
@@ -308,7 +313,7 @@ class ScreenAPIView(AuthAPIView):
             tableNames = [fg.name for fg in self.getScreen().fieldGroups if fg.groupType == ikui.SCREEN_FIELD_TYPE_RESULT_TABLE]
             for key, value in self.getRequestData().items():
                 if key.startswith('__') and key.endswith('_selected_indexes'):
-                    fieldGroupName = key[len('__'):-len('_selected_indexe')]
+                    fieldGroupName = key[len('__'):-len('_selected_indexes')]
                     if len(fieldGroupName) > 0 and fieldGroupName in tableNames:
                         return value
             return None
@@ -593,6 +598,7 @@ class ScreenAPIView(AuthAPIView):
             return static file. E.g. el/css/xxxx-v99.css
         '''
         fnc_code = self._functionCode if code is None else code
+
         def get_path(c):
             p = self.get_static_folder()
             if c is not None:
@@ -603,7 +609,7 @@ class ScreenAPIView(AuthAPIView):
         path = get_path(fnc_code)
         static_file = ikfs.getLastRevisionFile(path, filename)
         if static_file is None and code is None:
-            path = get_path(self._functionCode.lower()) # try lower case
+            path = get_path(self._functionCode.lower())  # try lower case
             static_file = ikfs.getLastRevisionFile(path, filename)
         if static_file is None:
             raise IkException(f"Static file not found. Code: {fnc_code}, Filename: {filename}, Path: {path}")
@@ -631,7 +637,7 @@ class ScreenAPIView(AuthAPIView):
     def getLastTemplateRevisionFile(self, filename=None, code=None) -> str:
         ''' 
             filename: if filename is None, then try to find the last file named [code].xlsx, then [code]-Template.xlsx file if exists.
-            return template file. E.g. var/templates/ikyo/GP/GP020/xxxx-v99.xlsx
+            return template file. E.g. xxx(app)/resources/templates/GP020/xxxx-v99.xls
         '''
         templateFilename = filename
         if templateFilename is None and self._functionCode is not None:
@@ -644,7 +650,7 @@ class ScreenAPIView(AuthAPIView):
 
     def __getLastTemplateRevisionFile(self, filename, code=None) -> str:
         '''
-            return template file. E.g. var/templates/ikyo/GP/GP020/xxxx-v99.xlsx
+            return template file. E.g. xxx(app)/resources/templates/GP020/xxxx-v99.xlsx
         '''
         return self.__getLastTemplateRevisionFile2(filename, rootFolder=self.get_templates_folder(), code=code)
 
@@ -656,7 +662,7 @@ class ScreenAPIView(AuthAPIView):
 
     def __getLastTemplateRevisionFile2(self, filename, rootFolder, code=None) -> str:
         '''
-            return template file. E.g. var/{rootFolder}/ikyo/GP/GP020/xxxx-v99.xlsx
+            return template file. E.g. xxx(app)/resources/templates/GP020/xxxx-v99.xlsx
         '''
         code = self._functionCode if code is None else code
         path = rootFolder
@@ -700,7 +706,7 @@ class ScreenAPIView(AuthAPIView):
     def downloadExampleFn(self, filename) -> ikhttp.IkJsonResponse:
         try:
             templateFile = self.getLastTemplateRevisionFile(filename)
-            if not pathlib.Path(templateFile).is_file():
+            if isNullBlank(templateFile) or not pathlib.Path(templateFile).is_file():
                 return ikhttp.IkSysErrJsonResponse(message='Example file [%s] does not exist. Please ask administrator to check.' % filename)
             return self.downloadFile(file=templateFile)
         except IkException as pe:
@@ -733,7 +739,7 @@ class ScreenAPIView(AuthAPIView):
         f.close()
         return uploadFile.name, savedFile
 
-    def getUploadSpreadsheet(self, parameterName, savePath=None, tableNames=None) -> tuple:
+    def getUploadSpreadsheet(self, parameterName, savePath=None, tableNames=None, ignore_output_data: bool=True) -> tuple:
         '''
             return (clientSideFilename, uploadFile, SpreadsheetParser)
         '''
@@ -741,7 +747,7 @@ class ScreenAPIView(AuthAPIView):
             savePath = self.getUploadFolder(self.getCurrentUser())
         clientSideFilename, uploadFile = self.getUploadSpreadsheetFile(parameterName, savePath)
         # read spreadsheet
-        sp = spreadsheet.SpreadsheetParser(uploadFile, tableNames=tableNames)
+        sp = spreadsheet.SpreadsheetParser(uploadFile, tableNames=tableNames, ignore_output_data=ignore_output_data)
         return clientSideFilename, uploadFile, sp
 
     def getRequestAction(self, **kwargs) -> str:
@@ -1110,7 +1116,7 @@ class ScreenAPIView(AuthAPIView):
                     if searchFgData is None:
                         searchFgData = {}
                     searchFgData[name] = value
-        
+
         self.setSessionParameter(PARAMETER_KEY_NAME_LAST_REQUEST_DATA, jData)
         if searchFgData is not None:
             self.setSessionParameter(PARAMETER_KEY_NAME_LAST_SEARCH_DATA, searchFgData)

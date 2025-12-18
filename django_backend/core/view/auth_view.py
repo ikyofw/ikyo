@@ -1,4 +1,5 @@
 import csv
+import logging
 import inspect
 import logging
 from datetime import datetime
@@ -6,18 +7,17 @@ from pathlib import Path
 from threading import Lock
 
 from django.core.handlers.wsgi import WSGIHandler
-from rest_framework.views import APIView
-
-import core.core.fs as ikfs
-import core.utils.date_utils as date_utils
-from core.auth.index import Authentication, UserPermission
-from core.core.exception import IkException
-from core.core.http import is_support_session
-from core.models import User
-from core.user.session import SessionManager
 from iktools import IkConfig
 
-logger = logging.getLogger('ikyo')
+from ..core import fs as ikfs
+from ..utils import date_utils as date_utils
+from ..auth.index import Authentication, UserPermission
+from ..core.http import is_support_session
+from ..models import User
+from ..user.session import SessionManager
+from .base_view import BaseAPIView
+
+logger = logging.getLogger(__name__)
 
 SESSION_DATA_NAME_PREFIX = '$IKG_'
 SESSION_DATA_NAME = '$IK_$G'
@@ -28,7 +28,7 @@ _RuntimeOutputLock = Lock()
 _RuntimeOutputHasAddHeader = False
 
 
-class AuthAPIView(APIView):
+class AuthAPIView(BaseAPIView):
     authentication_classes = [Authentication, ]
     permission_classes = [UserPermission, ]
 
