@@ -2,6 +2,7 @@ import hashlib
 import importlib
 import time
 import traceback
+import logging
 
 from django.contrib.auth.hashers import check_password
 from django.http import QueryDict
@@ -179,6 +180,65 @@ def md5(user):
     return m.hexdigest()
 
 
+class BasicValidationResult():
+    def __init__(self, username: str, success: bool, message: str, user_rc: User = None) -> None:
+        self.username = username
+        self.success = success
+        self.message = message
+        self.user_rc = user_rc
+
+    def __repr__(self):
+        return f"BasicValidationResult(username={self.username}, success={self.success}, message={self.message})"
+
+
+def basic_validation(username: str, password: str, is_encrypted: bool = True) -> BasicValidationResult:
+    input_username = username
+    input_password = password
+    try:
+        if username is None or username == '':
+            return BasicValidationResult(username=input_username, success=False, message='Username cannot be empty.')
+
+        if is_encrypted:
+            try:
+                username = decryptData(username)
+            except:
+                logging.error(f"Username decryption failed. username=[{username}]")
+                return BasicValidationResult(username=input_username, success=False, message='Username decryption failed.')
+            if password is not None and password != '':
+                try:
+                    password = decryptData(password)
+                except:
+                    logging.error(f"Password decryption failed. password=[{password}]")
+                    return BasicValidationResult(username=username, success=False, message='Password decryption failed.')
+
+        # validate user
+        user_rc = User.objects.filter(usr_nm=username).first()
+        if user_rc is None:
+            return BasicValidationResult(username=username, success=False, message='User does not exist.')
+        if not user_rc.active:
+            return BasicValidationResult(username=username, success=False, message='This user has been disabled.')
+        
+        # validate password
+        db_password = user_rc.psw
+        if not ((password is None or password == '') and (db_password is None or db_password == '')):
+            password_encryption_method = IkConfig.getSystem('password_encryption_method').lower()
+            if password_encryption_method == 'md5':
+                encrypted_password = hashlib.md5(password.encode("utf8")).hexdigest()
+                password_matches = (encrypted_password == db_password)
+            elif password_encryption_method == 'pbkdf2':
+                password_matches = check_password(password, db_password)
+            else:
+                # default PBKDF2
+                password_matches = check_password(password, db_password)
+            if not password_matches:
+                return BasicValidationResult(username=username, success=False, message='Password is incorrect.')
+
+        return BasicValidationResult(username=username, success=True, message='Validated', user_rc=user_rc)
+    except Exception as e:
+        logging.exception(f"author_user exception. username=[{input_username}], password=[{input_password}]")
+        return BasicValidationResult(username=username, success=False, message='System error.')
+
+
 def cleanSession(request) -> None:
     request.session.flush()
 
@@ -250,38 +310,24 @@ class AuthView(APIView):
 
     def post(self, request):
         is_auth_success = False
+        usrRc = None
         try:
             sessionID = getSessionID(request)
             useSession = is_support_session(request)
-            # YL.ikyo, 2022-10-21 login username & password RSA decryption - start
+
             _username = request._request.POST.get("username", "")
             _password = request._request.POST.get("password", "")
-            username = decryptData(_username)
-            password = decryptData(_password)
-            # YL.ikyo, 2022-10-21 - end
+
+            validate_result = basic_validation(_username, _password, True)
+            if not validate_result.success:
+                return Boolean2.FALSE(data=validate_result.message)
+            username = validate_result.username
+            usrRc = validate_result.user_rc
 
             try:
-                usrRc = User.objects.filter(usr_nm=username).first()
-                if usrRc is None:
-                    return Boolean2(False, 'User is not found.').toIkJsonResponse1()
-                if not usrRc.active:
-                    return Boolean2(False, 'This user has been disabled.').toIkJsonResponse1()
-
-                password_matches = False
-                password_encryption_method = IkConfig.getSystem('password_encryption_method').lower()
-                if password_encryption_method == 'md5':
-                    encrypted_password = hashlib.md5(password.encode("utf8")).hexdigest()
-                    password_matches = encrypted_password == usrRc.psw
-                elif password_encryption_method == 'pbkdf2':
-                    password_matches = check_password(password, usrRc.psw)
-                else:
-                    password_matches = check_password(password, usrRc.psw)  # The default encryption method is PBKDF2.
-                if not password_matches:
-                    return Boolean2(False, 'Password is incorrect.').toIkJsonResponse1()
-
                 for amdd in _AUTH_MIDDLEWARES:
                     try:
-                        middleware_instance = __create_authorization_middleware_instance() if isinstance(amdd, str) else amdd
+                        middleware_instance = __create_authorization_middleware_instance(amdd) if isinstance(amdd, str) else amdd
                         middleware_instance: AuthorizationMiddleware  # for vs code
                         amdd_result = middleware_instance.pre_authenticate(request, usrRc)
                         if amdd_result is not None and not amdd_result.value:
@@ -306,7 +352,7 @@ class AuthView(APIView):
 
                 for amdd in _AUTH_MIDDLEWARES:
                     try:
-                        middleware_instance = __create_authorization_middleware_instance() if isinstance(amdd, str) else amdd
+                        middleware_instance = __create_authorization_middleware_instance(amdd) if isinstance(amdd, str) else amdd
                         middleware_instance: AuthorizationMiddleware  # for vs code
                         amdd_result = middleware_instance.handle_authentication_success(request, usrRc)
                         if amdd_result is not None and not amdd_result.value:
@@ -330,7 +376,7 @@ class AuthView(APIView):
             if not is_auth_success:
                 for amdd in _AUTH_MIDDLEWARES:
                     try:
-                        middleware_instance = __create_authorization_middleware_instance() if isinstance(amdd, str) else amdd
+                        middleware_instance = __create_authorization_middleware_instance(amdd) if isinstance(amdd, str) else amdd
                         middleware_instance: AuthorizationMiddleware  # for vs code
                         amdd_result = middleware_instance.handle_authentication_failure(request, usrRc)
                         if amdd_result is not None and not amdd_result.value:
