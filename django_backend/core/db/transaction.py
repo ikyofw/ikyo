@@ -134,7 +134,7 @@ class IkTransaction():
                                 If you want to stop continue saving, please raise a IkMessageException.
         '''
         if len(self.__modelDataList) == 0:
-            return Boolean2(False, 'No data saved.')
+            return Boolean2(True, 'No data saved.')
 
         try:
             operatorId2 = self.__operatorId if operatorId is None else operatorId
