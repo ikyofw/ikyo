@@ -189,7 +189,7 @@ def Write2CsvFile(csvFile: object, data: dict, overwrite: bool = True, specified
                 csvData.append([SINGLE_VALUE_FLAG, name])
                 csvData.append([None,value])
 
-    with open(pFile, mode='a+', newline='') as csvfile: # Append to the exist file.
+    with open(pFile, mode='a+', newline='', encoding="utf-8") as csvfile: # Append to the exist file.
         csvwriter = csv.writer(csvfile)
         for row in csvData:
             csvwriter.writerow(row)
