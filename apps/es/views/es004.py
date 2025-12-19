@@ -122,7 +122,7 @@ class ES004(ESAPIView):
                     When(ex_rate__isnull=False, ex_rate__gt=0, then=F('amt') * F('ex_rate')),
                     default=F('amt'))
                 ))['total']
-            fileRc.amount = float(round_currency(total_amount))
+            fileRc.amount = float(round_currency(total_amount)) if total_amount is not None else None
         tableRowStyles = self._getFileStyle(fileRcs, currentFileID)
         return self.getSccJsonResponse(data=fileRcs, cssStyle=tableRowStyles)
 
