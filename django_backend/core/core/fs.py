@@ -14,8 +14,9 @@ logger = logging.getLogger('ikyo')
 
 VAR_FOLDER_NAME = 'var'
 VAR_FILE_PATH = VAR_FOLDER_NAME + '/file'  # used for iky_file table (var/file)
-FILE_FOLDER = 'file' 
+FILE_FOLDER = 'file'
 IS_WINDOWS_OS = 'windows' in platform.system().lower()
+PROJECT_FOLDER_NAME = "Project"
 
 
 def getRootFolder() -> str:
@@ -62,14 +63,14 @@ def getVarTempProjectFolder(projectNo, function, subPath=None, addTimestampPath:
     subFolder = None
     if subPath is None:
         if addTimestampPath:
-            subFolder = os.path.join('projects', projectNo, function, toPath_Y_m_d_HMSf())
+            subFolder = os.path.join(PROJECT_FOLDER_NAME, projectNo, function, toPath_Y_m_d_HMSf())
         else:
-            subFolder = os.path.join('projects', projectNo, function)
+            subFolder = os.path.join(PROJECT_FOLDER_NAME, projectNo, function)
     else:
         if addTimestampPath:
-            subFolder = os.path.join('projects', projectNo, function, subPath, toPath_Y_m_d_HMSf())
+            subFolder = os.path.join(PROJECT_FOLDER_NAME, projectNo, function, subPath, toPath_Y_m_d_HMSf())
         else:
-            subFolder = os.path.join('projects', projectNo, function, subPath)
+            subFolder = os.path.join(PROJECT_FOLDER_NAME, projectNo, function, subPath)
     return getVarTempFolder(subFolder)
 
 
@@ -77,14 +78,14 @@ def getVarProjectFolder(projectNo, function, subPath=None, addTimestampPath: boo
     subFolder = None
     if subPath is None:
         if addTimestampPath:
-            subFolder = os.path.join('projects', projectNo, function, toPath_Y_m_d_HMSf())
+            subFolder = os.path.join(PROJECT_FOLDER_NAME, projectNo, function, toPath_Y_m_d_HMSf())
         else:
-            subFolder = os.path.join('projects', projectNo, function)
+            subFolder = os.path.join(PROJECT_FOLDER_NAME, projectNo, function)
     else:
         if addTimestampPath:
-            subFolder = os.path.join('projects', projectNo, function, subPath, toPath_Y_m_d_HMSf())
+            subFolder = os.path.join(PROJECT_FOLDER_NAME, projectNo, function, subPath, toPath_Y_m_d_HMSf())
         else:
-            subFolder = os.path.join('projects', projectNo, function, subPath)
+            subFolder = os.path.join(PROJECT_FOLDER_NAME, projectNo, function, subPath)
     return getVarFolder(subFolder)
 
 
@@ -266,7 +267,7 @@ def deleteEmptyFolderAndParentFolder(p):
             os.removedirs(folders)
         else:  # not empty folder
             deleteFolder(folders)  # delete current folder and sub files & sub folders
-            return
+        return
     # up loop to delete empty folders
     if folders is not None and len(os.listdir(folders)) == 0:
         os.removedirs(folders)
@@ -295,28 +296,43 @@ def deleteFileAndFolder(file: Path, folder: str) -> None:
                     break
 
 
-def zip(sourceFileList, outputFilePath) -> Boolean2:
+def zip(sourceFileList, outputFilePath, root_dir=None) -> Boolean2:
     """ YL.ikyo, 2022-12-13
     Zip files
 
     Args:
         sourceFileList: file list to zip
         outputFilePath: zipped file path
+        root_dir: source root directory, default None
 
     Returns:
         Boolean2: If true, return outputFilePath, else return error message
-
     """
     try:
-        outputFilePath = outputFilePath.replace("\\", "/")
+        outputFilePath = str(outputFilePath).replace("\\", "/")
         parentFolderPath = os.path.dirname(outputFilePath)
+
         # create if folder not exists
         if not os.path.exists(parentFolderPath):
             mkdirs(parentFolderPath)
-        for i in range(len(sourceFileList)):
-            with zipfile.ZipFile(outputFilePath, 'w' if i == 0 else 'a', zipfile.ZIP_DEFLATED) as zip:
-                zip.write(sourceFileList[i], sourceFileList[i].split('/')[-1])
+
+        root_dir = str(root_dir).replace("\\", "/") if root_dir else None
+
+        with zipfile.ZipFile(outputFilePath, 'w', zipfile.ZIP_DEFLATED) as zipf:
+            for src in sourceFileList:
+                src = str(src).replace("\\", "/")
+
+                if root_dir:
+                    # use relative path based on root_dir
+                    arcname = os.path.relpath(src, root_dir).replace("\\", "/")
+                else:
+                    # keep original directory structure
+                    arcname = src.lstrip("/")  # avoid absolute path in zip
+
+                zipf.write(src, arcname)
+
         return Boolean2(True, outputFilePath)
+
     except Exception as e:
         logger.error(e, exc_info=True)
         deleteEmptyFolderAndParentFolder(outputFilePath)
