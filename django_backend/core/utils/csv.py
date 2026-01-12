@@ -180,6 +180,8 @@ def Write2CsvFile(csvFile: object, data: dict, overwrite: bool = True, specified
                 csvData.append([TABLE_VALUE_FLAG, name])
                 if value:
                     for tableRow in value:
+                        if not isinstance(tableRow, list) and not isinstance(tableRow, tuple):
+                            raise Exception(f"Table [{name}] is not a list: {tableRow}")
                         outputValues = [item for item in tableRow]
                         outputValues.insert(0, None)
                         csvData.append(outputValues)

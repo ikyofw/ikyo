@@ -1,5 +1,6 @@
 import datetime
 import logging
+from typing import Union
 import os
 import platform
 import shutil
@@ -10,7 +11,7 @@ from core.core.lang import Boolean2
 from core.utils.lang_utils import isNullBlank
 from django_backend.settings import BASE_DIR
 
-logger = logging.getLogger('ikyo')
+logger = logging.getLogger(__name__)
 
 VAR_FOLDER_NAME = 'var'
 VAR_FILE_PATH = VAR_FOLDER_NAME + '/file'  # used for iky_file table (var/file)
@@ -224,6 +225,55 @@ def getRelativeToVar(fullPath) -> str:
     if p == '.':
         p = ''
     return p
+
+def is_under_dir(
+    target: Union[str, Path],
+    parent: Union[str, Path],
+    direct_only: bool = False
+) -> bool:
+    """
+    Check whether a file or directory is under a given parent directory.
+
+    :param target: File or directory path to check
+    :param parent: Parent directory path
+    :param direct_only: 
+        - True  -> only direct children (files or directories)
+        - False -> any depth under parent
+    :return: True if target is under parent according to the rule
+    """
+    target = Path(target).resolve()
+    parent = Path(parent).resolve()
+
+    # Parent must be a directory
+    if not parent.is_dir():
+        return False
+
+    try:
+        rel = target.relative_to(parent)
+    except ValueError:
+        return False
+
+    if direct_only:
+        # Direct child: exactly one path component
+        return len(rel.parts) == 1
+
+    # Any depth under parent
+    return True
+
+def is_under_var_dir(
+    target: Union[str, Path],
+    direct_only: bool = False
+) -> bool:
+    """
+    Check whether a file or directory is under the var folder.
+
+    :param target: File or directory path to check
+    :param direct_only: 
+        - True  -> only direct children (files or directories)
+        - False -> any depth under var folder
+    :return: True if target is under var folder according to the rule
+    """
+    return is_under_dir(target, getVarFolder(), direct_only)
 
 
 def getFilePath(fileID, fileName=None) -> tuple:

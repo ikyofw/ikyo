@@ -49,11 +49,11 @@ class AuthAPIView(BaseAPIView):
         '''
         return self.request.user
 
-    def getCurrentUserId(self) -> int:
+    def getCurrentUserId(self) -> int | None:
         user = self.getCurrentUser()
         return None if user is None else user.id
 
-    def getCurrentUserName(self) -> int:
+    def getCurrentUserName(self) -> str | None:
         user = self.getCurrentUser()
         return None if user is None else user.usr_nm
 
