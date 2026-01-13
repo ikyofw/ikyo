@@ -6,6 +6,4 @@ class EsConfig(AppConfig):
     name = 'es'
 
     def ready(self):
-        import core.utils.django_utils as ikDjangoUtils
-        if ikDjangoUtils.isRunDjangoServer():
-            import es.signals
+        from . import signals

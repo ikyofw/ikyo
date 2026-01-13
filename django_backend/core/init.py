@@ -1,9 +1,11 @@
 import os
+import logging
 from .db.db import executeSqlFiles
 from .ui.ui import IkUI
-from .log.logger import logger
 from .cron.cron_manager import get_manager; cron_mgr = get_manager()
 from iktools import IK_CONFIG
+
+logger = logging.getLogger(__name__)
 
 __hasInit = False
 

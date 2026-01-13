@@ -9,7 +9,7 @@ from django.db import connection
 from iktools import getAppNames
 from core.core.exception import IkException
 
-logger = logging.getLogger('ikyo')
+logger = logging.getLogger(__name__)
 
 
 NEW_SQL_FILE_FOLDER = 'new'

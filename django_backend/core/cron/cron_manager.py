@@ -22,15 +22,16 @@ APS Scheduler
 '''
 
 import time
+import logging
 from typing import Optional
 from importlib import import_module
 from datetime import datetime
 from threading import Lock, Thread
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.job import Job
-from ..log.logger import logger
 from ..models import CronJob
 
+logger = logging.getLogger(__name__)
 REFRESH_JOB_INTERVAL = 10
 '''
     Refresh database tasks interval in second(s). Default is 10 seconds.
