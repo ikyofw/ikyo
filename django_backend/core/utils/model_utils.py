@@ -11,7 +11,7 @@ from iktools import IkConfig
 
 from .lang_utils import isNullBlank
 
-logger = logging.getLogger('ikyo')
+logger = logging.getLogger(__name__)
 
 
 def model2Fields(modelRc):
@@ -50,7 +50,7 @@ def redcordsets2List(recordsets, fields: list[str], removeDumpItemFields=None) -
                     else:
                         v = getModelAttr(rc, field)
                 r.append(v)
-            data .append(r)
+            data.append(r)
 
     if removeDumpItemFields is not None:
         if len(removeDumpItemFields) > 1:
@@ -127,16 +127,20 @@ def get_model_class_2(app_name: str, screen_sn: str, class_nm: str):
     try:
         viewClass = getModelClass(class_nm)
     except Exception as e:
+        last_exception = e
+        logger.debug("Failed to load model [%s] from app [%s], errors: %s" % (class_nm, app_name, str(e)))
         error_messages.append(str(e))
     if viewClass is None:
         try:
             viewClass = getModelClass(module_name_1)
         except Exception as e:
+            logger.debug("Failed to load model [%s] from app [%s], errors: %s" % (module_name_1, app_name, str(e)))
             error_messages.append(str(e))
     if viewClass is None:
         try:
             viewClass = getModelClass(module_name_2)
         except Exception as e:
+            logger.exception(e)
             error_messages.append(str(e))
 
     if viewClass is None:
@@ -158,7 +162,7 @@ def is_model_class_exists(app_name: str, screen_sn: str, class_nm: str) -> bool:
                 logger.error("Failed to load module [%s] from app [%s], errors: [%s] is not found." % (screen_sn, app_name, class_nm))
                 return False
     except ImportError as e:
-        logger.error("Failed to load module [%s] from app [%s], errors: %s" % (screen_sn, app_name, e))
+        logger.exception("Failed to load module [%s] from app [%s], errors: %s" % (screen_sn, app_name, e))
 
     module_name_1 = "%s.views" % app_name
     try:
@@ -168,7 +172,7 @@ def is_model_class_exists(app_name: str, screen_sn: str, class_nm: str) -> bool:
         else:
             logger.error("Failed to load module [%s] from app [%s], errors: [%s.%s] is not found." % (screen_sn, app_name, module_name_1, screen_sn))
     except ImportError as e:
-        logger.error("Failed to load module [%s] from app [%s], errors: %s" % (screen_sn, app_name, e))
+        logger.exception("Failed to load module [%s] from app [%s], errors: %s" % (screen_sn, app_name, e))
 
     module_name_2 = "%s.views.%s" % (app_name, screen_sn.lower())
     try:
@@ -178,7 +182,7 @@ def is_model_class_exists(app_name: str, screen_sn: str, class_nm: str) -> bool:
         else:
             logger.error("Failed to load module [%s] from app [%s], errors: [%s.%s] is not found." % (screen_sn, app_name, module_name_2, screen_sn))
     except ImportError as e:
-        logger.error("Failed to load module [%s] from app [%s], errors: %s" % (screen_sn, app_name, e))
+        logger.exception("Failed to load module [%s] from app [%s], errors: %s" % (screen_sn, app_name, e))
 
     return False
 
@@ -301,6 +305,7 @@ def getModelPropertyValues(instance: Model) -> dict:
     for name in property_methods:
         values[name] = getattr(instance, name)
     return values
+
 
 def models_equal(m1: Model, m2: Model, fields: list) -> bool:
     return all(getattr(m1, f) == getattr(m2, f) for f in fields)

@@ -24,6 +24,7 @@ from pathlib import Path
 COMMENT_LINE_FLAG = '#'
 SINGLE_VALUE_FLAG = 's'
 TABLE_VALUE_FLAG = 't'
+FILE_VALUE_FLAG = 'f'
 
 SUPPORT_1000_SEPATATOR_NUMBER = True
 
@@ -68,7 +69,7 @@ def ReadData(csvFile: object) -> dict:
                 flag = row[0]
                 if flag.startswith(COMMENT_LINE_FLAG):
                     continue # ignore comment line
-                if flag == SINGLE_VALUE_FLAG or flag == TABLE_VALUE_FLAG:
+                if flag == SINGLE_VALUE_FLAG or flag == TABLE_VALUE_FLAG or flag == FILE_VALUE_FLAG:
                     variableType = flag
                     if len(row) < 2:
                         raise Exception('Variable name is not found. Please check row %s' % rowNo)
@@ -81,6 +82,13 @@ def ReadData(csvFile: object) -> dict:
                     if len(row) > 1:
                         variableValue = row[1]
                         csvData[variableName] = variableValue
+                    variableType = None
+                    variableName = None
+                    variableValue = None
+                elif variableType == FILE_VALUE_FLAG:
+                    if len(row) > 1:
+                        variableValue = row[1]
+                    csvData[variableName] = variableValue
                     variableType = None
                     variableName = None
                     variableValue = None
@@ -104,6 +112,8 @@ def ReadData(csvFile: object) -> dict:
                     rowValues.append(__ToNumber(item))
                 tableValues.append(rowValues)
             values[name] = tableValues
+        elif variableType == FILE_VALUE_FLAG:
+            pass # file name is a string, no need to convert.
         else:
             raise Exception('Unsupport data type [%s].' % variableType)
     return values
